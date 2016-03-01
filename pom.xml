@@ -28,6 +28,7 @@
     <url>http://wso2.org</url>
     <properties>
         <connector.name>fileconnector</connector.name>
+        <connector.version>2.0.0</connector.version>
         <test.framework.version>4.2.0</test.framework.version>
         <esb.version>4.9.0</esb.version>
         <carbon.kernel.version>4.4.1</carbon.kernel.version>
@@ -152,7 +153,7 @@
         <connection>scm:git:https://github.com/wso2-extensions/esb-connector-file.git</connection>
         <url>https://github.com/wso2-extensions/esb-connector-file.git</url>
         <developerConnection>scm:git:https://github.com/wso2-extensions/esb-connector-file</developerConnection>
-        <tag>org.wso2.carbon.connector.fileconnector-2.0.0</tag>
+        <tag>HEAD</tag>
     </scm>
     <build>
         <plugins>
@@ -201,7 +202,7 @@
                             <goal>attached</goal>
                         </goals>
                         <configuration>
-                            <finalName>${connector.name}-connector-${version}</finalName>
+                            <finalName>${connector.name}-connector-${connector.version}</finalName>
                             <appendAssemblyId>false</appendAssemblyId>
                             <filters>
                                 <filter>src/main/assembly/filter.properties</filter>
