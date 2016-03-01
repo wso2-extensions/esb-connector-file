@@ -15,19 +15,19 @@
 * specific language governing permissions and limitations
 * under the License.
 */
-
 package org.wso2.carbon.connector.util;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
-
 import javax.mail.internet.ContentType;
 import javax.mail.internet.ParseException;
 import javax.xml.stream.XMLStreamException;
 
+import org.apache.axiom.om.OMAbstractFactory;
 import org.apache.axiom.om.OMElement;
-
+import org.apache.axiom.om.OMFactory;
+import org.apache.axiom.om.OMNamespace;
 import org.apache.axiom.om.util.AXIOMUtil;
 import org.apache.axiom.soap.SOAPBody;
 import org.apache.axis2.Constants;
@@ -35,28 +35,30 @@ import org.apache.axis2.builder.Builder;
 import org.apache.axis2.builder.BuilderUtil;
 import org.apache.axis2.format.DataSourceMessageBuilder;
 import org.apache.axis2.format.ManagedDataSource;
-import org.apache.axis2.format.ManagedDataSourceFactory;
 import org.apache.axis2.transport.TransportUtils;
 import org.apache.commons.io.input.AutoCloseInputStream;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.synapse.MessageContext;
-import org.apache.synapse.SynapseConstants;
 import org.apache.synapse.SynapseException;
 import org.apache.synapse.transport.passthru.util.BinaryRelayBuilder;
 import org.codehaus.jettison.json.JSONException;
 
-
-public class ResultPayloadCreater {
-
-    private static final Log log = LogFactory.getLog(ResultPayloadCreater.class);
+@SuppressWarnings("ALL")
+public class ResultPayloadCreate {
+    private static final Log log = LogFactory.getLog(ResultPayloadCreate.class);
+    private static final OMFactory fac = OMAbstractFactory.getOMFactory();
+   /* private static final OMNamespace omNs = fac.createOMNamespace("http://wso2.org/twilio/adaptor",
+            "twilio");
+*/
 
     /**
      * Prepare pay load
      *
-     * @param messageContext
-     * @param element
+     * @param messageContext The message context that is processed by a handler in the handle method
+     * @param element        OMElement
      */
     public void preparePayload(MessageContext messageContext, OMElement element) {
         SOAPBody soapBody = messageContext.getEnvelope().getBody();
@@ -70,48 +72,51 @@ public class ResultPayloadCreater {
         }
     }
 
+    public OMElement addElement(OMElement omElement, String strValue) {
+        OMNamespace omNs = fac.createOMNamespace(FileConstants.FILECON,
+                FileConstants.NAMESPACE);
+        OMElement subValue = fac.createOMElement(FileConstants.RESULT, omNs);
+        subValue.addChild(fac.createOMText(strValue));
+        omElement.addChild(subValue);
+        return omElement;
+    }
+
     /**
      * Create a OMElement
      *
-     * @param output
-     * @return
+     * @param output output
+     * @return return resultElement
      * @throws XMLStreamException
      * @throws IOException
      * @throws JSONException
      */
-    public OMElement performSearchMessages(String output) throws XMLStreamException,
-            IOException, JSONException {
+    public OMElement performSearchMessages(String output) throws XMLStreamException, IOException,
+            JSONException {
         OMElement resultElement;
-        if (!output.equals("")) {
+        if (StringUtils.isNotEmpty(output)) {
             resultElement = AXIOMUtil.stringToOM(output);
         } else {
             resultElement = AXIOMUtil.stringToOM("<result></></result>");
         }
-
         return resultElement;
-
     }
 
     /**
-     * Send error status
-     *
-     * @param ctxt
-     * @param e
+     * @param file        Read file
+     * @param msgCtx      Message Context
+     * @param contentType content type
+     * @param streaming   streaming mode (true/false)
+     * @return return the status
+     * @throws SynapseException
      */
-
-    public static void sendErrorStatus(MessageContext ctxt, Exception e) {
-        ctxt.setProperty(SynapseConstants.ERROR_EXCEPTION, e);
-        ctxt.setProperty(SynapseConstants.ERROR_MESSAGE, e.getMessage());
-    }
-
-
-    public static boolean buildFile(FileObject file, MessageContext msgCtx, String contentType, String streaming)
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public static boolean buildFile(FileObject file, MessageContext msgCtx, String contentType)
             throws SynapseException {
         ManagedDataSource dataSource = null;
         try {
-            if (contentType == null || contentType.trim().equals("")) {
+            if (StringUtils.isEmpty(contentType) || StringUtils.isEmpty(contentType.trim())) {
                 if (file.getName().getExtension().toLowerCase().endsWith("xml")) {
-                    contentType = "text/xml";
+                    contentType = "application/xml";
                 } else if (file.getName().getExtension().toLowerCase().endsWith("txt")) {
                     contentType = "text/plain";
                 }
@@ -120,9 +125,7 @@ public class ResultPayloadCreater {
                 // set the CHARACTER_SET_ENCODING property as e.g. SOAPBuilder relies on this.
                 String charSetEnc = null;
                 try {
-                    if (contentType != null) {
-                        charSetEnc = new ContentType(contentType).getParameter("charset");
-                    }
+                    charSetEnc = new ContentType(contentType).getParameter("charset");
                 } catch (ParseException ex) {
                     log.warn("Invalid encoding type.", ex);
                 }
@@ -131,11 +134,11 @@ public class ResultPayloadCreater {
             if (log.isDebugEnabled()) {
                 log.debug("Processed file : " + file + " of Content-type : " + contentType);
             }
-            org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.Axis2MessageContext) msgCtx)
-                    .getAxis2MessageContext();
+            org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
+                    Axis2MessageContext) msgCtx).getAxis2MessageContext();
             // Determine the message builder to use
             Builder builder;
-            if (contentType == null) {
+            if (StringUtils.isEmpty(contentType)) {
                 log.debug("No content type specified. Using RELAY builder.");
                 builder = new BinaryRelayBuilder();
             } else {
@@ -144,37 +147,30 @@ public class ResultPayloadCreater {
                 builder = BuilderUtil.getBuilderFromSelector(type, axis2MsgCtx);
                 if (builder == null) {
                     if (log.isDebugEnabled()) {
-                        log.debug("No message builder found for type '" + type + "'. Falling back to RELAY builder.");
+                        log.debug("No message builder found for type '" + type + "'. Falling back "
+                                + "to" + " RELAY builder.");
                     }
                     builder = new BinaryRelayBuilder();
                 }
             }
 
             // set the message payload to the message context
-            InputStream in;
-            if (builder instanceof DataSourceMessageBuilder && "true".equals(streaming)) {
-                in = null;
-                dataSource = ManagedDataSourceFactory.create(new FileObjectDataSource(file, contentType));
-            } else {
-                in = new AutoCloseInputStream(file.getContent().getInputStream());
-                dataSource = null;
-            }
+            InputStream in = null;
+            in = new AutoCloseInputStream(file.getContent().getInputStream());
+            dataSource = null;
 
             // Inject the message to the sequence.
-
             OMElement documentElement;
             if (in != null) {
                 documentElement = builder.processDocument(in, contentType, axis2MsgCtx);
             } else {
-                documentElement = ((DataSourceMessageBuilder) builder).processDocument(dataSource, contentType,
-                        axis2MsgCtx);
+                documentElement = ((DataSourceMessageBuilder) builder).processDocument(dataSource,
+                        contentType, axis2MsgCtx);
             }
-
             //We need this to build the complete message before closing the stream
+            //noinspection ResultOfMethodCallIgnored
             documentElement.toString();
-
             msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
-
         } catch (SynapseException se) {
             throw se;
         } catch (Exception e) {

@@ -24,114 +24,86 @@ import javax.xml.stream.XMLStreamException;
 import org.apache.axiom.om.OMElement;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.Selectors;
-import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.*;
+import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.codehaus.jettison.json.JSONException;
 import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.Connector;
-import org.wso2.carbon.connector.util.FTPSiteUtils;
-import org.wso2.carbon.connector.util.ResultPayloadCreater;
+import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.carbon.connector.util.FileConnectorUtils;
+import org.wso2.carbon.connector.util.FileConstants;
+import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 public class FileDelete extends AbstractConnector implements Connector {
+    private static final Log log = LogFactory.getLog(FileDelete.class);
 
-    private static Log log = LogFactory.getLog(FileDelete.class);
-
-    public void connect(MessageContext messageContext) throws ConnectException {
-        System.out.println("File deletion started...");
-        String fileLocation =
-                getParameter(messageContext, "filelocation") == null ? "" : getParameter(
-                        messageContext,
-                        "filelocation").toString();
-        String filename =
-                getParameter(messageContext, "file") == null ? "" : getParameter(
-                        messageContext,
-                        "file").toString();
-
-        String filebeforepprocess =
-                getParameter(messageContext, "filebeforeprocess") == null ? "" : getParameter(
-                        messageContext,
-                        "filebeforeprocess").toString();
-        if (log.isDebugEnabled()) {
-            log.info("File deletion started..." + filename.toString());
-            log.info("File Location..." + fileLocation);
-        }
-
-        boolean resultStatus = false;
-        try {
-            resultStatus = deleteFile(fileLocation, filename, filebeforepprocess);
-        } catch (FileSystemException e) {
-            handleException("Error while Deleting a file/folder", e, messageContext);
-        }
-
+    public void connect(MessageContext messageContext) {
+        String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.FILE_LOCATION);
+        boolean resultStatus = deleteFile(source, messageContext);
         generateResults(messageContext, resultStatus);
-
     }
 
     /**
      * Generate the result
      *
-     * @param messageContext
-     * @param resultStatus
+     * @param messageContext The message context that is generated for processing the file
+     * @param resultStatus   Result of the status (true/false)
      */
     private void generateResults(MessageContext messageContext, boolean resultStatus) {
-        ResultPayloadCreater resultPayload = new ResultPayloadCreater();
-
-        String responce = "<result><success>" + resultStatus + "</success></result>";
-
+        ResultPayloadCreate resultPayload = new ResultPayloadCreate();
+        String response = FileConstants.START_TAG + resultStatus + FileConstants.END_TAG;
         try {
-            OMElement element = resultPayload.performSearchMessages(responce);
+            OMElement element = resultPayload.performSearchMessages(response);
             resultPayload.preparePayload(messageContext, element);
-
         } catch (XMLStreamException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         } catch (IOException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         } catch (JSONException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         }
-
     }
 
     /**
      * Delete the file
      *
-     * @param fileLocation
-     * @param filename
-     * @param filebeforepprocess
-     * @return
+     * @param source         Location of the file
+     * @param messageContext The message context that is generated for processing the file
+     * @return Return the status
      */
-    private boolean deleteFile(String fileLocation, String filename, String filebeforepprocess)
-            throws FileSystemException {
-
+    private boolean deleteFile(String source, MessageContext messageContext) {
         boolean resultStatus = false;
-
-        FileSystemOptions opts = FTPSiteUtils.createDefaultOptions();
-        FileSystemManager manager = VFS.getManager();
-
-        // Create remote object
-        FileObject remoteFile = manager.resolveFile(fileLocation + filename, opts);
-        if (!filebeforepprocess.equals("")) {
-            FileObject fBeforeProcess = manager.resolveFile(filebeforepprocess + filename, opts);
-            fBeforeProcess.copyFrom(remoteFile, Selectors.SELECT_SELF);
-        }
-
-        if (remoteFile.exists()) {
-            remoteFile.delete();
-            resultStatus = true;
+        StandardFileSystemManager manager = null;
+        try {
+            manager = FileConnectorUtils.getManager();
+            // Create remote object
+            FileObject remoteFile = manager.resolveFile(source
+                    , FileConnectorUtils.init(messageContext));
+            if (remoteFile.exists()) {
+                if (remoteFile.getType() == FileType.FILE) {
+                    //delete a file
+                    remoteFile.delete();
+                } else if (remoteFile.getType() == FileType.FOLDER) {
+                    //delete folder
+                    remoteFile.delete(Selectors.SELECT_ALL);
+                }
+                resultStatus = true;
+            } else {
+                log.error("The file does not exist.");
+                resultStatus = false;
+            }
             if (log.isDebugEnabled()) {
-                log.info("Delete remote file success");
+                log.debug("File delete completed with. " + source);
+            }
+        } catch (IOException e) {
+            handleException("Error occurs while deleting a file.", e, messageContext);
+        } finally {
+            if (manager != null) {
+                manager.close();
             }
         }
-
         return resultStatus;
     }
 }

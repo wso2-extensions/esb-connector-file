@@ -31,7 +31,6 @@ import java.io.OutputStream;
  * implements {@link SizeAwareDataSource}.
  */
 public class FileObjectDataSource implements SizeAwareDataSource {
-    
     private final FileObject file;
     private final String contentType;
 

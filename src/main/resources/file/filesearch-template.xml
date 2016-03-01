@@ -16,18 +16,27 @@
 ~  specific language governing permissions and limitations
 ~  under the License.
 -->
+
 <template xmlns="http://ws.apache.org/ns/synapse" name="search">
-    <parameter name="searchinlocal"/>c
-    <parameter name="filelocation"/>
-    <parameter name="filepattern"/>
-    <parameter name="dirpattern"/>
+    <parameter name="source"/>
+    <parameter name="filePattern"/>
+    <parameter name="recursiveSearch"/>
+    <parameter name="setTimeout"/>
+    <parameter name="setPassiveMode"/>
+    <parameter name="setSoTimeout"/>
+    <parameter name="setStrictHostKeyChecking"/>
+    <parameter name="setUserDirIsRoot"/>
     <sequence>
-        <log level="full" category="debug">
-            <property name="searchinlocal" expression="$func:searchinlocal" />  
-            <property name="filelocation" expression="$func:filelocation" />
-            <property name="filepattern" expression="$func:filepattern" />
-            <property name="dirpattern" expression="$func:dirpattern" />
+        <log level="full" catgory="debug">
+            <property name="source" expression="$func:source"/>
+            <property name="filePattern" expression="$func:filePattern"/>
+            <property name="recursiveSearch" expression="$func:recursiveSearch"/>
+            <property name="setTimeout" expression="$func:setTimeout"/>
+            <property name="setPassiveMode" expression="$func:setPassiveMode"/>
+            <property name="setSoTimeout" expression="$func:setSoTimeout"/>
+            <property name="setStrictHostKeyChecking" expression="$func:setStrictHostKeyChecking"/>
+            <property name="setUserDirIsRoot" expression="$func:setUserDirIsRoot"/>
         </log>
-        <class name="org.wso2.carbon.connector.FileSearch" />
+        <class name="org.wso2.carbon.connector.FileSearch"/>
     </sequence>
 </template>

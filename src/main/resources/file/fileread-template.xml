@@ -16,18 +16,27 @@
 ~  specific language governing permissions and limitations
 ~  under the License.
 -->
+
 <template xmlns="http://ws.apache.org/ns/synapse" name="read">
-    <parameter name="filelocation"/>
-    <parameter name="contenttype"/>
-    <parameter name="streaming"/>
-    <parameter name="filepattern"/>
+    <parameter name="source"/>
+    <parameter name="contentType"/>
+    <parameter name="filePattern"/>
+    <parameter name="setTimeout"/>
+    <parameter name="setPassiveMode"/>
+    <parameter name="setSoTimeout"/>
+    <parameter name="setStrictHostKeyChecking"/>
+    <parameter name="setUserDirIsRoot"/>
     <sequence>
         <log level="full" category="debug">
-            <property name="filelocation" expression="$func:filelocation" />
-            <property name="contenttype" expression="$func:contenttype" />
-            <property name="streaming" expression="$func:streaming" />
-            <property name="filepattern" expression="$func:filepattern" />
+            <property name="source" expression="$func:source"/>
+            <property name="contentType" expression="$func:contentType"/>
+            <property name="filePattern" expression="$func:filePattern"/>
+            <property name="setTimeout" expression="$func:setTimeout"/>
+            <property name="setPassiveMode" expression="$func:setPassiveMode"/>
+            <property name="setSoTimeout" expression="$func:setSoTimeout"/>
+            <property name="setStrictHostKeyChecking" expression="$func:setStrictHostKeyChecking"/>
+            <property name="setUserDirIsRoot" expression="$func:setUserDirIsRoot"/>
         </log>
-        <class name="org.wso2.carbon.connector.FileRead" />
+        <class name="org.wso2.carbon.connector.FileRead"/>
     </sequence>
 </template>
