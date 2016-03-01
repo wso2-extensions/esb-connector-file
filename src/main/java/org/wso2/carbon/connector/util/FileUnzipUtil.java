@@ -25,38 +25,34 @@ import org.apache.axiom.om.OMNamespace;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.*;
+import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
-import org.apache.synapse.SynapseException;
-import org.wso2.carbon.connector.FileConnectorConstants;
+
 import java.io.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-
 public class FileUnzipUtil {
-
-    private static Log log = LogFactory.getLog(FileUnzipUtil.class);
+    private static final Log log = LogFactory.getLog(FileUnzipUtil.class);
+    private static StandardFileSystemManager manager = null;
 
     /**
-     * @param zipFilePath   : Location of the zip file
+     * @param source        Location of the zip file
      * @param destDirectory Location of the destination folder
      */
-    public boolean unzip(String zipFilePath, String destDirectory, MessageContext messageContext) throws
-            SynapseException, IOException {
-
+    public boolean unzip(String source, String destDirectory, MessageContext messageContext) {
         OMFactory factory = OMAbstractFactory.getOMFactory();
-        OMNamespace ns = factory.createOMNamespace(FileConnectorConstants.FILECON, FileConnectorConstants.NAMESPACE);
-        OMElement result = factory.createOMElement(FileConnectorConstants.RESULT, ns);
+        OMNamespace ns = factory.createOMNamespace(FileConstants.FILECON, FileConstants.NAMESPACE);
+        OMElement result = factory.createOMElement(FileConstants.RESULT, ns);
         boolean resultStatus = false;
+        FileSystemOptions opts = FileConnectorUtils.init(messageContext);
         try {
-            FileSystemOptions opts = FTPSiteUtils.createDefaultOptions();
-            FileSystemManager manager = VFS.getManager();
+            manager = FileConnectorUtils.getManager();
             // Create remote object
-            FileObject remoteFile = manager.resolveFile(zipFilePath, opts);
+            FileObject remoteFile = manager.resolveFile(source, opts);
             FileObject remoteDesFile = manager.resolveFile(destDirectory, opts);
             // File destDir = new File(destDirectory);
             if (remoteFile.exists()) {
-                log.info("Extracting a file...");
                 if (!remoteDesFile.exists()) {
                     //create a folder
                     remoteDesFile.createFolder();
@@ -72,13 +68,14 @@ public class FileUnzipUtil {
                         // Create remote object
                         FileObject remoteFilePath = manager.resolveFile(filePath, opts);
                         if (log.isDebugEnabled()) {
-                            log.info("The created path is " + remoteFilePath.toString());
+                            log.debug("The created path is " + remoteFilePath.toString());
                         }
                         try {
                             if (!entry.isDirectory()) {
                                 // if the entry is a file, extracts it
-                                extractFile(zipIn, filePath);
-                                OMElement messageElement = factory.createOMElement(FileConnectorConstants.FILE, ns);
+                                extractFile(zipIn, filePath, opts);
+                                OMElement messageElement = factory.createOMElement(FileConstants.FILE
+                                        , ns);
                                 messageElement.setText(entry.getName() + " | status:" + "true");
                                 result.addChild(messageElement);
                             } else {
@@ -98,14 +95,13 @@ public class FileUnzipUtil {
                     //we must always close the zip file
                     zipIn.close();
                 }
-                log.info("File extracted......");
             } else {
                 log.error("File does not exist.");
             }
         } catch (IOException e) {
-            log.error("Unable to process the zip file.", e);
-        } catch (SynapseException e) {
-            log.error("Error while processing the zip file.", e);
+            log.error("Unable to process the zip file." + e.getMessage(), e);
+        } finally {
+            manager.close();
         }
         return resultStatus;
     }
@@ -114,31 +110,28 @@ public class FileUnzipUtil {
      * @param zipIn    :Input zip stream
      * @param filePath :Location of each entry of the file.
      */
-    private void extractFile(ZipInputStream zipIn, String filePath) throws IOException {
+    private void extractFile(ZipInputStream zipIn, String filePath, FileSystemOptions opts) {
         BufferedOutputStream bos = null;
         try {
-            FileSystemOptions opts = FTPSiteUtils.createDefaultOptions();
-            FileSystemManager manager = VFS.getManager();
             // Create remote object
             FileObject remoteFilePath = manager.resolveFile(filePath, opts);
             //open the zip file
             OutputStream fOut = remoteFilePath.getContent().getOutputStream();
             bos = new BufferedOutputStream(fOut);
-            byte[] bytesIn = new byte[FileConnectorConstants.BUFFER_SIZE];
-
+            byte[] bytesIn = new byte[FileConstants.BUFFER_SIZE];
             int read;
             while ((read = zipIn.read(bytesIn)) != -1) {
                 bos.write(bytesIn, 0, read);
             }
         } catch (IOException e) {
-            log.error("Unable to read an entry.",e);
+            log.error("Unable to read an entry: " + e.getMessage(), e);
         } finally {
             //we must always close the zip file
             if (bos != null) {
                 try {
                     bos.close();
-                } catch (Exception e) {
-                    log.error(e.getMessage());
+                } catch (IOException e) {
+                    log.error("Error while closing the BufferedOutputStream: " + e.getMessage(), e);
                 }
             }
         }

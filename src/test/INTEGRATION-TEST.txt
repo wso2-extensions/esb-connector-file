@@ -1,13 +1,13 @@
-Product: Integration tests for WSO2 ESB File Connector
+Product: Integration tests for WSO2 ESB File Connector version 2
 
 Pre-requisites:
 
  - Maven 3.x
  - Java 1.7 or above
 
-Tested Platform: 
+Tested Platform:
 
- - UBUNTU 13.10, Mac OSx 10.9
+ - UBUNTU 14.04, Mac OSx 10.9,Microsoft WINDOWS V-7
  - WSO2 ESB 4.9.0
  - Java 1.7
 
@@ -17,16 +17,8 @@ STEPS:
 
 2. Copy the wso2esb-4.9.0.zip in to location "{ESB_Connector_Home}/repository/".
 
-3. Please do these changes on fileconnector.xml (fileconenctor.xml file can be found from <fileconnetor>/src/test/
-    resources/artifacts/ESB/config/proxies/fileconnector/).
-    1) Change the file locations with the accessible file locations.
-
-    2) Copy an 'mp4' or a large file at the location specified in <fileconnector.copylarge></fileconnector.copylarge>
-        for copylarge method.
-
-    3) Create a file at the location specified in <fileconnector.copy></fileconnector.copy> for copy method.
-
-    3) Create at least one folder and a file at the location specified in  <filelocation></filelocation> archive method.
+3. Update the fileconnector properties file at location "<ESB_Connector_Home>/fileconnector/fileconnector-2.0.0/
+   org.wso2.carbon.connector/src/test/resources/artifacts/ESB/connector/config".
 
 4. Navigate to "{ESB_Connector_Home}/" and run the following command.
       $ mvn clean install

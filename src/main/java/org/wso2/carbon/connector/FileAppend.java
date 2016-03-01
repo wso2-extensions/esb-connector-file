@@ -18,164 +18,120 @@
 package org.wso2.carbon.connector;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 
 import javax.xml.stream.XMLStreamException;
 
 import org.apache.axiom.om.OMElement;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.Selectors;
-import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.FileSystemException;
+import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
+
 import org.codehaus.jettison.json.JSONException;
+
 import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.Connector;
-import org.wso2.carbon.connector.util.FTPSiteUtils;
-import org.wso2.carbon.connector.util.ResultPayloadCreater;
+import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.carbon.connector.util.FileConnectorUtils;
+import org.wso2.carbon.connector.util.FileConstants;
+import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 public class FileAppend extends AbstractConnector implements Connector {
-
     private static final String DEFAULT_ENCODING = "UTF8";
-    private static Log log = LogFactory.getLog(FileAppend.class);
+    private static final Log log = LogFactory.getLog(FileAppend.class);
 
-    public void connect(MessageContext messageContext) throws ConnectException {
-
-        String fileLocation =
-                getParameter(messageContext, "filelocation") == null ? "" : getParameter(
-                        messageContext,
-                        "filelocation").toString();
-        String filename =
-                getParameter(messageContext, "file") == null ? "" : getParameter(
-                        messageContext,
-                        "file").toString();
-        String content =
-                getParameter(messageContext, "content") == null ? "" : getParameter(
-                        messageContext,
-                        "content").toString();
-        String ftpFileLocation =
-                getParameter(messageContext, "ftpfilelocation") == null ? "" : getParameter(
-                        messageContext,
-                        "ftpfilelocation").toString();
-
-        String filebeforepprocess =
-                getParameter(messageContext, "filebeforepprocess") == null ? "" : getParameter(
-                        messageContext,
-                        "filebeforepprocess").toString();
-        String fileafterprocsess =
-                getParameter(messageContext, "fileafterprocsess") == null ? "" : getParameter(
-                        messageContext,
-                        "fileafterprocsess").toString();
-        String encoding =
-                getParameter(messageContext, "encoding") == null ? "" : getParameter(
-                        messageContext,
-                        "encoding").toString();
-        int offset =
-                getParameter(messageContext, "offset") == null ? 0 : Integer.parseInt(getParameter(
-                        messageContext,
-                        "offset").toString());
-        if (log.isDebugEnabled()) {
-            log.info("File append start with" + filename.toString());
-        }
-
-        boolean resultStatus = false;
-        try {
-            resultStatus =
-                    appendFile(fileLocation, filename, content, encoding,
-                            filebeforepprocess, fileafterprocsess, offset);
-        } catch (IOException e) {
-            handleException("Error while appending a file.", e, messageContext);
-        }
-
+    public void connect(MessageContext messageContext) {
+        String destination = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.NEW_FILE_LOCATION);
+        String content = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.CONTENT);
+        String encoding = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.ENCODING);
+        boolean resultStatus = appendFile(destination, content, encoding, messageContext);
         generateResult(messageContext, resultStatus);
-
     }
 
     /**
      * Generate the result
      *
-     * @param messageContext
-     * @param resultStatus
+     * @param messageContext The message context that is generated for processing the file
+     * @param resultStatus   true/false
      */
     private void generateResult(MessageContext messageContext, boolean resultStatus) {
-        ResultPayloadCreater resultPayload = new ResultPayloadCreater();
-        String responce = "<result><success>" + resultStatus + "</success></result>";
+        ResultPayloadCreate resultPayload = new ResultPayloadCreate();
+        String response = FileConstants.START_TAG + resultStatus + FileConstants.END_TAG;
         OMElement element;
         try {
-            element = resultPayload.performSearchMessages(responce);
+            element = resultPayload.performSearchMessages(response);
             resultPayload.preparePayload(messageContext, element);
         } catch (XMLStreamException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         } catch (IOException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         } catch (JSONException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         }
-
     }
 
     /**
-     * Append the content to the existing file
-     *
-     * @param fileLocation
-     * @param filename
-     * @param content
-     * @param filebeforepprocess
-     * @param fileafterprocsess
+     * @param destination    Location if the file
+     * @param content        Content that is going to be added
+     * @param encoding       Encoding type
+     * @param messageContext The message context that is generated for processing the file
+     * @return true/false
      */
-    private boolean appendFile(String fileLocation, String filename, String content,
-                               String encoding, String filebeforepprocess,
-                               String fileafterprocsess, int offset) throws IOException {
-
+    private boolean appendFile(String destination, String content,
+                               String encoding, MessageContext messageContext) {
         OutputStream out = null;
-        InputStream in = null;
         boolean resultStatus = false;
+        FileObject fileObj = null;
+        StandardFileSystemManager manager = null;
+        try {
+            manager = FileConnectorUtils.getManager();
+            fileObj = manager.resolveFile(destination, FileConnectorUtils.init(messageContext));
+            if (!fileObj.exists()) {
+                fileObj.createFile();
+            }
+            out = fileObj.getContent().getOutputStream(true);
+            if (StringUtils.isEmpty(encoding)) {
+                IOUtils.write(content, out, DEFAULT_ENCODING);
+            } else {
+                IOUtils.write(content, out, encoding);
+            }
+            resultStatus = true;
 
-        FileSystemManager manager = VFS.getManager();
-        // if the file does not exist, this method creates it
-        FileSystemOptions opts = FTPSiteUtils.createDefaultOptions();
-        FileObject fileObj = manager.resolveFile(fileLocation + filename, opts);
-
-        if (!filebeforepprocess.equals("")) {
-            FileObject fBeforeProcess = manager.resolveFile(filebeforepprocess + filename, opts);
-            fBeforeProcess.copyFrom(fileObj, Selectors.SELECT_SELF);
-            if (fBeforeProcess != null) {
-                fBeforeProcess.close();
+            if (log.isDebugEnabled()) {
+                log.debug("File appending completed. " + destination);
+            }
+        } catch (IOException e) {
+            handleException("Error while appending a file.", e, messageContext);
+        } finally {
+            try {
+                if (fileObj != null) {
+                    //close the file object
+                    fileObj.close();
+                }
+            } catch (FileSystemException e) {
+                log.error("Error while closing FileObject: " + e.getMessage(), e);
+            }
+            try {
+                if (out != null) {
+                    //close the output stream
+                    out.close();
+                }
+            } catch (IOException e) {
+                log.error("Error while closing OutputStream: " + e.getMessage(), e);
+            }
+            if (manager != null) {
+                //close the StandardFileSystemManager
+                manager.close();
             }
         }
-
-        out = fileObj.getContent().getOutputStream(true);
-
-        if (encoding.equals("")) {
-            IOUtils.write(content, out, DEFAULT_ENCODING);
-        } else {
-            IOUtils.write(content, out, encoding);
-        }
-
-        if (!fileafterprocsess.equals("")) {
-            FileObject fAfterProcess = manager.resolveFile(fileafterprocsess + filename, opts);
-
-            fAfterProcess.copyFrom(fileObj, Selectors.SELECT_SELF);
-            if (fAfterProcess != null) {
-                fAfterProcess.close();
-            }
-        }
-        if (fileObj != null) {
-            fileObj.close();
-        }
-
-        resultStatus = true;
-
         return resultStatus;
     }
-
 }

@@ -17,96 +17,54 @@
 */
 package org.wso2.carbon.connector;
 
+import java.io.File;
 import java.io.IOException;
-
 import javax.xml.stream.XMLStreamException;
 
 import org.apache.axiom.om.OMElement;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.Selectors;
-import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.*;
+import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.codehaus.jettison.json.JSONException;
 import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.Connector;
-import org.wso2.carbon.connector.util.FTPSiteUtils;
-import org.wso2.carbon.connector.util.ResultPayloadCreater;
+import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.carbon.connector.util.FileConnectorUtils;
+import org.wso2.carbon.connector.util.FileConstants;
+import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 public class FileMove extends AbstractConnector implements Connector {
+    private static final Log log = LogFactory.getLog(FileMove.class);
 
-    private static Log log = LogFactory.getLog(FileMove.class);
+    public void connect(MessageContext messageContext) {
+        String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.FILE_LOCATION);
+        String destination = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.NEW_FILE_LOCATION);
 
-    public void connect(MessageContext messageContext) throws ConnectException {
-        System.out.println("File deletion started...");
-        String fileLocation =
-                getParameter(messageContext, "filelocation") == null ? "" : getParameter(
-                        messageContext,
-                        "filelocation").toString();
-        String filename =
-                getParameter(messageContext, "file") == null ? "" : getParameter(
-                        messageContext,
-                        "file").toString();
-
-        String filebeforepprocess =
-                getParameter(messageContext, "filebeforeprocess") == null ? "" : getParameter(
-                        messageContext,
-                        "filebeforeprocess").toString();
-        String fileafterprocess =
-                getParameter(messageContext, "fileafterprocess") == null ? "" : getParameter(
-                        messageContext,
-                        "fileafterprocess").toString();
-        String newFileLocation =
-                getParameter(messageContext, "newfilelocation") == null ? "" : getParameter(
-                        messageContext,
-                        "newfilelocation").toString();
-        if (log.isDebugEnabled()) {
-            log.info("File deletion started..." + filename.toString());
-            log.info("File Location..." + fileLocation);
-        }
-
-        boolean resultStatus = false;
-        try {
-            resultStatus =
-                    moveFile(fileLocation, filename, filebeforepprocess, fileafterprocess,
-                            newFileLocation);
-        } catch (FileSystemException e) {
-            handleException("Unable to move a file/folder.", e, messageContext);
-        }
-
+        boolean resultStatus = moveFile(source, destination, messageContext);
         generateResults(messageContext, resultStatus);
-
     }
 
     /**
      * Generate the result
      *
-     * @param messageContext
-     * @param resultStatus
+     * @param messageContext The message context that is processed by a handler in the handle method
+     * @param resultStatus   Result of the status (true/false)
      */
     private void generateResults(MessageContext messageContext, boolean resultStatus) {
-        ResultPayloadCreater resultPayload = new ResultPayloadCreater();
-
-        String responce = "<result><success>" + resultStatus + "</success></result>";
-
+        ResultPayloadCreate resultPayload = new ResultPayloadCreate();
+        String response = FileConstants.START_TAG + resultStatus + FileConstants.END_TAG;
         try {
-            OMElement element = resultPayload.performSearchMessages(responce);
+            OMElement element = resultPayload.performSearchMessages(response);
             resultPayload.preparePayload(messageContext, element);
-
         } catch (XMLStreamException e) {
-            log.error(e.getMessage());
             handleException(e.getMessage(), messageContext);
-
         } catch (IOException e) {
-            log.error(e.getMessage());
             handleException(e.getMessage(), messageContext);
         } catch (JSONException e) {
-            log.error(e.getMessage());
             handleException(e.getMessage(), messageContext);
         }
     }
@@ -114,40 +72,44 @@ public class FileMove extends AbstractConnector implements Connector {
     /**
      * Move the files
      *
-     * @param fileLocation
-     * @param filename
-     * @param filebeforepprocess
-     * @return
+     * @param source      Location of the file
+     * @param destination Destination of the file
+     * @return return a resultStatus
      */
-    private boolean moveFile(String fileLocation, String filename, String filebeforepprocess,
-                             String fileafterprocess, String newFileLocation)
-            throws FileSystemException {
-
+    private boolean moveFile(String source, String destination, MessageContext messageContext) {
         boolean resultStatus = false;
-
-        FileSystemOptions opts = FTPSiteUtils.createDefaultOptions();
-        FileSystemManager manager = VFS.getManager();
-        // Create remote object
-        FileObject remoteFile = manager.resolveFile(fileLocation + filename, opts);
-        FileObject newFile = manager.resolveFile(newFileLocation + filename, opts);
-        if (!filebeforepprocess.equals("")) {
-            FileObject fBeforeProcess = manager.resolveFile(filebeforepprocess + filename, opts);
-            fBeforeProcess.copyFrom(remoteFile, Selectors.SELECT_SELF);
-        }
-
-        if (remoteFile.exists()) {
-            remoteFile.moveTo(newFile);
-            resultStatus = true;
-            if (log.isDebugEnabled()) {
-                log.info("Move remote file success");
+        StandardFileSystemManager manager = null;
+        try {
+            manager = FileConnectorUtils.getManager();
+            // Create remote object
+            FileObject remoteFile = manager.resolveFile(source, FileConnectorUtils.init(messageContext));
+            if (remoteFile.exists()) {
+                FileObject file = manager.resolveFile(destination, FileConnectorUtils.init(messageContext));
+                if (!file.exists()) {
+                    file.createFolder();
+                }
+                if (remoteFile.getType() == FileType.FOLDER) {
+                    remoteFile.moveTo(file);
+                } else if (remoteFile.getType() == FileType.FILE) {
+                    FileObject newFile = manager.resolveFile(destination + File.separator +
+                            remoteFile.getName().getBaseName(), FileConnectorUtils.init(messageContext));
+                    remoteFile.moveTo(newFile);
+                }
+                resultStatus = true;
+                if (log.isDebugEnabled()) {
+                    log.debug("File move completed from " + source + " to " + destination);
+                }
+            } else {
+                log.error("The file/folder location does not exist.");
+                resultStatus = false;
+            }
+        } catch (IOException e) {
+            handleException("Unable to move a file/folder.", e, messageContext);
+        } finally {
+            if (manager != null) {
+                manager.close();
             }
         }
-
-        if (!fileafterprocess.equals("")) {
-            FileObject fAfterProcess = manager.resolveFile(fileafterprocess + filename, opts);
-            fAfterProcess.copyFrom(newFile, Selectors.SELECT_SELF);
-        }
-
         return resultStatus;
     }
 }

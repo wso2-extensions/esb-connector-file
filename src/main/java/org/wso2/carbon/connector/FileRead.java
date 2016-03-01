@@ -17,50 +17,42 @@
 */
 package org.wso2.carbon.connector;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.FileType;
-import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.Connector;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
-import org.wso2.carbon.connector.util.FTPSiteUtils;
+import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
-import org.wso2.carbon.connector.util.ResultPayloadCreater;
+import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 public class FileRead extends AbstractConnector implements Connector {
+    private static final Log log = LogFactory.getLog(FileRead.class);
 
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void connect(MessageContext messageContext) {
         String fileLocation = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
         String contentType = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.CONTENT_TYPE);
-        String streaming = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.STREAMING);
         String filePattern = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_PATTERN);
-
-        if (log.isDebugEnabled()) {
-            log.info("File read start with" + fileLocation);
-        }
-
         FileObject fileObj = null;
-        FileSystemManager fsManager = null;
+        StandardFileSystemManager manager = null;
         try {
-            fsManager = VFS.getManager();
-            FileSystemOptions opts = FTPSiteUtils.createDefaultOptions();
-            fileObj = fsManager.resolveFile(fileLocation, opts);
+            manager = FileConnectorUtils.getManager();
+            fileObj = manager.resolveFile(fileLocation, FileConnectorUtils.init(messageContext));
             if (fileObj.exists()) {
                 if (fileObj.getType() == FileType.FOLDER) {
                     FileObject[] children = fileObj.getChildren();
                     if (children == null || children.length == 0) {
                         log.warn("Empty folder.");
                         handleException("Empty folder.", messageContext);
-                    }
-                    if (filePattern != null && !filePattern.trim().equals("")) {
+                    } else if (filePattern != null && !filePattern.trim().equals("")) {
                         boolean bFound = false;
                         for (FileObject child : children) {
                             if (child.getName().getBaseName().matches(filePattern)) {
@@ -71,7 +63,8 @@ public class FileRead extends AbstractConnector implements Connector {
                         }
                         if (!bFound) {
                             log.warn("File does not exists for the mentioned pattern.");
-                            handleException("File does not exists for the mentioned pattern.", messageContext);
+                            handleException("File does not exists for the mentioned pattern.",
+                                    messageContext);
                         }
                     } else {
                         fileObj = children[0];
@@ -84,23 +77,31 @@ public class FileRead extends AbstractConnector implements Connector {
                 log.warn("File/Folder does not exists");
                 handleException("File/Folder does not exists", messageContext);
             }
-            ResultPayloadCreater.buildFile(fileObj, messageContext, contentType, streaming);
+            ResultPayloadCreate.buildFile(fileObj, messageContext, contentType);
+            if (log.isDebugEnabled()) {
+                log.debug("File read completed." + fileLocation);
+            }
         } catch (Exception e) {
-            handleException(e.getMessage(), e, messageContext);
+            handleException(e.getMessage(), messageContext);
         } finally {
             try {
-                // Close the File system if it is not already closed by the finally block of processFile method
-                if (fileObj != null && fsManager != null && fileObj.getParent() != null
+                // Close the File system if it is not already closed by the finally block of
+                // processFile method
+                if (fileObj != null && fileObj.getParent() != null
                         && fileObj.getParent().getFileSystem() != null) {
-                    fsManager.closeFileSystem(fileObj.getParent().getFileSystem());
+                    manager.closeFileSystem(fileObj.getParent().getFileSystem());
                 }
             } catch (FileSystemException warn) {
-                // ignore the warning, since we handed over the stream close job to AutocloseInputstream..
+                // ignore the warning, since we handed over the stream close job to
+                // AutoCloseInputStream..
             }
             try {
-                fileObj.close();
+                if (fileObj != null) {
+                    fileObj.close();
+                }
             } catch (Exception e) {
-                // ignore the warning, since we handed over the stream close job to AutocloseInputstream..
+                // ignore the warning, since we handed over the stream close job to
+                // AutoCloseInputStream..
             }
         }
     }

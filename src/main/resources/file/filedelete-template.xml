@@ -17,16 +17,21 @@
 ~  under the License.
 -->
 <template xmlns="http://ws.apache.org/ns/synapse" name="delete">
-    <parameter name="file"/>c
-    <parameter name="filelocation"/>
-    <parameter name="filebeforeprocess"/>
+    <parameter name="source"/>
+    <parameter name="setTimeout"/>
+    <parameter name="setPassiveMode"/>
+    <parameter name="setSoTimeout"/>
+    <parameter name="setStrictHostKeyChecking"/>
+    <parameter name="setUserDirIsRoot"/>
     <sequence>
         <log level="full" category="debug">
-            <property name="file" expression="$func:file" />  
-            <property name="filelocation" expression="$func:filelocation" />
-            <property name="content" expression="$func:content" />
-                        
+            <property name="source" expression="$func:source"/>
+            <property name="setTimeout" expression="$func:setTimeout"/>
+            <property name="setPassiveMode" expression="$func:setPassiveMode"/>
+            <property name="setSoTimeout" expression="$func:setSoTimeout"/>
+            <property name="setStrictHostKeyChecking" expression="$func:setStrictHostKeyChecking"/>
+            <property name="setUserDirIsRoot" expression="$func:setUserDirIsRoot"/>
         </log>
-        <class name="org.wso2.carbon.connector.FileDelete" />
+        <class name="org.wso2.carbon.connector.FileDelete"/>
     </sequence>
 </template>

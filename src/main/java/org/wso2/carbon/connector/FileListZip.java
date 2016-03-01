@@ -25,77 +25,81 @@ import org.apache.axiom.om.OMNamespace;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
-import org.apache.synapse.SynapseException;
 import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.Connector;
-import org.wso2.carbon.connector.util.FTPSiteUtils;
+import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.carbon.connector.util.FileConnectorUtils;
+import org.wso2.carbon.connector.util.FileConstants;
+import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 import java.io.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-public class FileList extends AbstractConnector implements Connector {
+public class FileListZip extends AbstractConnector implements Connector {
+    private static final Log log = LogFactory.getLog(FileListZip.class);
 
-    private static Log log = LogFactory.getLog(FileList.class);
-
-    public void connect(MessageContext messageContext) throws ConnectException {
-
-        String fileLocation =
-                getParameter(messageContext, "filelocation") == null ? "" : getParameter(
-                        messageContext,
-                        "filelocation").toString();
-
-        list(messageContext, fileLocation);
-        log.info("All files are listed......");
+    public void connect(MessageContext messageContext) {
+        String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.FILE_LOCATION);
+        list(messageContext, source);
     }
 
-    public void list(MessageContext messageContext, String fileLocation) throws SynapseException {
-
+    /**
+     * @param messageContext The message context that is generated for processing the file
+     * @param source         Location of the zip file
+     */
+    private void list(MessageContext messageContext, String source) {
+        StandardFileSystemManager manager = null;
         try {
-            FileSystemOptions opts = FTPSiteUtils.createDefaultOptions();
-            FileSystemManager manager = VFS.getManager();
+            manager = FileConnectorUtils.getManager();
+            ResultPayloadCreate resultPayload = new ResultPayloadCreate();
 
             // Create remote object
-            FileObject remoteFile = manager.resolveFile(fileLocation, opts);
-            if (remoteFile.exists()) {
-                log.info("Reading a zip File.");
+            FileObject remoteFile = manager.resolveFile(source
+                    , FileConnectorUtils.init(messageContext));
+            if (remoteFile != null && remoteFile.exists()) {
                 // open the zip file
                 InputStream input = remoteFile.getContent().getInputStream();
                 ZipInputStream zip = new ZipInputStream(input);
                 OMFactory factory = OMAbstractFactory.getOMFactory();
                 String outputResult;
-                OMNamespace ns = factory.createOMNamespace(FileConnectorConstants.FILECON,
-                        FileConnectorConstants.NAMESPACE);
-                OMElement result = factory.createOMElement(FileConnectorConstants.RESULT, ns);
+                OMNamespace ns = factory.createOMNamespace(FileConstants.FILECON,
+                        FileConstants.NAMESPACE);
+                OMElement result = factory.createOMElement(FileConstants.RESULT, ns);
+                resultPayload.preparePayload(messageContext, result);
                 ZipEntry zipEntry;
                 // iterates over entries in the zip file
                 while ((zipEntry = zip.getNextEntry()) != null) {
                     if (!zipEntry.isDirectory()) {
                         //add the entries
                         outputResult = zipEntry.getName();
-                        OMElement messageElement = factory.createOMElement(FileConnectorConstants.FILE, ns);
+                        OMElement messageElement = factory.createOMElement(FileConstants.FILE, ns);
                         messageElement.setText(outputResult);
                         result.addChild(messageElement);
                     }
                 }
                 messageContext.getEnvelope().getBody().addChild(result);
-
                 if (log.isDebugEnabled()) {
-                    log.info("The envelop body with the read files path is " +
+                    log.debug("The envelop body with the read files path is " +
                             messageContext.getEnvelope().getBody().toString());
                 }
                 //we must always close the zip file
                 zip.close();
+                if (log.isDebugEnabled()) {
+                    log.debug("File listZip completed with. " + source);
+                }
             } else {
                 log.error("Zip file does not exist.");
             }
         } catch (IOException e) {
-            handleException("Unable to process the zip file", e, messageContext);
+            handleException("Error while processing a file.", e, messageContext);
+        } finally {
+            if (manager != null) {
+                manager.close();
+            }
         }
     }
 }

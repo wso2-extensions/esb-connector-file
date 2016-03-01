@@ -17,192 +17,181 @@
 */
 package org.wso2.carbon.connector;
 
-import java.io.File;
+
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 
-import javax.xml.stream.XMLStreamException;
-
+import org.apache.axiom.om.OMAbstractFactory;
 import org.apache.axiom.om.OMElement;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.axiom.om.OMFactory;
+import org.apache.axiom.om.OMNamespace;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.*;
+import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
-import org.codehaus.jettison.json.JSONException;
 import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.Connector;
-import org.wso2.carbon.connector.util.FTPSiteUtils;
+import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.carbon.connector.util.FileConnectorUtils;
+import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.FilePattenMatcher;
-import org.wso2.carbon.connector.util.ResultPayloadCreater;
+import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 public class FileSearch extends AbstractConnector implements Connector {
+    private static final Log log = LogFactory.getLog(FileSearch.class);
 
-    private static Log log = LogFactory.getLog(FileSearch.class);
+    public void connect(MessageContext messageContext) {
+        String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.FILE_LOCATION);
+        String filePattern = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.FILE_PATTERN);
+        String recursiveSearch =(String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.RECURSIVE_SEARCH);
 
-    public void connect(MessageContext messageContext) throws ConnectException {
-        String fileLocation =
-                getParameter(messageContext, "filelocation") == null ? "" : getParameter(
-                        messageContext,
-                        "filelocation").toString();
-
-        String filepattern =
-                getParameter(messageContext, "filepattern") == null ? "" : getParameter(
-                        messageContext,
-                        "filepattern").toString();
-        String dirpattern =
-                getParameter(messageContext, "dirpattern") == null ? "" : getParameter(
-                        messageContext,
-                        "dirpattern").toString();
-
-        boolean searchInLocal =
-                getParameter(messageContext, "searchinlocal") == null ? false : Boolean.getBoolean(getParameter(
-                        messageContext,
-                        "searchinlocal").toString());
-        if (log.isDebugEnabled()) {
-            log.info("File pattern..." + filepattern.toString());
-        }
-        if (!searchInLocal) {
-
-            StringBuffer sb = new StringBuffer();
-
-            try {
-                readFilesUsingFileSystem(fileLocation, filepattern, dirpattern, sb);
-            } catch (FileSystemException e) {
-                handleException("Error while searching a file: " + e.getMessage(), e,
-                        messageContext);
-            }
-
-            generateOutput(messageContext, sb);
-            if (log.isDebugEnabled()) {
-                log.info("File searching completed..." + filepattern.toString());
-            }
-        } else {
-
-            File inputDirectory = new File(fileLocation.toString());
-            final String FILE_PATTERN = filepattern;
-            final String DIR_PATTERN = dirpattern;
-            final IOFileFilter filesFilter = new IOFileFilter() {
-
-                public boolean accept(File file, String s) {
-                    return file.isFile();
-                }
-
-                public boolean accept(File file) {
-                    return new FilePattenMatcher(FILE_PATTERN).validate(file.getName()
-                            .toLowerCase());
-                }
-
-            };
-
-            final IOFileFilter dirsFilter = new IOFileFilter() {
-
-                public boolean accept(File file, String s) {
-                    return file.isDirectory();
-                }
-
-                public boolean accept(File file) {
-                    return new FilePattenMatcher(DIR_PATTERN).validate(file.getName().toLowerCase());
-                }
-
-            };
-
-            Collection fileList = FileUtils.listFiles(inputDirectory, filesFilter, dirsFilter);
-            StringBuffer sb = new StringBuffer();
-            sb.append("<result>");
-            Iterator iterator = fileList.iterator();
-            while (iterator.hasNext()) {
-                File f = (File) iterator.next();
-
-                sb.append("<file>" + f.getName() + "</file>");
-
-            }
-            sb.append("</result>");
-            if (log.isDebugEnabled()) {
-                log.info(sb.toString());
-            }
-            generateOutput(messageContext, sb);
-
-        }
-
-    }
-
-    /**
-     * Generate the output
-     *
-     * @param messageContext
-     * @param sb
-     */
-    private void generateOutput(MessageContext messageContext, StringBuffer sb) {
-        ResultPayloadCreater resultPayload = new ResultPayloadCreater();
-
-        OMElement element;
-        try {
-            element = resultPayload.performSearchMessages(sb.toString());
-            resultPayload.preparePayload(messageContext, element);
-        } catch (XMLStreamException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
-        } catch (IOException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
-        } catch (JSONException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
-        }
-
+        search(source, filePattern, recursiveSearch, messageContext);
     }
 
     /**
      * Generate the file search
      *
-     * @param fileLocation
-     * @param filepattern
-     * @param dirpattern
-     * @param sb
-     * @throws FileSystemException
+     * @param source         Location fo the file
+     * @param filePattern    Pattern of the file
+     * @param recursiveSearch check whether recursively search or not
+     * @param messageContext The message context that is processed by a handler in the handle method
      */
-    private void readFilesUsingFileSystem(String fileLocation, String filepattern,
-                                          String dirpattern, StringBuffer sb)
-            throws FileSystemException {
+    private void search(String source, String filePattern, String recursiveSearch, MessageContext
+            messageContext) {
+        ResultPayloadCreate resultPayload = new ResultPayloadCreate();
+        StandardFileSystemManager manager = null;
+        if (StringUtils.isEmpty(filePattern)) {
+            log.error("FilePattern should not be null");
+        } else {
+            try {
+                manager = FileConnectorUtils.getManager();
+                FileSystemOptions opt = FileConnectorUtils.init(messageContext);
+                FileObject remoteFile = manager.resolveFile(source, opt);
+                if (remoteFile.exists()) {
+                    FileObject[] children = remoteFile.getChildren();
+                    OMFactory factory = OMAbstractFactory.getOMFactory();
+                    String outputResult;
+                    OMNamespace ns = factory.createOMNamespace(FileConstants.FILECON,
+                            FileConstants.NAMESPACE);
+                    OMElement result = factory.createOMElement(FileConstants.RESULT, ns);
+                    resultPayload.preparePayload(messageContext, result);
+                    FilePattenMatcher fpm = new FilePattenMatcher(filePattern);
+                    recursiveSearch = recursiveSearch.trim();
 
-        FileSystemOptions opts = FTPSiteUtils.createDefaultOptions();
-        FileSystemManager manager = VFS.getManager();
-
-        FileObject remoteFile = manager.resolveFile(fileLocation, opts);
-        FileObject[] children = remoteFile.getChildren();
-
-        final String FILE_PATTERN = filepattern;
-        final String DIR_PATTERN = dirpattern;
-
-        sb.append("<result><filelist>");
-        for (int i = 0; i < children.length; i++) {
-            if (children[i].getType().toString().equals("file") &&
-                    new FilePattenMatcher(FILE_PATTERN).validate(children[i].getName().getBaseName()
-                            .toLowerCase())) {
-                sb.append("<file>" + children[i].getName().getBaseName() + "</file>");
-                if (log.isDebugEnabled()) {
-                    log.info(children[i].getName().getBaseName());
+                    for (FileObject child : children) {
+                        try {
+                            if (child.getType() == FileType.FILE && fpm.validate(child.getName().
+                                    getBaseName().toLowerCase())) {
+                                outputResult = child.getName().getPath();
+                                OMElement messageElement = factory.createOMElement(FileConstants.FILE,
+                                        ns);
+                                messageElement.setText(outputResult);
+                                result.addChild(messageElement);
+                            } else if (child.getType() == FileType.FOLDER && "true".equals
+                                    (recursiveSearch)) {
+                                searchSubFolders(child, filePattern, messageContext, factory, result, ns);
+                            }
+                        } catch (IOException e) {
+                            handleException("Unable to search a file.", e, messageContext);
+                        } finally {
+                            try {
+                                if (child != null) {
+                                    child.close();
+                                }
+                            } catch (IOException e) {
+                                log.error("Error while closing Directory: " + e.getMessage(),
+                                        e);
+                            }
+                        }
+                    }
+                    messageContext.getEnvelope().getBody().addChild(result);
+                } else {
+                    log.error("File location does not exist.");
                 }
-            } else if (children[i].getType().toString().equals("folder") &&
-                    new FilePattenMatcher(DIR_PATTERN).validate(children[i].getName()
-                            .getBaseName()
-                            .toLowerCase())) {
-                sb.append("<dir>" + children[i].getName().getBaseName() + "</dir>");
-                if (log.isDebugEnabled()) {
-                    log.info(children[i].getName().getBaseName());
+            } catch (IOException e) {
+                handleException("Unable to search a file.", e, messageContext);
+            } finally {
+                if (manager != null) {
+                    manager.close();
                 }
             }
         }
-        sb.append("</filelist></result>");
-
     }
 
+    /**
+     *
+     * @param dir sub directory
+     * @param fileList list of file inside directory
+     * @param messageContext the message context that is generated for processing the file
+     */
+    private void getAllFiles(FileObject dir, List<FileObject> fileList, MessageContext
+            messageContext) {
+        try {
+            FileObject[] children = dir.getChildren();
+            for (FileObject child : children) {
+                fileList.add(child);
+            }
+        } catch (IOException e) {
+            handleException("Unable to list all folders", e, messageContext);
+        } finally {
+            try {
+                if (dir != null) {
+                    dir.close();
+                }
+            } catch (IOException e) {
+                log.error("Error while closing Directory: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    /**
+     *
+     * @param child sub folder
+     * @param filePattern pattern of the file to be searched
+     * @param messageContext the message context that is generated for processing the file
+     * @param factory OMFactory
+     * @param result OMElement
+     * @param ns OMNamespace
+     * @throws IOException
+     */
+    private void searchSubFolders(FileObject child, String filePattern, MessageContext
+            messageContext, OMFactory factory, OMElement result, OMNamespace ns) throws
+            IOException {
+        List<FileObject> fileList = new ArrayList<FileObject>();
+        getAllFiles(child, fileList, messageContext);
+        FilePattenMatcher fpm = new FilePattenMatcher(filePattern);
+        String outputResult;
+        try {
+            for (FileObject file : fileList) {
+                if (file.getType() == FileType.FILE) {
+                    if (fpm.validate(file.getName().getBaseName().toLowerCase())) {
+                        outputResult = file.getName().getPath();
+                        OMElement messageElement = factory.createOMElement(FileConstants.FILE,
+                                ns);
+                        messageElement.setText(outputResult);
+                        result.addChild(messageElement);
+                    }
+                } else if (file.getType() == FileType.FOLDER) {
+                    searchSubFolders(file, filePattern, messageContext, factory, result, ns);
+                }
+            }
+        } catch (IOException e) {
+            handleException("Unable to search a file in sub folder.", e, messageContext);
+        }finally {
+            try {
+                if (child != null) {
+                    child.close();
+                }
+            } catch (IOException e) {
+                log.error("Error while closing Directory: " + e.getMessage(), e);
+            }
+        }
+    }
 }
+

@@ -22,25 +22,23 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class FilePattenMatcher {
+    private final Pattern pattern;
+    private Matcher matcher;
 
-	private Pattern pattern;
-	private Matcher matcher;
+    public FilePattenMatcher(String patternStr) {
+        pattern = Pattern.compile(patternStr);
+    }
 
-	public FilePattenMatcher(String patternStr) {
-		pattern = Pattern.compile(patternStr);
-	}
+    /**
+     * Validate file with regular expression
+     *
+     * @param image file for validation
+     * @return true valid image, false invalid image
+     */
+    public boolean validate(final String image) {
 
-	/**
-	 * Validate file with regular expression
-	 * 
-	 * @param image
-	 *            file for validation
-	 * @return true valid image, false invalid image
-	 */
-	public boolean validate(final String image) {
+        matcher = pattern.matcher(image);
+        return matcher.matches();
 
-		matcher = pattern.matcher(image);
-		return matcher.matches();
-
-	}
+    }
 }

@@ -22,111 +22,81 @@ import java.io.IOException;
 import javax.xml.stream.XMLStreamException;
 
 import org.apache.axiom.om.OMElement;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.codehaus.jettison.json.JSONException;
 import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.Connector;
-import org.wso2.carbon.connector.util.FTPSiteUtils;
-import org.wso2.carbon.connector.util.ResultPayloadCreater;
+import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.carbon.connector.util.FileConnectorUtils;
+import org.wso2.carbon.connector.util.FileConstants;
+import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 public class FileExist extends AbstractConnector implements Connector {
+    private static final Log log = LogFactory.getLog(FileExist.class);
 
-    public void connect(MessageContext messageContext) throws ConnectException {
-        String fileLocation =
-                getParameter(messageContext, "filelocation") == null ? "" : getParameter(
-                        messageContext,
-                        "filelocation").toString();
-        String filename =
-                getParameter(messageContext, "file") == null ? "" : getParameter(
-                        messageContext,
-                        "file").toString();
-        String content =
-                getParameter(messageContext, "content") == null ? "" : getParameter(
-                        messageContext,
-                        "content").toString();
-        String newFileName =
-                getParameter(messageContext, "newfilename") == null ? "" : getParameter(
-                        messageContext,
-                        "newfilename").toString();
-
-        String filebeforepprocess =
-                getParameter(messageContext, "filebeforepprocess") == null ? "" : getParameter(
-                        messageContext,
-                        "filebeforepprocess").toString();
-
-        boolean isFileExist = false;
-        try {
-            isFileExist = isFileExist(fileLocation, filename, content);
-        } catch (FileSystemException e) {
-            handleException("Error while checking a file: " + e.getMessage(), e, messageContext);
-        }
-
+    public void connect(MessageContext messageContext) {
+        String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext
+                , FileConstants.FILE_LOCATION);
+        boolean isFileExist = isFileExist(source, messageContext);
         generateResults(messageContext, isFileExist);
-
     }
 
     /**
      * Generate the result
      *
-     * @param messageContext
-     * @param isFileExist
+     * @param messageContext The message context that is generated for processing the file
+     * @param isFileExist    Result of the status (true/false)
      */
     private void generateResults(MessageContext messageContext, boolean isFileExist) {
-        ResultPayloadCreater resultPayload = new ResultPayloadCreater();
-        String responce = "<result><fileexits>" + isFileExist + "</fileexits></result>";
+        ResultPayloadCreate resultPayload = new ResultPayloadCreate();
+        String response = FileConstants.FILE_EXIST_START_TAG + isFileExist +
+                FileConstants.FILE_EXIST_END_TAG;
         OMElement element;
         try {
-            element = resultPayload.performSearchMessages(responce);
+            element = resultPayload.performSearchMessages(response);
             resultPayload.preparePayload(messageContext, element);
         } catch (XMLStreamException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         } catch (IOException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         } catch (JSONException e) {
-            log.error(e.getMessage());
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         }
-
     }
 
     /**
      * Check is that file exists
      *
-     * @param fileLocation
-     * @param filename
-     * @param content
-     * @return
-     * @throws FileSystemException
+     * @param source         Location of the file
+     * @param messageContext The message context that is generated for processing the file
+     * @return return a resultStatus
      */
-    private boolean isFileExist(String fileLocation, String filename, String content)
-            throws FileSystemException {
+    private boolean isFileExist(String source, MessageContext messageContext) {
         boolean isFileExist = false;
-        if (log.isDebugEnabled()) {
-            log.info("File creation started..." + filename.toString());
-            log.info("File Location..." + fileLocation.toString());
-            log.info("File content..." + content.toString());
-        }
-
-        FileSystemManager manager = VFS.getManager();
-
-        // Create remote object
-        FileObject remoteFile =
-                manager.resolveFile(fileLocation.toString() + filename.toString(),
-                        FTPSiteUtils.createDefaultOptions());
-
-        if (remoteFile.exists()) {
-
-            isFileExist = true;
-        }
-        if (log.isDebugEnabled()) {
-            log.info("File exist " + isFileExist);
+        StandardFileSystemManager manager = null;
+        FileSystemOptions opt = FileConnectorUtils.init(messageContext);
+        try {
+            manager = FileConnectorUtils.getManager();
+            // Create remote object
+            FileObject remoteFile = manager.resolveFile(source, opt);
+            if (remoteFile.exists()) {
+                isFileExist = true;
+            }
+            if (log.isDebugEnabled()) {
+                log.debug("File exist completed with. " + source);
+            }
+        } catch (IOException e) {
+            isFileExist = false;
+            handleException("Error while processing a file.", e, messageContext);
+        } finally {
+            if (manager != null) {
+                manager.close();
+            }
         }
         return isFileExist;
     }
