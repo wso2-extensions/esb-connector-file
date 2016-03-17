@@ -37,6 +37,20 @@
             <property name="setStrictHostKeyChecking"
                       expression="json-eval($.setStrictHostKeyChecking)"/>
             <property name="setUserDirIsRoot" expression="json-eval($.setUserDirIsRoot)"/>
+            <property name="ftpUsername" expression="json-eval($.ftpUsername)"/>
+            <property name="ftpPassword" expression="json-eval($.ftpPassword)"/>
+            <property name="targetPath" expression="json-eval($.targetPath)"/>
+            <property name="targetFile" expression="json-eval($.targetFile)"/>
+            <property name="proxyHost" expression="json-eval($.proxyHost)"/>
+            <property name="proxyPort" expression="json-eval($.proxyPort)"/>
+            <property name="proxyUsername" expression="json-eval($.proxyUsername)"/>
+            <property name="proxyPassword" expression="json-eval($.proxyPassword)"/>
+            <property name="ftpServer" expression="json-eval($.ftpServer)"/>
+            <property name="ftpPort" expression="json-eval($.ftpPort)"/>
+            <property name="keepAliveTimeout" expression="json-eval($.keepAliveTimeout)"/>
+            <property name="keepAliveTimeout" expression="json-eval($.keepAliveTimeout)"/>
+            <property name="binaryTransfer" expression="json-eval($.binaryTransfer)"/>
+            <property name="localActive" expression="json-eval($.localActive)"/>
 
             <switch source="get-property('transport', 'Action')">
                 <case regex="urn:create">
@@ -48,8 +62,7 @@
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
-                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking>
+                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
                     </fileconnector.create>
                 </case>
                 <case regex="urn:append">
@@ -61,8 +74,7 @@
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
-                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking>
+                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
                     </fileconnector.append>
                 </case>
                 <case regex="urn:delete">
@@ -72,8 +84,7 @@
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
-                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking>
+                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
                     </fileconnector.delete>
                 </case>
                 <case regex="urn:copy">
@@ -85,8 +96,7 @@
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
-                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking>
+                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
                     </fileconnector.copy>
                 </case>
                 <case regex="urn:archive">
@@ -97,8 +107,7 @@
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
-                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking>
+                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
                     </fileconnector.archives>
                 </case>
                 <case regex="urn:isFileExist">
@@ -108,8 +117,7 @@
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
-                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking>
+                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
                     </fileconnector.isFileExist>
                 </case>
                 <case regex="urn:move">
@@ -120,8 +128,7 @@
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
-                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking>
+                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
                     </fileconnector.move>
                 </case>
                 <case regex="urn:read">
@@ -133,8 +140,7 @@
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
-                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking>
+                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
                     </fileconnector.read>
                 </case>
                 <case regex="urn:unzip">
@@ -145,8 +151,7 @@
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
-                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking>
+                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
                     </fileconnector.unzip>
                 </case>
                 <case regex="urn:listFileZip">
@@ -157,8 +162,7 @@
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
                         <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking>
-                    </fileconnector.listFileZip>
+                        </setStrictHostKeyChecking></fileconnector.listFileZip>
                 </case>
                 <case regex="urn:search">
                     <fileconnector.search>
@@ -170,8 +174,25 @@
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
                         <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking>
-                    </fileconnector.search>
+                        </setStrictHostKeyChecking></fileconnector.search>
+                </case>
+                <case regex="urn:ftpOverProxy">
+                    <fileconnector.ftpOverProxy>
+                        <ftpUsername>{$ctx:ftpUsername}</ftpUsername>
+                        <ftpPassword>{$ctx:ftpPassword}</ftpPassword>
+                        <targetPath>{$ctx:targetPath}</targetPath>
+                        <targetFile>{$ctx:targetFile}</targetFile>
+                        <proxyHost>{$ctx:proxyHost}</proxyHost>
+                        <proxyPort>{$ctx:proxyPort}</proxyPort>
+                        <proxyUsername>{$ctx:proxyUsername}</proxyUsername>
+                        <proxyPassword>{$ctx:proxyPassword}</proxyPassword>
+                        <ftpServer>{$ctx:ftpServer}</ftpServer>
+                        <ftpPort>{$ctx:ftpPort}</ftpPort>
+                        <keepAliveTimeout>{$ctx:keepAliveTimeout}</keepAliveTimeout>
+                        <controlKeepAliveReplyTimeout>{$ctx:controlKeepAliveReplyTimeout}</controlKeepAliveReplyTimeout>
+                        <binaryTransfer>{$ctx:binaryTransfer}</binaryTransfer>
+                        <localActive>{$ctx:localActive}</localActive>
+                    </fileconnector.ftpOverProxy>
                 </case>
             </switch>
             <respond/>
