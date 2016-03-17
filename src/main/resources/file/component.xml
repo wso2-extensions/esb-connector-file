@@ -62,6 +62,10 @@
             <file>listFileZip-template.xml</file>
             <description>list the files</description>
         </component>
+        <component name="ftpOverProxy">
+            <file>fileftpoverproxy-template.xml</file>
+            <description>ftp over proxy</description>
+        </component>
     </subComponents>
 </component>
 

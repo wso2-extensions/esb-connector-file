@@ -333,4 +333,29 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
                         "FileSearchMandatoryNegative.json");
         Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
     }
+
+    /**
+     * Positive test case for ftp over proxy method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector ftpOverProxy file integration test")
+    public void testFtpOverProxy() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:ftpOverProxy");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "FileFtpOverProxyMandatory.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+        Assert.assertEquals(true, esbRestResponse.getBody().toString().contains("true"));
+    }
+
+    /**
+     * Negative test case for ftp over proxy method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector ftpOverProxy file integration test")
+    public void testFtpOverProxyWithNegativeCase() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:ftpOverProxy");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "FileFtpOverProxyMandatoryNegative.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+    }
 }

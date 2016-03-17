@@ -41,4 +41,19 @@ public final class FileConstants {
     public static final String FILE_EXIST_START_TAG = "<result><fileExist>";
     public static final String FILE_EXIST_END_TAG = "</fileExist></result>";
     public static final String RECURSIVE_SEARCH="recursiveSearch";
+    public static final String PROXY_HOST = "proxyHost";
+    public static final String PROXY_PORT = "proxyPort";
+    public static final String PROXY_USERNAME = "proxyUsername";
+    public static final String PROXY_PASSWORD = "proxyPassword";
+    public static final String FTP_SERVER = "ftpServer";
+    public static final String FTP_OVER_HTTP = "ftpOverHttp";
+    public static final String FTP_PORT = "ftpPort";
+    public static final String KEEP_ALIVE_TIMEOUT = "keepAliveTimeout";
+    public static final String CONTROL_KEEP_ALIVE_REPLY_TIMEOUT = "controlKeepAliveReplyTimeout";
+    public static final String FTP_USERNAME = "ftpUsername";
+    public static final String FTP_PASSWORD = "ftpPassword";
+    public static final String TARGET_PATH= "targetPath";
+    public static final String TARGET_FILE= "targetFile";
+    public static final String BINARY_TRANSFER= "binaryTransfer";
+    public static final String LOCAL_ACTIVE= "localActive";
 }
