@@ -161,8 +161,8 @@
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
-                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking></fileconnector.listFileZip>
+                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
+                    </fileconnector.listFileZip>
                 </case>
                 <case regex="urn:search">
                     <fileconnector.search>
@@ -173,8 +173,8 @@
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
-                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}
-                        </setStrictHostKeyChecking></fileconnector.search>
+                        <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
+                    </fileconnector.search>
                 </case>
                 <case regex="urn:ftpOverProxy">
                     <fileconnector.ftpOverProxy>
