@@ -68,7 +68,7 @@ public class FileFtpOverProxy extends AbstractConnector implements Connector {
     }
 
     /**
-     * Generate the result
+     * Generate the result.
      *
      * @param messageContext The message context that is generated for processing the file
      * @param resultStatus   true/false
@@ -90,6 +90,8 @@ public class FileFtpOverProxy extends AbstractConnector implements Connector {
     }
 
     /**
+     * Send FTP over Proxy.
+     *
      * @param proxyHost      Name of the proxy host
      * @param proxyPort      Proxy port number
      * @param proxyUsername  User name of the proxy
@@ -139,8 +141,7 @@ public class FileFtpOverProxy extends AbstractConnector implements Connector {
         if (StringUtils.isNotEmpty(keepAliveTimeout)) {
             ftp.setControlKeepAliveTimeout(Long.parseLong(keepAliveTimeout.trim()));
         }
-        //Set how long to wait for control keep-alive message replies.(defaults to 1000
-        // milliseconds.)
+        //Set how long to wait for control keep-alive message replies.(defaults to 1000 milliseconds.)
         if (StringUtils.isNotEmpty(controlKeepAliveReplyTimeout)) {
             ftp.setControlKeepAliveReplyTimeout(Integer.parseInt(controlKeepAliveReplyTimeout.trim()));
         }

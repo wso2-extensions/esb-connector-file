@@ -18,20 +18,22 @@
 -->
 
 <template xmlns="http://ws.apache.org/ns/synapse" name="ftpOverProxy">
-    <parameter name="proxyHost"/>
-    <parameter name="proxyPort"/>
-    <parameter name="proxyUsername"/>
-    <parameter name="proxyPassword"/>
-    <parameter name="ftpServer"/>
-    <parameter name="ftpPort"/>
-    <parameter name="ftpUsername"/>
-    <parameter name="ftpPassword"/>
-    <parameter name="keepAliveTimeout"/>
-    <parameter name="controlKeepAliveReplyTimeout"/>
-    <parameter name="targetPath"/>
-    <parameter name="targetFile"/>
-    <parameter name="binaryTransfer"/>
-    <parameter name="localActive"/>
+    <parameter name="proxyHost" description="The proxy host name"/>
+    <parameter name="proxyPort" description="The port number of the proxy"/>
+    <parameter name="proxyUsername" description="Username of the proxy"/>
+    <parameter name="proxyPassword" description="Password of the proxy"/>
+    <parameter name="ftpServer" description="The FTP server name"/>
+    <parameter name="ftpPort" description="The port number of the FTP server"/>
+    <parameter name="ftpUsername" description="Username of the FTP server"/>
+    <parameter name="ftpPassword" description="Password of the FTP server"/>
+    <parameter name="keepAliveTimeout" description="The time to wait between sending control connection keep alive
+    messages when processing file upload or download"/>
+    <parameter name="controlKeepAliveReplyTimeout" description="The time to wait for control keep-alive message replies
+"/>
+    <parameter name="targetPath" description="The Location of the target path"/>
+    <parameter name="targetFile" description="The name of the file"/>
+    <parameter name="binaryTransfer" description="Set the file type to be transferred"/>
+    <parameter name="localActive" description="Set the current data connection mode"/>
     <sequence>
         <log level="full" category="debug">
             <property name="proxyHost" expression="$func:proxyHost"/>
