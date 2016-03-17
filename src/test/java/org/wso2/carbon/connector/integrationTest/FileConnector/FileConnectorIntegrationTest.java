@@ -41,7 +41,7 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
     @BeforeClass(alwaysRun = true)
     public void setEnvironment() throws Exception {
 
-        init("fileconnector-connector-2.0.1-SNAPSHOT");
+        init("fileconnector-connector-2.0.1");
         esbRequestHeadersMap.put("Accept-Charset", "UTF-8");
         esbRequestHeadersMap.put("Content-Type", "application/json");
         esbRequestHeadersMap.put("Accept", "application/json");
@@ -264,9 +264,8 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
     @Test(groups = {"wso2.esb"}, description = "FileConnector listFileZip file integration test")
     public void testListFileZip() throws Exception {
         esbRequestHeadersMap.put("Action", "urn:listFileZip");
-        RestResponse<JSONObject> esbRestResponse =
-                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
-                        "FileListZipMandatory.json");
+        RestResponse<JSONObject> esbRestResponse = sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                "FileListZipMandatory.json");
         Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
     }
 
