@@ -28,8 +28,8 @@
     <parameter name="ftpPassword" description="Password of the FTP server"/>
     <parameter name="keepAliveTimeout" description="The time to wait between sending control connection keep alive
     messages when processing file upload or download"/>
-    <parameter name="controlKeepAliveReplyTimeout" description="The time to wait for control keep-alive message replies
-"/>
+    <parameter name="controlKeepAliveReplyTimeout"
+               description="The time to wait for control keep-alive message replies"/>
     <parameter name="targetPath" description="The Location of the target path"/>
     <parameter name="targetFile" description="The name of the file"/>
     <parameter name="binaryTransfer" description="Set the file type to be transferred"/>
