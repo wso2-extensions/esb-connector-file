@@ -22,6 +22,8 @@
        xmlns="http://ws.apache.org/ns/synapse">
     <target>
         <inSequence>
+            <property name="OUT_ONLY" value="true"/>
+            <property name="ClientApiNonBlocking" value="true" scope="axis2" action="remove"/>
             <property name="source" expression="json-eval($.source)"/>
             <property name="destination" expression="json-eval($.destination)"/>
             <property name="inputContent" expression="json-eval($.inputContent)"/>
@@ -51,7 +53,8 @@
             <property name="keepAliveTimeout" expression="json-eval($.keepAliveTimeout)"/>
             <property name="binaryTransfer" expression="json-eval($.binaryTransfer)"/>
             <property name="localActive" expression="json-eval($.localActive)"/>
-
+            <property name="address" expression="json-eval($.address)"/>
+            <property name="append" expression="json-eval($.append)"/>
             <switch source="get-property('transport', 'Action')">
                 <case regex="urn:create">
                     <fileconnector.create>
@@ -134,6 +137,7 @@
                 <case regex="urn:read">
                     <fileconnector.read>
                         <source>{$ctx:source}</source>
+                        <streaming>{$ctx:streaming}</streaming>
                         <filePattern>{$ctx:filePattern}</filePattern>
                         <contentType>{$ctx:contentType}</contentType>
                         <setTimeout>{$ctx:setTimeout}</setTimeout>
@@ -193,6 +197,12 @@
                         <binaryTransfer>{$ctx:binaryTransfer}</binaryTransfer>
                         <localActive>{$ctx:localActive}</localActive>
                     </fileconnector.ftpOverProxy>
+                </case>
+                <case regex="urn:send">
+                    <fileconnector.send>
+                        <address>{$ctx:address}</address>
+                        <append>{$ctx:append}</append>
+                    </fileconnector.send>
                 </case>
             </switch>
             <respond/>

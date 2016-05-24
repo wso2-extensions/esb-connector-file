@@ -17,13 +17,6 @@
 */
 package org.wso2.carbon.connector.util;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Iterator;
-import javax.mail.internet.ContentType;
-import javax.mail.internet.ParseException;
-import javax.xml.stream.XMLStreamException;
-
 import org.apache.axiom.om.OMAbstractFactory;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMFactory;
@@ -35,6 +28,7 @@ import org.apache.axis2.builder.Builder;
 import org.apache.axis2.builder.BuilderUtil;
 import org.apache.axis2.format.DataSourceMessageBuilder;
 import org.apache.axis2.format.ManagedDataSource;
+import org.apache.axis2.format.ManagedDataSourceFactory;
 import org.apache.axis2.transport.TransportUtils;
 import org.apache.commons.io.input.AutoCloseInputStream;
 import org.apache.commons.lang.StringUtils;
@@ -45,6 +39,12 @@ import org.apache.synapse.MessageContext;
 import org.apache.synapse.SynapseException;
 import org.apache.synapse.transport.passthru.util.BinaryRelayBuilder;
 import org.codehaus.jettison.json.JSONException;
+import javax.mail.internet.ContentType;
+import javax.mail.internet.ParseException;
+import javax.xml.stream.XMLStreamException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Iterator;
 
 @SuppressWarnings("ALL")
 public class ResultPayloadCreate {
@@ -110,8 +110,7 @@ public class ResultPayloadCreate {
      * @throws SynapseException
      */
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    public static boolean buildFile(FileObject file, MessageContext msgCtx, String contentType)
-            throws SynapseException {
+    public static boolean buildFile(FileObject file, MessageContext msgCtx, String contentType, String streaming) {
         ManagedDataSource dataSource = null;
         try {
             if (StringUtils.isEmpty(contentType) || StringUtils.isEmpty(contentType.trim())) {
@@ -153,12 +152,15 @@ public class ResultPayloadCreate {
                     builder = new BinaryRelayBuilder();
                 }
             }
-
             // set the message payload to the message context
-            InputStream in = null;
-            in = new AutoCloseInputStream(file.getContent().getInputStream());
-            dataSource = null;
-
+            InputStream in;
+            if (builder instanceof DataSourceMessageBuilder && "true".equals(streaming)) {
+                in = null;
+                dataSource = ManagedDataSourceFactory.create(new FileObjectDataSource(file, contentType));
+            } else {
+                in = new AutoCloseInputStream(file.getContent().getInputStream());
+                dataSource = null;
+            }
             // Inject the message to the sequence.
             OMElement documentElement;
             if (in != null) {
@@ -169,10 +171,7 @@ public class ResultPayloadCreate {
             }
             //We need this to build the complete message before closing the stream
             //noinspection ResultOfMethodCallIgnored
-            documentElement.toString();
             msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
-        } catch (SynapseException se) {
-            throw se;
         } catch (Exception e) {
             log.error("Error while processing the file/folder", e);
             throw new SynapseException("Error while processing the file/folder", e);

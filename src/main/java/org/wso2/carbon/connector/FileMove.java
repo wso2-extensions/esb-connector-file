@@ -17,14 +17,11 @@
 */
 package org.wso2.carbon.connector;
 
-import java.io.File;
-import java.io.IOException;
-import javax.xml.stream.XMLStreamException;
-
 import org.apache.axiom.om.OMElement;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.*;
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.codehaus.jettison.json.JSONException;
@@ -35,6 +32,10 @@ import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
+import javax.xml.stream.XMLStreamException;
+import java.io.File;
+import java.io.IOException;
+
 public class FileMove extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileMove.class);
 
@@ -43,7 +44,6 @@ public class FileMove extends AbstractConnector implements Connector {
                 FileConstants.FILE_LOCATION);
         String destination = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.NEW_FILE_LOCATION);
-
         boolean resultStatus = moveFile(source, destination, messageContext);
         generateResults(messageContext, resultStatus);
     }
@@ -61,11 +61,11 @@ public class FileMove extends AbstractConnector implements Connector {
             OMElement element = resultPayload.performSearchMessages(response);
             resultPayload.preparePayload(messageContext, element);
         } catch (XMLStreamException e) {
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         } catch (IOException e) {
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         } catch (JSONException e) {
-            handleException(e.getMessage(), messageContext);
+            handleException(e.getMessage(), e, messageContext);
         }
     }
 

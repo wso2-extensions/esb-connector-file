@@ -7,4 +7,5 @@
   "setUserDirIsRoot": "%s(setUserDirIsRoot)",
   "setSoTimeout": "%s(setSoTimeout)",
   "setStrictHostKeyChecking": "%s(setStrictHostKeyChecking)"
+  "streaming": "%s(streaming)"
 }

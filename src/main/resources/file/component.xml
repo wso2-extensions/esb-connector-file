@@ -66,6 +66,10 @@
             <file>fileftpoverproxy-template.xml</file>
             <description>ftp over proxy</description>
         </component>
+        <component name="send">
+            <file>filesend-template.xml</file>
+            <description>file vfs sender</description>
+        </component>
     </subComponents>
 </component>
 

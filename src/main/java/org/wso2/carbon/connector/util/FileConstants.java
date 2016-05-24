@@ -56,4 +56,9 @@ public final class FileConstants {
     public static final String TARGET_FILE= "targetFile";
     public static final String BINARY_TRANSFER= "binaryTransfer";
     public static final String LOCAL_ACTIVE= "localActive";
+    public static final String STREAMING= "streaming";
+    public static final String ADDRESS= "address";
+    public static final String APPEND= "append";
+    public static final String DEFAULT_RESPONSE_FILE = "/response.xml";
+
 }

@@ -17,11 +17,6 @@
 */
 package org.wso2.carbon.connector;
 
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.axiom.om.OMAbstractFactory;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMFactory;
@@ -29,7 +24,9 @@ import org.apache.axiom.om.OMNamespace;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.*;
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.core.AbstractConnector;
@@ -39,6 +36,9 @@ import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.FilePattenMatcher;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FileSearch extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileSearch.class);
