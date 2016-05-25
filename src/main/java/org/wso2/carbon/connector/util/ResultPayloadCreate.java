@@ -50,10 +50,7 @@ import java.util.Iterator;
 public class ResultPayloadCreate {
     private static final Log log = LogFactory.getLog(ResultPayloadCreate.class);
     private static final OMFactory fac = OMAbstractFactory.getOMFactory();
-   /* private static final OMNamespace omNs = fac.createOMNamespace("http://wso2.org/twilio/adaptor",
-            "twilio");
-*/
-
+    
     /**
      * Prepare pay load
      *
