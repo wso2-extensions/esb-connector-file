@@ -46,6 +46,9 @@ import org.wso2.carbon.connector.util.ResultPayloadCreate;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 
+/**
+ * Send the file to specific location.
+ */
 public class FileSend extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileSend.class);
 
@@ -80,7 +83,11 @@ public class FileSend extends AbstractConnector implements Connector {
             handleException(e.getMessage(), e, messageContext);
         }
     }
-
+    /**
+     * Get the correct formatter for message
+     *
+     * @param msgContext The message context that is generated for processing the file
+     */
     private MessageFormatter getMessageFormatter(org.apache.axis2.context.MessageContext msgContext) {
         OMElement firstChild = msgContext.getEnvelope().getBody().getFirstElement();
         if (firstChild != null) {

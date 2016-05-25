@@ -50,7 +50,7 @@ import java.util.Iterator;
 public class ResultPayloadCreate {
     private static final Log log = LogFactory.getLog(ResultPayloadCreate.class);
     private static final OMFactory fac = OMAbstractFactory.getOMFactory();
-    
+
     /**
      * Prepare pay load
      *
