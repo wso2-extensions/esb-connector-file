@@ -41,6 +41,7 @@ public class FileRead extends AbstractConnector implements Connector {
                 FileConstants.CONTENT_TYPE);
         String filePattern = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_PATTERN);
+        String streaming = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.STREAMING);
         FileObject fileObj = null;
         StandardFileSystemManager manager = null;
         try {
@@ -77,7 +78,7 @@ public class FileRead extends AbstractConnector implements Connector {
                 log.warn("File/Folder does not exists");
                 handleException("File/Folder does not exists", messageContext);
             }
-            ResultPayloadCreate.buildFile(fileObj, messageContext, contentType);
+            ResultPayloadCreate.buildFile(fileObj, messageContext, contentType, streaming);
             if (log.isDebugEnabled()) {
                 log.debug("File read completed." + fileLocation);
             }

@@ -18,25 +18,23 @@
 -->
 
 <template xmlns="http://ws.apache.org/ns/synapse" name="search">
-    <parameter name="source"/>
-    <parameter name="filePattern"/>
-    <parameter name="recursiveSearch"/>
-    <parameter name="setTimeout"/>
-    <parameter name="setPassiveMode"/>
-    <parameter name="setSoTimeout"/>
-    <parameter name="setStrictHostKeyChecking"/>
-    <parameter name="setUserDirIsRoot"/>
+    <parameter name="source" description="The location of the file."/>
+    <parameter name="filePattern" description="The pattern of the file to be searched."/>
+    <parameter name="recursiveSearch" description="Whether you are searching recursively."/>
+    <parameter name="setTimeout" description="Sets the timeout value on Jsch(Java Secure Channel) session."/>
+    <parameter name="setPassiveMode" description="Sets the passive mode to enter into passive mode."/>
+    <parameter name="setSoTimeout" description="Sets the socket timeout for the FTP client."/>
+    <parameter name="setStrictHostKeyChecking" description="Sets the host key checking to use."/>
+    <parameter name="setUserDirIsRoot" description="Sets the whether to use the user directory as root."/>
     <sequence>
-        <log level="full" catgory="debug">
-            <property name="source" expression="$func:source"/>
-            <property name="filePattern" expression="$func:filePattern"/>
-            <property name="recursiveSearch" expression="$func:recursiveSearch"/>
-            <property name="setTimeout" expression="$func:setTimeout"/>
-            <property name="setPassiveMode" expression="$func:setPassiveMode"/>
-            <property name="setSoTimeout" expression="$func:setSoTimeout"/>
-            <property name="setStrictHostKeyChecking" expression="$func:setStrictHostKeyChecking"/>
-            <property name="setUserDirIsRoot" expression="$func:setUserDirIsRoot"/>
-        </log>
+        <property name="source" expression="$func:source"/>
+        <property name="filePattern" expression="$func:filePattern"/>
+        <property name="recursiveSearch" expression="$func:recursiveSearch"/>
+        <property name="setTimeout" expression="$func:setTimeout"/>
+        <property name="setPassiveMode" expression="$func:setPassiveMode"/>
+        <property name="setSoTimeout" expression="$func:setSoTimeout"/>
+        <property name="setStrictHostKeyChecking" expression="$func:setStrictHostKeyChecking"/>
+        <property name="setUserDirIsRoot" expression="$func:setUserDirIsRoot"/>
         <class name="org.wso2.carbon.connector.FileSearch"/>
     </sequence>
 </template>
