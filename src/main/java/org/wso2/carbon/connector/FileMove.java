@@ -86,15 +86,13 @@ public class FileMove extends AbstractConnector implements Connector {
             if (remoteFile.exists()) {
                 FileObject file = manager.resolveFile(destination, FileConnectorUtils.init(messageContext));
                 if (!file.exists()) {
-                    file.createFolder();
+                    if(file.getType()==FileType.FOLDER) {
+                        file.createFolder();
+                    }else{
+                        file.createFile();
+                    }
                 }
-                if (remoteFile.getType() == FileType.FOLDER) {
-                    remoteFile.moveTo(file);
-                } else if (remoteFile.getType() == FileType.FILE) {
-                    FileObject newFile = manager.resolveFile(destination + File.separator +
-                            remoteFile.getName().getBaseName(), FileConnectorUtils.init(messageContext));
-                    remoteFile.moveTo(newFile);
-                }
+                remoteFile.moveTo(file);
                 resultStatus = true;
                 if (log.isDebugEnabled()) {
                     log.debug("File move completed from " + source + " to " + destination);
