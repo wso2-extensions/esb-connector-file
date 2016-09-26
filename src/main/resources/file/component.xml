@@ -50,7 +50,7 @@
             <file>filesearch-template.xml</file>
             <description>File Search</description>
         </component>
-        <component name="isfileExist">
+        <component name="isFileExist">
             <file>fileexists-template.xml</file>
             <description>Check whether file is exist</description>
         </component>
