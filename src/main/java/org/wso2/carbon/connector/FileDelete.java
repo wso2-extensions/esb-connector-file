@@ -86,8 +86,20 @@ public class FileDelete extends AbstractConnector implements Connector {
                     //delete a file
                     remoteFile.delete();
                 } else if (remoteFile.getType() == FileType.FOLDER) {
-                    //delete folder
-                    remoteFile.delete(Selectors.SELECT_ALL);
+                    String filePattern = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                            FileConstants.FILE_PATTERN);
+                    
+                    if(filePattern != null && !"".equals(filePattern) && !"*".equals(filePattern)) {
+                    	FileObject[] children = remoteFile.getChildren();
+                    	for(FileObject child : children) {
+                    		if (child.getName().getBaseName().matches(filePattern)) {
+                    			child.delete();
+                    		}
+                    	}
+                    } else {
+	                    //delete folder
+	                    remoteFile.delete(Selectors.SELECT_ALL);
+                    }
                 }
                 resultStatus = true;
             } else {
