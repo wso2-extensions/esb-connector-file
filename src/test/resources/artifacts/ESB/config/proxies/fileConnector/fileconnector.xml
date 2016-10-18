@@ -83,6 +83,7 @@
                 <case regex="urn:delete">
                     <fileconnector.delete>
                         <source>{$ctx:source}</source>
+                        <filePattern>{$ctx:filePattern}</filePattern>
                         <setTimeout>{$ctx:setTimeout}</setTimeout>
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
                         <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
