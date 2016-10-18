@@ -17,7 +17,8 @@
 ~  under the License.
 -->
 <template xmlns="http://ws.apache.org/ns/synapse" name="delete">
-    <parameter name="source" description="The location of the file."/>
+    <parameter name="source" description="The location of the file or folder"/>
+    <parameter name="filePattern" description="Pattern of files to delete if a folder."/>
     <parameter name="setTimeout" description="Sets the timeout value on Jsch(Java Secure Channel) session."/>
     <parameter name="setPassiveMode" description="Sets the passive mode to enter into passive mode."/>
     <parameter name="setSoTimeout" description="Sets the socket timeout for the FTP client."/>
@@ -25,6 +26,7 @@
     <parameter name="setUserDirIsRoot" description="Sets the whether to use the user directory as root."/>
     <sequence>
         <property name="source" expression="$func:source"/>
+        <property name="filePattern" expression="$func:filePattern"/>
         <property name="setTimeout" expression="$func:setTimeout"/>
         <property name="setPassiveMode" expression="$func:setPassiveMode"/>
         <property name="setSoTimeout" expression="$func:setSoTimeout"/>
