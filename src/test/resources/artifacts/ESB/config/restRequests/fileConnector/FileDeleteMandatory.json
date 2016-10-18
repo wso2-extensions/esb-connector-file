@@ -1,5 +1,6 @@
 {
   "source": "%s(source)",
+  "filePattern": "%s(filePattern)",
   "setTimeout": "%s(setTimeout)",
   "setPassiveMode": "%s(setPassiveMode)",
   "setUserDirIsRoot": "%s(setUserDirIsRoot)",
