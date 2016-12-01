@@ -167,7 +167,9 @@ public class ResultPayloadCreate {
                         contentType, axis2MsgCtx);
             }
             //We need this to build the complete message before closing the stream
-            //noinspection ResultOfMethodCallIgnored
+            if ("false".equals(streaming) || StringUtils.isEmpty(streaming)) {
+                documentElement.toString();
+            }
             msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
         } catch (Exception e) {
             log.error("Error while processing the file/folder", e);
