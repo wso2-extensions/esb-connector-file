@@ -29,7 +29,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Integration test class for file connector
+ * Integration test class for file connector.
+ * @since 2.0.6
  */
 public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
 
@@ -381,5 +382,4 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
                         "FileSendMandatoryNegative.json");
         Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
     }
-
 }

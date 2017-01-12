@@ -33,12 +33,20 @@ import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 import javax.xml.stream.XMLStreamException;
-import java.io.File;
 import java.io.IOException;
-
+/**
+ * This class represents to move file from one location to another location.
+ * @since 2.0.6
+ */
 public class FileMove extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileMove.class);
 
+    /**
+     * This is the initial method which calls another methods. Get the parameter values from message context.
+     * Get the result status.
+     *
+     * @param messageContext The message context that is processed by a handler in the handle method
+     */
     public void connect(MessageContext messageContext) {
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
