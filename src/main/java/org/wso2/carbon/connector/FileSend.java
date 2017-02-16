@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
@@ -47,11 +46,18 @@ import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 
 /**
- * Send the file to specific location.
+ * This class represents Send the file to specific location.
+ * @since 2.0.6
  */
 public class FileSend extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileSend.class);
 
+    /**
+     * This is the initial method which calls another methods. Get the parameter values from message context.
+     * Get the result status.
+     *
+     * @param messageContext The message context that is processed by a handler in the handle method
+     */
     public void connect(MessageContext messageContext) throws ConnectException {
         boolean append = false;
         String address = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.ADDRESS);

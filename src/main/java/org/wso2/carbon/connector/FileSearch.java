@@ -40,6 +40,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This class represents Search a file in a specific location.
+ * @since 2.0.6
+ */
 public class FileSearch extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileSearch.class);
 
