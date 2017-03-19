@@ -25,6 +25,8 @@
     <parameter name="setSoTimeout" description="Sets the socket timeout for the FTP client."/>
     <parameter name="setStrictHostKeyChecking" description="Sets the host key checking to use."/>
     <parameter name="setUserDirIsRoot" description="Sets the whether to use the user directory as root."/>
+    <parameter name="includeParentDirectory"
+               description="Boolean type, indicating whether the parent directory will include or not."/>
     <sequence>
         <property name="source" expression="$func:source"/>
         <property name="destination" expression="$func:destination"/>
@@ -34,6 +36,7 @@
         <property name="setSoTimeout" expression="$func:setSoTimeout"/>
         <property name="setStrictHostKeyChecking" expression="$func:setStrictHostKeyChecking"/>
         <property name="setUserDirIsRoot" expression="$func:setUserDirIsRoot"/>
+        <property name="includeParentDirectory" expression="$func:includeParentDirectory"/>
         <class name="org.wso2.carbon.connector.FileCopy"/>
     </sequence>
 </template>
