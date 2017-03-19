@@ -102,7 +102,6 @@ public class FileCopy extends AbstractConnector implements Connector {
      */
     private boolean copyFile(String source, String destination, String filePattern,
                              MessageContext messageContext, FileSystemOptions opts, boolean includeParentDirectory) {
-
         boolean resultStatus = false;
         StandardFileSystemManager manager = null;
         try {
