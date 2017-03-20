@@ -60,5 +60,6 @@ public final class FileConstants {
     public static final String ADDRESS= "address";
     public static final String APPEND= "append";
     public static final String DEFAULT_RESPONSE_FILE = "/response.xml";
-
+    public static final String INCLUDE_PARENT_DIRECTORY = "includeParentDirectory";
+    public static final String DEFAULT_INCLUDE_PARENT_DIRECTORY = "false";
 }

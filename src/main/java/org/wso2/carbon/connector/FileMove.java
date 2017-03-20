@@ -18,6 +18,7 @@
 package org.wso2.carbon.connector;
 
 import org.apache.axiom.om.OMElement;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
@@ -30,6 +31,7 @@ import org.wso2.carbon.connector.core.Connector;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
+import org.wso2.carbon.connector.util.FilePattenMatcher;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 import javax.xml.stream.XMLStreamException;
@@ -40,11 +42,21 @@ public class FileMove extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileMove.class);
 
     public void connect(MessageContext messageContext) {
+        boolean includeParentDirectory;
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
         String destination = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.NEW_FILE_LOCATION);
-        boolean resultStatus = moveFile(source, destination, messageContext);
+        String filePattern = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.FILE_PATTERN);
+        String includeParentDir = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.INCLUDE_PARENT_DIRECTORY);
+        if (StringUtils.isEmpty(includeParentDir)) {
+            includeParentDirectory = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_PARENT_DIRECTORY);
+        } else {
+            includeParentDirectory = Boolean.parseBoolean(includeParentDir);
+        }
+        boolean resultStatus = moveFile(source, destination, messageContext, includeParentDirectory, filePattern);
         generateResults(messageContext, resultStatus);
     }
 
@@ -76,7 +88,8 @@ public class FileMove extends AbstractConnector implements Connector {
      * @param destination Destination of the file
      * @return return a resultStatus
      */
-    private boolean moveFile(String source, String destination, MessageContext messageContext) {
+    private boolean moveFile(String source, String destination, MessageContext messageContext,
+                             boolean includeParentDirectory, String filePattern) {
         boolean resultStatus = false;
         StandardFileSystemManager manager = null;
         try {
@@ -84,15 +97,11 @@ public class FileMove extends AbstractConnector implements Connector {
             // Create remote object
             FileObject remoteFile = manager.resolveFile(source, FileConnectorUtils.init(messageContext));
             if (remoteFile.exists()) {
-                FileObject file = manager.resolveFile(destination, FileConnectorUtils.init(messageContext));
-                if (!file.exists()) {
-                    if(file.getType()==FileType.FOLDER) {
-                        file.createFolder();
-                    }else{
-                        file.createFile();
-                    }
+                if (remoteFile.getType() == FileType.FILE) {
+                    fileMove(destination, remoteFile, messageContext, manager);
+                } else {
+                    folderMove(source, destination, filePattern, includeParentDirectory, messageContext, manager);
                 }
-                remoteFile.moveTo(file);
                 resultStatus = true;
                 if (log.isDebugEnabled()) {
                     log.debug("File move completed from " + source + " to " + destination);
@@ -109,5 +118,91 @@ public class FileMove extends AbstractConnector implements Connector {
             }
         }
         return resultStatus;
+    }
+
+    /**
+     * Move the file
+     *
+     * @param destination    New location of the folder
+     * @param remoteFile     Location of the file
+     * @param messageContext The message context that is processed by a handler in the handle method
+     * @param manager        Standard file system manager
+     */
+    private void fileMove(String destination, FileObject remoteFile, MessageContext messageContext,
+                          StandardFileSystemManager manager) throws IOException {
+        FileObject file = manager.resolveFile(destination, FileConnectorUtils.init(messageContext));
+        if (FileConnectorUtils.isFolder(file)) {
+            if (!file.exists()) {
+                file.createFolder();
+            }
+            file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(),
+                    FileConnectorUtils.init(messageContext));
+        } else if (!file.exists()) {
+            file.createFile();
+        }
+        remoteFile.moveTo(file);
+    }
+
+    /**
+     * Move the folder
+     *
+     * @param destination            New location of the folder
+     * @param source                 Location of the folder
+     * @param messageContext         The message context that is processed by a handler in the handle method
+     * @param includeParentDirectory Boolean type
+     * @param manager                Standard file system manager
+     */
+    private void folderMove(String source, String destination, String filePattern, boolean includeParentDirectory,
+                            MessageContext messageContext, StandardFileSystemManager manager) throws IOException {
+        FileObject remoteFile = manager.resolveFile(source, FileConnectorUtils.init(messageContext));
+        FileObject file = manager.resolveFile(destination, FileConnectorUtils.init(messageContext));
+        if (StringUtils.isNotEmpty(filePattern)) {
+            FileObject[] children = remoteFile.getChildren();
+            for (FileObject child : children) {
+                if (child.getType() == FileType.FILE) {
+                    moveFileWithPattern(child, destination, filePattern, manager, messageContext);
+                } else if (child.getType() == FileType.FOLDER) {
+                    String newSource = source + File.separator + child.getName().getBaseName();
+                    folderMove(newSource, destination, filePattern, includeParentDirectory, messageContext, manager);
+                }
+            }
+        } else if (includeParentDirectory) {
+            file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(),
+                    FileConnectorUtils.init(messageContext));
+            file.createFolder();
+            remoteFile.moveTo(file);
+        } else {
+            if (!file.exists()) {
+                file.createFolder();
+            }
+            remoteFile.moveTo(file);
+            remoteFile.createFolder();
+        }
+    }
+
+    /**
+     * @param remoteFile     Location of the file
+     * @param destination    New file location
+     * @param filePattern    Pattern of the file
+     * @param manager        Standard file system manager
+     * @param messageContext The message context that is generated for processing the file
+     * @throws IOException
+     */
+    private void moveFileWithPattern(FileObject remoteFile, String destination, String filePattern,
+                                     StandardFileSystemManager manager, MessageContext messageContext) throws IOException {
+        FilePattenMatcher patternMatcher = new FilePattenMatcher(filePattern);
+        try {
+            if (patternMatcher.validate(remoteFile.getName().getBaseName())) {
+                FileObject file = manager.resolveFile(destination, FileConnectorUtils.init(messageContext));
+                if (!file.exists()) {
+                    file.createFolder();
+                }
+                file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(),
+                        FileConnectorUtils.init(messageContext));
+                remoteFile.moveTo(file);
+            }
+        } catch (IOException e) {
+            log.error("Error occurred while moving a file. " + e.getMessage(), e);
+        }
     }
 }

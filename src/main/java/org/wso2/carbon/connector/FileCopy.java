@@ -44,14 +44,22 @@ public class FileCopy extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileCopy.class);
 
     public void connect(MessageContext messageContext) {
+        boolean includeParentDirectory;
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
         String destination = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.NEW_FILE_LOCATION);
         String filePattern = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_PATTERN);
+        String includeParentDir = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.INCLUDE_PARENT_DIRECTORY);
+        if (StringUtils.isEmpty(includeParentDir)) {
+            includeParentDirectory = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_PARENT_DIRECTORY);
+        } else {
+            includeParentDirectory = Boolean.parseBoolean(includeParentDir);
+        }
         FileSystemOptions opts = FileConnectorUtils.init(messageContext);
-        boolean resultStatus = copyFile(source, destination, filePattern, messageContext, opts);
+        boolean resultStatus = copyFile(source, destination, filePattern, messageContext, opts, includeParentDirectory);
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
         generateResults(messageContext, resultStatus, resultPayload);
     }
@@ -93,7 +101,7 @@ public class FileCopy extends AbstractConnector implements Connector {
      * @return return a resultStatus
      */
     private boolean copyFile(String source, String destination, String filePattern,
-                             MessageContext messageContext, FileSystemOptions opts) {
+                             MessageContext messageContext, FileSystemOptions opts, boolean includeParentDirectory) {
         boolean resultStatus = false;
         StandardFileSystemManager manager = null;
         try {
@@ -107,7 +115,7 @@ public class FileCopy extends AbstractConnector implements Connector {
                         copy(child, destination, filePattern, opts);
                     } else if (child.getType() == FileType.FOLDER) {
                         String newSource = source + File.separator + child.getName().getBaseName();
-                        copyFile(newSource, destination, filePattern, messageContext, opts);
+                        copyFile(newSource, destination, filePattern, messageContext, opts, includeParentDirectory);
                     }
                 }
                 resultStatus = true;
@@ -143,6 +151,12 @@ public class FileCopy extends AbstractConnector implements Connector {
                             }
                         }
                     } else if (souFile.getType() == FileType.FOLDER) {
+                        if (includeParentDirectory) {
+                            destFile = manager.resolveFile(destination + File.separator +
+                                    souFile.getName().getBaseName(), opts);
+                            destFile.createFolder();
+                            destFile.copyFrom(souFile, Selectors.SELECT_ALL);
+                        }
                         destFile.copyFrom(souFile, Selectors.SELECT_ALL);
                         resultStatus = true;
                     }
@@ -204,4 +218,3 @@ public class FileCopy extends AbstractConnector implements Connector {
         }
     }
 }
-
