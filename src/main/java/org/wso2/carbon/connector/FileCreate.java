@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+* Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 * WSO2 Inc. licenses this file to you under the Apache License,
 * Version 2.0 (the "License"); you may not use this file except
@@ -17,17 +17,14 @@
 */
 package org.wso2.carbon.connector;
 
-import java.io.IOException;
-import java.io.OutputStream;
-
-import javax.xml.stream.XMLStreamException;
-
 import org.apache.axiom.om.OMElement;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.*;
+import org.apache.commons.vfs2.FileContent;
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.codehaus.jettison.json.JSONException;
@@ -37,6 +34,10 @@ import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
+
+import javax.xml.stream.XMLStreamException;
+import java.io.IOException;
+import java.io.OutputStream;
 
 public class FileCreate extends AbstractConnector implements Connector {
     private static final String DEFAULT_ENCODING = FileConstants.DEFAULT_ENCODING;
@@ -83,7 +84,7 @@ public class FileCreate extends AbstractConnector implements Connector {
                             sourceFile.createFile();
                         } else {
                             FileContent fileContent = sourceFile.getContent();
-                            out = fileContent.getOutputStream(true);
+                            out = fileContent.getOutputStream();
                             if (StringUtils.isEmpty(encoding)) {
                                 IOUtils.write(content, out, DEFAULT_ENCODING);
                             } else {
