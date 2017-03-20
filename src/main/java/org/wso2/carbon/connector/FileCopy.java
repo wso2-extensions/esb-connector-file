@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+* Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 * WSO2 Inc. licenses this file to you under the Apache License,
 * Version 2.0 (the "License"); you may not use this file except
@@ -18,7 +18,6 @@
 package org.wso2.carbon.connector;
 
 import org.apache.axiom.om.OMElement;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -37,8 +36,6 @@ import org.wso2.carbon.connector.util.ResultPayloadCreate;
 import javax.xml.stream.XMLStreamException;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 
 public class FileCopy extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileCopy.class);
@@ -122,33 +119,14 @@ public class FileCopy extends AbstractConnector implements Connector {
             } else {
                 if (souFile.exists()) {
                     if (souFile.getType() == FileType.FILE) {
-                        InputStream fileIn = null;
-                        OutputStream fileOut = null;
                         try {
                             String name = souFile.getName().getBaseName();
                             FileObject outFile = manager.resolveFile(destination + File.separator
                                     + name, opts);
-                            fileIn = souFile.getContent().getInputStream();
-                            fileOut = outFile.getContent().getOutputStream();
-                            IOUtils.copyLarge(fileIn, fileOut);
+                            outFile.copyFrom(souFile, Selectors.SELECT_ALL);
                             resultStatus = true;
                         } catch (FileSystemException e) {
                             log.error("Error while copying a file " + e.getMessage());
-                        } finally {
-                            try {
-                                if (fileOut != null) {
-                                    fileOut.close();
-                                }
-                            } catch (Exception e) {
-                                log.error("Error while closing OutputStream: " + e.getMessage(), e);
-                            }
-                            try {
-                                if (fileIn != null) {
-                                    fileIn.close();
-                                }
-                            } catch (Exception e) {
-                                log.error("Error while closing InputStream: " + e.getMessage(), e);
-                            }
                         }
                     } else if (souFile.getType() == FileType.FOLDER) {
                         if (includeParentDirectory) {
@@ -188,8 +166,6 @@ public class FileCopy extends AbstractConnector implements Connector {
      */
     private void copy(FileObject source, String destination, String filePattern, FileSystemOptions opts)
             throws IOException {
-        InputStream fileIn = null;
-        OutputStream fileOut = null;
         StandardFileSystemManager manager = FileConnectorUtils.getManager();
         FileObject souFile = manager.resolveFile(String.valueOf(source), opts);
         FilePattenMatcher patternMatcher = new FilePattenMatcher(filePattern);
@@ -197,24 +173,12 @@ public class FileCopy extends AbstractConnector implements Connector {
             if (patternMatcher.validate(source.getName().getBaseName())) {
                 String name = source.getName().getBaseName();
                 FileObject outFile = manager.resolveFile(destination + File.separator + name, opts);
-                fileIn = souFile.getContent().getInputStream();
-                fileOut = outFile.getContent().getOutputStream();
-                IOUtils.copyLarge(fileIn, fileOut);
+                outFile.copyFrom(souFile, Selectors.SELECT_ALL);
             }
         } catch (IOException e) {
             log.error("Error occurred while copying a file. " + e.getMessage(), e);
         } finally {
             manager.close();
-            try {
-                if (fileOut != null) {
-                    fileOut.close();
-                }
-                if (fileIn != null) {
-                    fileIn.close();
-                }
-            } catch (Exception e) {
-                log.error("Error while closing stream: " + e.getMessage(), e);
-            }
         }
     }
 }
