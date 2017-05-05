@@ -177,6 +177,7 @@ public class FileCopy extends AbstractConnector implements Connector {
             }
         } catch (IOException e) {
             log.error("Error occurred while copying a file. " + e.getMessage(), e);
+			handleException("Error occurred while copying a file.", e, messageContext);
         } finally {
             manager.close();
         }
