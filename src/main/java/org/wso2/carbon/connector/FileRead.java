@@ -78,6 +78,8 @@ public class FileRead extends AbstractConnector implements Connector {
                 log.warn("File/Folder does not exists");
                 handleException("File/Folder does not exists", messageContext);
             }
+            // Set the property for file name.
+            messageContext.setProperty("readingFileName", fileObj.getName().getBaseName());
             ResultPayloadCreate.buildFile(fileObj, messageContext, contentType, streaming);
             if (log.isDebugEnabled()) {
                 log.debug("File read completed." + fileLocation);
