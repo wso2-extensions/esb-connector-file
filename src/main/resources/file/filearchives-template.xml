@@ -20,6 +20,8 @@
 <template xmlns="http://ws.apache.org/ns/synapse" name="archives">
     <parameter name="source" description="The location of the file."/>
     <parameter name="destination" description="The location of the archived file with file name."/>
+    <parameter name="inputContent" description="The input content which needs to be archived."/>
+    <parameter name="fileName" description="The name of the file where input content needs to be archived."/>
     <parameter name="setTimeout" description="Sets the timeout value on Jsch(Java Secure Channel) session."/>
     <parameter name="setPassiveMode" description="Sets the passive mode to enter into passive mode."/>
     <parameter name="setSoTimeout" description="Sets the socket timeout for the FTP client."/>
@@ -28,6 +30,8 @@
     <sequence>
         <property name="source" expression="$func:source"/>
         <property name="destination" expression="$func:destination"/>
+        <property name="inputContent" expression="$func:inputContent"/>
+        <property name="fileName" expression="$func:fileName"/>
         <property name="setTimeout" expression="$func:setTimeout"/>
         <property name="setPassiveMode" expression="$func:setPassiveMode"/>
         <property name="setSoTimeout" expression="$func:setSoTimeout"/>

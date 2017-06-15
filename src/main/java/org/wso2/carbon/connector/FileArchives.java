@@ -25,6 +25,7 @@ import java.util.zip.ZipOutputStream;
 import javax.xml.stream.XMLStreamException;
 
 import org.apache.axiom.om.OMElement;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.*;
@@ -35,18 +36,19 @@ import org.codehaus.jettison.json.JSONException;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.Connector;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
-import org.wso2.carbon.connector.util.*;
+import org.wso2.carbon.connector.util.FileConnectorUtils;
+import org.wso2.carbon.connector.util.FileConstants;
+import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 public class FileArchives extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileArchives.class);
     private final byte[] bytes = new byte[FileConstants.BUFFER_SIZE];
 
     public void connect(MessageContext messageContext) {
-        String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                FileConstants.FILE_LOCATION);
-        String destinstion = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                FileConstants.NEW_FILE_LOCATION);
-        boolean resultStatus = fileCompress(messageContext, source, destinstion);
+        String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.FILE_LOCATION);
+        String destination =
+                (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.NEW_FILE_LOCATION);
+        boolean resultStatus = fileCompress(messageContext, source, destination);
         generateResults(messageContext, resultStatus);
     }
 
@@ -58,63 +60,75 @@ public class FileArchives extends AbstractConnector implements Connector {
      * @throws SynapseException
      */
     private boolean fileCompress(MessageContext messageContext, String source, String destination) {
-        boolean resultStatus = false;
         StandardFileSystemManager manager;
         FileSystemOptions opts = FileConnectorUtils.init(messageContext);
-        try {
-            manager = FileConnectorUtils.getManager();
-            FileObject fileObj = manager.resolveFile(source, opts);
-            FileObject destObj = manager.resolveFile(destination, opts);
-            if (fileObj.exists()) {
-                if (fileObj.getType() == FileType.FOLDER) {
-                    List<FileObject> fileList = new ArrayList<FileObject>();
-                    getAllFiles(fileObj, fileList, messageContext);
-                    writeZipFiles(fileObj, destObj, fileList, messageContext);
-                } else {
-                    ZipOutputStream outputStream = null;
-                    InputStream fileIn = null;
-                    try {
-                        outputStream = new ZipOutputStream(destObj.getContent().getOutputStream());
-                        fileIn = fileObj.getContent().getInputStream();
-                        ZipEntry zipEntry = new ZipEntry(fileObj.getName().getBaseName());
-                        outputStream.putNextEntry(zipEntry);
-                        int length;
-                        while ((length = fileIn.read(bytes)) != -1) {
-                            outputStream.write(bytes, 0, length);
-                        }
-                    } catch (Exception e) {
-                        log.error("Unable to compress a file." + e.getMessage());
-                    } finally {
-                        try {
-                            if (outputStream != null) {
-                                outputStream.close();
-                            }
-                        } catch (IOException e) {
-                            log.error("Error while closing ZipOutputStream: " + e.getMessage(), e);
-                        }
-                        try {
-                            if (fileIn != null) {
-                                fileIn.close();
-                            }
-                        } catch (IOException e) {
-                            log.error("Error while closing InputStream: " + e.getMessage(), e);
-                        }
-                        manager.close();
-                    }
-                }
-                resultStatus = true;
+        String inputContent = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.CONTENT);
+        String fileName = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.FILE_NAME);
+        if (StringUtils.isEmpty(fileName)) {
+            fileName = FileConstants.DEFAULT_FILE_NAME;
+        }
+        ZipOutputStream outputStream = null;
+        InputStream fileIn = null;
+        manager = FileConnectorUtils.getManager();
 
-                if (log.isDebugEnabled()) {
-                    log.debug("File archiving completed." + destination);
-                }
-            } else {
-                log.error("The File location does not exist.");
-                resultStatus = false;
+        if (StringUtils.isEmpty(source) && StringUtils.isEmpty(inputContent)) {
+            log.error("The File location does not exist or Input content does not provide.");
+            return false;
+        }
+        try {
+            FileObject destObj = manager.resolveFile(destination, opts);
+            if (StringUtils.isNotEmpty(inputContent)) {
+                outputStream = new ZipOutputStream(destObj.getContent().getOutputStream());
+                ZipEntry zipEntry = new ZipEntry(fileName);
+                outputStream.putNextEntry(zipEntry);
+                byte[] data = inputContent.getBytes();
+                outputStream.write(data, 0, data.length);
+                outputStream.closeEntry();
+                return true;
             }
+            FileObject fileObj = manager.resolveFile(source, opts);
+            if (!fileObj.exists()) {
+                log.error("File location does not exit.");
+                return false;
+            }
+            if (fileObj.getType() == FileType.FOLDER) {
+                List<FileObject> fileList = new ArrayList<FileObject>();
+                getAllFiles(fileObj, fileList, messageContext);
+                writeZipFiles(fileObj, destObj, fileList, messageContext);
+            } else {
+                outputStream = new ZipOutputStream(destObj.getContent().getOutputStream());
+                fileIn = fileObj.getContent().getInputStream();
+                ZipEntry zipEntry = new ZipEntry(fileObj.getName().getBaseName());
+                outputStream.putNextEntry(zipEntry);
+                int length;
+                while ((length = fileIn.read(bytes)) != -1) {
+                    outputStream.write(bytes, 0, length);
+                }
+            }
+            if (log.isDebugEnabled()) {
+                log.debug("File archiving completed." + destination);
+            }
+
         } catch (IOException e) {
             handleException("Unable to process the zip file", e, messageContext);
+        } finally {
+            try {
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+            } catch (IOException e) {
+                log.error("Error while closing ZipOutputStream: " + e.getMessage(), e);
+            }
+            try {
+                if (fileIn != null) {
+                    fileIn.close();
+                }
+            } catch (IOException e) {
+                log.error("Error while closing InputStream: " + e.getMessage(), e);
+            }
+            manager.close();
         }
-        return resultStatus;
+        return true;
     }
 
     /**
@@ -122,8 +136,7 @@ public class FileArchives extends AbstractConnector implements Connector {
      * @param fileList       list of file inside directory
      * @param messageContext The message context that is generated for processing the file
      */
-    private void getAllFiles(FileObject dir, List<FileObject> fileList, MessageContext
-            messageContext) {
+    private void getAllFiles(FileObject dir, List<FileObject> fileList, MessageContext messageContext) {
         try {
             FileObject[] children = dir.getChildren();
             for (FileObject child : children) {
@@ -144,9 +157,8 @@ public class FileArchives extends AbstractConnector implements Connector {
      * @param messageContext The message context that is generated for processing the file
      * @throws IOException
      */
-    private void writeZipFiles(FileObject fileObj, FileObject directoryToZip,
-                               List<FileObject> fileList, MessageContext messageContext)
-            throws IOException {
+    private void writeZipFiles(FileObject fileObj, FileObject directoryToZip, List<FileObject> fileList,
+                               MessageContext messageContext) throws IOException {
         ZipOutputStream zos = null;
         try {
             zos = new ZipOutputStream(directoryToZip.getContent().getOutputStream());
@@ -174,8 +186,7 @@ public class FileArchives extends AbstractConnector implements Connector {
         try {
             fin = file.getContent().getInputStream();
             String name = file.getName().toString();
-            String entry = name.substring(fileObject.getName().toString().length() + 1,
-                    name.length());
+            String entry = name.substring(fileObject.getName().toString().length() + 1, name.length());
             ZipEntry zipEntry = new ZipEntry(entry);
             outputStream.putNextEntry(zipEntry);
             int length;
