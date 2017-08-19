@@ -25,6 +25,7 @@ public final class FileConstants {
     public static final String CONTENT = "inputContent";
     public static final String FILE_NAME = "fileName";
     public static final String DEFAULT_FILE_NAME = "output.txt";
+    public static final String SET_INPUT_BINARY = "setInputBinary";
     public static final String ENCODING = "encoding";
     public static final String NAMESPACE = "ns";
     public static final String RESULT = "result";

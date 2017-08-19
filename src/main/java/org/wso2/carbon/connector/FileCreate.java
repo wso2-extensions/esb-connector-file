@@ -39,6 +39,8 @@ import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.util.Base64;
+
 public class FileCreate extends AbstractConnector implements Connector {
     private static final String DEFAULT_ENCODING = FileConstants.DEFAULT_ENCODING;
     private static final Log log = LogFactory.getLog(FileCreate.class);
@@ -49,10 +51,24 @@ public class FileCreate extends AbstractConnector implements Connector {
     public void connect(MessageContext messageContext) {
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
+
+        boolean isBinary = false;
+        String setInputBinary = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.SET_INPUT_BINARY);
+        if (!StringUtils.isEmpty(setInputBinary)) {
+            setInputBinary = setInputBinary.trim().toLowerCase();
+            if (setInputBinary.equals("1") || setInputBinary.equals("on") || setInputBinary.equals("true")) {
+                isBinary = true;
+            }
+        }
+
         String content = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.CONTENT);
-        String encoding = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                FileConstants.ENCODING);
+        String encoding = null;
+        if (!isBinary) {
+            encoding = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                    FileConstants.ENCODING);
+        }
         boolean resultStatus = createFile(source, content, encoding, messageContext);
         generateOutput(messageContext, resultStatus);
     }
@@ -85,7 +101,11 @@ public class FileCreate extends AbstractConnector implements Connector {
                         } else {
                             FileContent fileContent = sourceFile.getContent();
                             out = fileContent.getOutputStream();
-                            if (StringUtils.isEmpty(encoding)) {
+                            if (encoding == null) {
+                                // Write binary content decoded from a base64 string
+                                byte[] decoded = Base64.getDecoder().decode(content);
+                                out.write(decoded);
+                            } else if (StringUtils.isEmpty(encoding)) {
                                 IOUtils.write(content, out, DEFAULT_ENCODING);
                             } else {
                                 IOUtils.write(content, out, encoding);
@@ -114,7 +134,7 @@ public class FileCreate extends AbstractConnector implements Connector {
                     manager.close();
                 }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             handleException("Unable to create a file/folder.", e, messageContext);
         }
         return resultStatus;

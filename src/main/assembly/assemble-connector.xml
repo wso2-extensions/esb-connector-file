@@ -17,6 +17,7 @@
 ~  under the License.
 -->
 <assembly>
+    <id>org.wso2.carbon.connector.fileconnector</id>
     <formats>
         <format>zip</format>
     </formats>
