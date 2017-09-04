@@ -130,15 +130,11 @@ public class FileCopy extends AbstractConnector implements Connector {
             } else {
                 if (souFile.exists()) {
                     if (souFile.getType() == FileType.FILE) {
-                        try {
                             String name = souFile.getName().getBaseName();
                             FileObject outFile = manager.resolveFile(destination + File.separator
                                     + name, opts);
                             outFile.copyFrom(souFile, Selectors.SELECT_ALL);
                             resultStatus = true;
-                        } catch (FileSystemException e) {
-                            log.error("Error while copying a file " + e.getMessage());
-                        }
                     } else if (souFile.getType() == FileType.FOLDER) {
                         if (includeParentDirectory) {
                             destFile = manager.resolveFile(destination + File.separator +
