@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+* Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 * WSO2 Inc. licenses this file to you under the Apache License,
 * Version 2.0 (the "License"); you may not use this file except
@@ -38,9 +38,17 @@ import javax.xml.stream.XMLStreamException;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ * This class is used to move file/folder to target directory.
+ */
 public class FileMove extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileMove.class);
 
+    /**
+     * Initiate the move method.
+     *
+     * @param messageContext The message context that is used in file move mediation flow.
+     */
     public void connect(MessageContext messageContext) {
         boolean includeParentDirectory;
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
@@ -61,10 +69,10 @@ public class FileMove extends AbstractConnector implements Connector {
     }
 
     /**
-     * Generate the result
+     * Generate the result is used to display the result(true/false) after file operations complete.
      *
-     * @param messageContext The message context that is processed by a handler in the handle method
-     * @param resultStatus   Result of the status (true/false)
+     * @param messageContext The message context that is generated for processing the file.
+     * @param resultStatus   Boolean value of the result to display.
      */
     private void generateResults(MessageContext messageContext, boolean resultStatus) {
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
@@ -82,11 +90,11 @@ public class FileMove extends AbstractConnector implements Connector {
     }
 
     /**
-     * Move the files
+     * Move the file/folder from source to destination directory.
      *
-     * @param source      Location of the file
-     * @param destination Destination of the file
-     * @return return a resultStatus
+     * @param source      Location of the file.
+     * @param destination Destination of the file.
+     * @return true, if the file/folder is successfully moved.
      */
     private boolean moveFile(String source, String destination, MessageContext messageContext,
                              boolean includeParentDirectory, String filePattern) {
@@ -121,12 +129,12 @@ public class FileMove extends AbstractConnector implements Connector {
     }
 
     /**
-     * Move the file
+     * Move the file to the target directory.
      *
-     * @param destination    New location of the folder
-     * @param remoteFile     Location of the file
-     * @param messageContext The message context that is processed by a handler in the handle method
-     * @param manager        Standard file system manager
+     * @param destination    New location of the folder.
+     * @param remoteFile     Location of the file.
+     * @param messageContext The message context that is processed by a handler in the handle method.
+     * @param manager        Standard file system manager.
      */
     private void fileMove(String destination, FileObject remoteFile, MessageContext messageContext,
                           StandardFileSystemManager manager) throws IOException {
@@ -144,13 +152,13 @@ public class FileMove extends AbstractConnector implements Connector {
     }
 
     /**
-     * Move the folder
+     * Move the folder to the target directory.
      *
-     * @param destination            New location of the folder
-     * @param source                 Location of the folder
-     * @param messageContext         The message context that is processed by a handler in the handle method
-     * @param includeParentDirectory Boolean type
-     * @param manager                Standard file system manager
+     * @param destination            New location of the folder.
+     * @param source                 Location of the folder.
+     * @param messageContext         The message context that is processed by a handler in the handle method.
+     * @param includeParentDirectory Boolean type to include the parent directory.
+     * @param manager                Standard file system manager.
      */
     private void folderMove(String source, String destination, String filePattern, boolean includeParentDirectory,
                             MessageContext messageContext, StandardFileSystemManager manager) throws IOException {
@@ -181,15 +189,18 @@ public class FileMove extends AbstractConnector implements Connector {
     }
 
     /**
-     * @param remoteFile     Location of the file
-     * @param destination    New file location
-     * @param filePattern    Pattern of the file
-     * @param manager        Standard file system manager
-     * @param messageContext The message context that is generated for processing the file
+     * Move the file for given pattern.
+     *
+     * @param remoteFile     Location of the file.
+     * @param destination    New file location.
+     * @param filePattern    Pattern of the file.
+     * @param manager        Standard file system manager.
+     * @param messageContext The message context that is generated for processing the file.
      * @throws IOException
      */
     private void moveFileWithPattern(FileObject remoteFile, String destination, String filePattern,
-                                     StandardFileSystemManager manager, MessageContext messageContext) throws IOException {
+                                     StandardFileSystemManager manager, MessageContext messageContext)
+            throws IOException {
         FilePattenMatcher patternMatcher = new FilePattenMatcher(filePattern);
         try {
             if (patternMatcher.validate(remoteFile.getName().getBaseName())) {

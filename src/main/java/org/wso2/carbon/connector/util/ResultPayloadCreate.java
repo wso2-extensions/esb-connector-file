@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+* Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 * WSO2 Inc. licenses this file to you under the Apache License,
 * Version 2.0 (the "License"); you may not use this file except
@@ -20,7 +20,6 @@ package org.wso2.carbon.connector.util;
 import org.apache.axiom.om.OMAbstractFactory;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMFactory;
-import org.apache.axiom.om.OMNamespace;
 import org.apache.axiom.om.util.AXIOMUtil;
 import org.apache.axiom.soap.SOAPBody;
 import org.apache.axis2.Constants;
@@ -46,16 +45,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 
-@SuppressWarnings("ALL")
+/**
+ * This class is used to prepare the payload, generate the result to display after each file operation completes,
+ * read the file content and set that content as the current SOAPEnvelope.
+ */
 public class ResultPayloadCreate {
     private static final Log log = LogFactory.getLog(ResultPayloadCreate.class);
     private static final OMFactory fac = OMAbstractFactory.getOMFactory();
 
     /**
-     * Prepare pay load
+     * Prepare payload is used to delete the element in existing body and add the new element.
      *
-     * @param messageContext The message context that is processed by a handler in the handle method
-     * @param element        OMElement
+     * @param messageContext The message context that is used to prepare payload message flow.
+     * @param element        The OMElement that needs to be added in the body.
      */
     public void preparePayload(MessageContext messageContext, OMElement element) {
         SOAPBody soapBody = messageContext.getEnvelope().getBody();
@@ -69,17 +71,8 @@ public class ResultPayloadCreate {
         }
     }
 
-    public OMElement addElement(OMElement omElement, String strValue) {
-        OMNamespace omNs = fac.createOMNamespace(FileConstants.FILECON,
-                FileConstants.NAMESPACE);
-        OMElement subValue = fac.createOMElement(FileConstants.RESULT, omNs);
-        subValue.addChild(fac.createOMText(strValue));
-        omElement.addChild(subValue);
-        return omElement;
-    }
-
     /**
-     * Create a OMElement
+     * Create a OMElement.
      *
      * @param output output
      * @return return resultElement
@@ -167,7 +160,7 @@ public class ResultPayloadCreate {
                         contentType, axis2MsgCtx);
             }
             //We need this to build the complete message before closing the stream
-            if ("false".equals(streaming) || StringUtils.isEmpty(streaming)) {
+            if (StringUtils.isEmpty(streaming) || "false".equals(streaming)) {
                 documentElement.toString();
             }
             msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));

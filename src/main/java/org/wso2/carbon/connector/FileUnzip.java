@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+* Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 * WSO2 Inc. licenses this file to you under the Apache License,
 * Version 2.0 (the "License"); you may not use this file except
@@ -32,10 +32,17 @@ import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.FileUnzipUtil;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
-
+/**
+ * This class is used to decompress the file.
+ */
 public class FileUnzip extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileUnzip.class);
 
+    /**
+     * Initiate the unzip method.
+     *
+     * @param messageContext The message context that is used in file unzip mediation flow.
+     */
     public void connect(MessageContext messageContext) {
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
@@ -54,10 +61,10 @@ public class FileUnzip extends AbstractConnector implements Connector {
     }
 
     /**
-     * Generate the result
+     * Generate the result is used to display the result(true/false) after file operations complete.
      *
-     * @param messageContext The message context that is processed by a handler in the handle method
-     * @param resultStatus   Result of the status (true/false)
+     * @param messageContext The message context that is generated for processing the file.
+     * @param resultStatus   Boolean value of the result to display.
      */
     private void generateResults(MessageContext messageContext, boolean resultStatus) {
 

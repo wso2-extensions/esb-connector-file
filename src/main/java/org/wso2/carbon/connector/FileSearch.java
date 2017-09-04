@@ -41,9 +41,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This class is used to search file for a given pattern.
+ */
+
 public class FileSearch extends AbstractConnector implements Connector {
 	private static final Log log = LogFactory.getLog(FileSearch.class);
 
+	/**
+	 * Initiate the searchFile method.
+	 *
+	 * @param messageContext The message context that is used in file search mediation flow.
+	 */
 	public void connect(MessageContext messageContext) {
 		String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.FILE_LOCATION);
 		String filePattern =
@@ -55,12 +64,12 @@ public class FileSearch extends AbstractConnector implements Connector {
 	}
 
 	/**
-	 * Generate the file search
+	 * List the all files of given pattern.
 	 *
-	 * @param source          Location fo the file
-	 * @param filePattern     Pattern of the file
-	 * @param recursiveSearch check whether recursively search or not
-	 * @param messageContext  The message context that is processed by a handler in the handle method
+	 * @param source          Location fo the file.
+	 * @param filePattern     Pattern of the file.
+	 * @param recursiveSearch check whether recursively search or not.
+	 * @param messageContext  The message context that is processed by a handler in the handle method.
 	 */
 	private void search(String source, String filePattern, String recursiveSearch, MessageContext messageContext) {
 		ResultPayloadCreate resultPayload = new ResultPayloadCreate();
@@ -120,9 +129,11 @@ public class FileSearch extends AbstractConnector implements Connector {
 	}
 
 	/**
-	 * @param dir            sub directory
-	 * @param fileList       list of file inside directory
-	 * @param messageContext the message context that is generated for processing the file
+	 * Get all files and add into List.
+	 *
+	 * @param dir            sub directory.
+	 * @param fileList       list of file inside directory.
+	 * @param messageContext the message context that is generated for processing the file.
 	 */
 	private void getAllFiles(FileObject dir, List<FileObject> fileList, MessageContext messageContext) {
 		try {
@@ -144,6 +155,8 @@ public class FileSearch extends AbstractConnector implements Connector {
 	}
 
 	/**
+	 * Search the files of given pattern inside the sub directory.
+	 *
 	 * @param child          sub folder
 	 * @param filePattern    pattern of the file to be searched
 	 * @param messageContext the message context that is generated for processing the file

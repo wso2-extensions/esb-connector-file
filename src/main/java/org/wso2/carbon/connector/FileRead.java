@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+* Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 * WSO2 Inc. licenses this file to you under the Apache License,
 * Version 2.0 (the "License"); you may not use this file except
@@ -31,9 +31,17 @@ import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
+/**
+ * This class is used to read file content.
+ */
 public class FileRead extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileRead.class);
 
+    /**
+     * Initiate the readFile method and read the file content..
+     *
+     * @param messageContext The message context that is generated for processing the read operation.
+     */
     public void connect(MessageContext messageContext) {
         String fileLocation = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);

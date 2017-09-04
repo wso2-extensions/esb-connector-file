@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+* Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 * WSO2 Inc. licenses this file to you under the Apache License,
 * Version 2.0 (the "License"); you may not use this file except
@@ -39,6 +39,11 @@ public class FileObjectDataSource implements SizeAwareDataSource {
         this.contentType = contentType;
     }
 
+    /**
+     * Get the file size.
+     *
+     * @return Size of the file.
+     */
     public long getSize() {
         try {
             return file.getContent().getSize();
@@ -47,18 +52,40 @@ public class FileObjectDataSource implements SizeAwareDataSource {
         }
     }
 
+    /**
+     * Get the content type.
+     *
+     * @return Content type.
+     */
     public String getContentType() {
         return contentType;
     }
 
+    /**
+     * Get the name of the file.
+     *
+     * @return The name of the file
+     */
     public String getName() {
         return file.getName().getURI();
     }
 
+    /**
+     * Get the input stream.
+     *
+     * @return Input stream.
+     * @throws IOException
+     */
     public InputStream getInputStream() throws IOException {
         return file.getContent().getInputStream();
     }
 
+    /**
+     * Get the output stream.
+     *
+     * @return Output stream.
+     * @throws IOException
+     */
     public OutputStream getOutputStream() throws IOException {
         return file.getContent().getOutputStream();
     }

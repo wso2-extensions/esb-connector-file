@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+* Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 * WSO2 Inc. licenses this file to you under the Apache License,
 * Version 2.0 (the "License"); you may not use this file except
@@ -21,6 +21,9 @@ package org.wso2.carbon.connector.util;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Validate the file with given pattern.
+ */
 public class FilePattenMatcher {
     private final Pattern pattern;
     private Matcher matcher;
@@ -30,10 +33,10 @@ public class FilePattenMatcher {
     }
 
     /**
-     * Validate file with regular expression
+     * Validate file with regular expression.
      *
-     * @param image file for validation
-     * @return true valid image, false invalid image
+     * @param image file for validation.
+     * @return true valid image, false invalid image.
      */
     public boolean validate(final String image) {
 

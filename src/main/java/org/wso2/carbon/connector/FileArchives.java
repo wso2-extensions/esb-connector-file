@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+* Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 * WSO2 Inc. licenses this file to you under the Apache License,
 * Version 2.0 (the "License"); you may not use this file except
@@ -17,7 +17,10 @@
 */
 package org.wso2.carbon.connector;
 
-import java.io.*;
+
+import java.io.IOException;
+import java.io.InputStream;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -28,10 +31,11 @@ import org.apache.axiom.om.OMElement;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.*;
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
-import org.apache.synapse.SynapseException;
 import org.codehaus.jettison.json.JSONException;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.Connector;
@@ -40,10 +44,18 @@ import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
+/**
+ * The class is used to compress the file.
+ */
 public class FileArchives extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileArchives.class);
     private final byte[] bytes = new byte[FileConstants.BUFFER_SIZE];
 
+    /**
+     * Initiate the fileCompress method.
+     *
+     * @param messageContext The message context that is used in file compress mediation flow.
+     */
     public void connect(MessageContext messageContext) {
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.FILE_LOCATION);
         String destination =
@@ -53,11 +65,12 @@ public class FileArchives extends AbstractConnector implements Connector {
     }
 
     /**
-     * @param messageContext The message context that is generated for processing the file
-     * @param source         The file to be archived
-     * @param destination    Destination of the archived file
-     * @return return status
-     * @throws SynapseException
+     * Archive a file/folder.
+     *
+     * @param messageContext The message context that is generated for processing the file.
+     * @param source         The file to be archived.
+     * @param destination    Destination of the archived file.
+     * @return return true, if the file/folder is successfully archived, false, if not.
      */
     private boolean fileCompress(MessageContext messageContext, String source, String destination) {
         StandardFileSystemManager manager;
@@ -132,9 +145,11 @@ public class FileArchives extends AbstractConnector implements Connector {
     }
 
     /**
-     * @param dir            source file directory
-     * @param fileList       list of file inside directory
-     * @param messageContext The message context that is generated for processing the file
+     * Add the all files into List.
+     *
+     * @param dir            source file directory.
+     * @param fileList       list of file inside directory.
+     * @param messageContext The message context that is generated for processing the file.
      */
     private void getAllFiles(FileObject dir, List<FileObject> fileList, MessageContext messageContext) {
         try {
@@ -151,10 +166,12 @@ public class FileArchives extends AbstractConnector implements Connector {
     }
 
     /**
-     * @param fileObj        source fileObject
-     * @param directoryToZip destination fileObject
-     * @param fileList       list of files to be compressed
-     * @param messageContext The message context that is generated for processing the file
+     * Extract all files to add the zip directory.
+     *
+     * @param fileObj        source fileObject.
+     * @param directoryToZip destination fileObject.
+     * @param fileList       list of files to be compressed.
+     * @param messageContext The message context that is generated for processing the file.
      * @throws IOException
      */
     private void writeZipFiles(FileObject fileObj, FileObject directoryToZip, List<FileObject> fileList,
@@ -177,6 +194,8 @@ public class FileArchives extends AbstractConnector implements Connector {
     }
 
     /**
+     *  Add the file to zip directory.
+     *
      * @param fileObject   Source fileObject
      * @param file         The file inside source folder
      * @param outputStream ZipOutputStream
@@ -208,10 +227,10 @@ public class FileArchives extends AbstractConnector implements Connector {
     }
 
     /**
-     * Generate the results
+     * Generate the result is used to display the result(true/false) after file operations complete.
      *
-     * @param messageContext The message context that is generated for processing the file
-     * @param resultStatus   output result (true/false)
+     * @param messageContext The message context that is generated for processing the file.
+     * @param resultStatus   Boolean value of the result to display.
      */
     private void generateResults(MessageContext messageContext, boolean resultStatus) {
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();

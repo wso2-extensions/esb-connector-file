@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+* Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 * WSO2 Inc. licenses this file to you under the Apache License,
 * Version 2.0 (the "License"); you may not use this file except
@@ -38,9 +38,17 @@ import java.io.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+/**
+ * This class is used to listAllFiles all the files inside zip file file content.
+ */
 public class FileListZip extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileListZip.class);
 
+    /**
+     * Initiate the listZip method.
+     *
+     * @param messageContext The message context that is used in listAllFiles zip file mediation flow.
+     */
     public void connect(MessageContext messageContext) {
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
@@ -48,8 +56,10 @@ public class FileListZip extends AbstractConnector implements Connector {
     }
 
     /**
-     * @param messageContext The message context that is generated for processing the file
-     * @param source         Location of the zip file
+     * List all the files inside zip file.
+     *
+     * @param messageContext The message context that is generated for processing the file.
+     * @param source         Location of the zip file.
      */
     private void list(MessageContext messageContext, String source) {
         StandardFileSystemManager manager = null;

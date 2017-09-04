@@ -21,7 +21,13 @@ import org.apache.axiom.om.OMElement;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.*;
+
+
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.FileType;
+import org.apache.commons.vfs2.Selectors;
+import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.codehaus.jettison.json.JSONException;
@@ -37,9 +43,17 @@ import javax.xml.stream.XMLStreamException;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ * This class is used to copy file/folder to target directory.
+ */
 public class FileCopy extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileCopy.class);
 
+    /**
+     * Initiate the copyFile method.
+     *
+     * @param messageContext The message context that is used in file copy mediation flow.
+     */
     public void connect(MessageContext messageContext) {
         boolean includeParentDirectory;
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
@@ -62,10 +76,10 @@ public class FileCopy extends AbstractConnector implements Connector {
     }
 
     /**
-     * Generate the results
+     *  Generate the result is used to display the result(true/false) after file operations complete.
      *
-     * @param messageContext The message context that is processed by a handler in the handle method
-     * @param resultStatus   Result of the status (true/false)
+     * @param messageContext The message context that is generated for processing the file.
+     * @param resultStatus   Boolean value of the result to display.
      * @param resultPayload  result payload create
      */
     private void generateResults(MessageContext messageContext, boolean resultStatus,
@@ -76,26 +90,23 @@ public class FileCopy extends AbstractConnector implements Connector {
             element = resultPayload.performSearchMessages(response);
             resultPayload.preparePayload(messageContext, element);
         } catch (XMLStreamException e) {
-            log.error(e.getMessage());
             handleException(e.getMessage(), e, messageContext);
         } catch (IOException e) {
-            log.error(e.getMessage());
             handleException(e.getMessage(), e, messageContext);
         } catch (JSONException e) {
-            log.error(e.getMessage());
             handleException(e.getMessage(), e, messageContext);
         }
     }
 
     /**
-     * Copy files
+     * Copy the file or folder from source to destination.
      *
-     * @param source         Location of the file
-     * @param destination    new file location
-     * @param filePattern    pattern of the file
+     * @param source         Location of the file.
+     * @param destination    new file location.
+     * @param filePattern    pattern of the file..
      * @param messageContext The message context that is generated for processing the file
-     * @param opts           FileSystemOptions
-     * @return return a resultStatus
+     * @param opts           FileSystemOptions.
+     * @return true, if file/folder is successfully copied.
      */
     private boolean copyFile(String source, String destination, String filePattern,
                              MessageContext messageContext, FileSystemOptions opts, boolean includeParentDirectory) {
@@ -133,7 +144,6 @@ public class FileCopy extends AbstractConnector implements Connector {
                             destFile = manager.resolveFile(destination + File.separator +
                                     souFile.getName().getBaseName(), opts);
                             destFile.createFolder();
-                            destFile.copyFrom(souFile, Selectors.SELECT_ALL);
                         }
                         destFile.copyFrom(souFile, Selectors.SELECT_ALL);
                         resultStatus = true;
@@ -158,10 +168,12 @@ public class FileCopy extends AbstractConnector implements Connector {
     }
 
     /**
-     * @param source      file location
-     * @param destination target file location
-     * @param filePattern pattern of the file
-     * @param opts        FileSystemOptions
+     * copy the file for given pattern.
+     *
+     * @param source      file location.
+     * @param destination target file location.
+     * @param filePattern pattern of the file.
+     * @param opts        FileSystemOptions.
      * @throws IOException
      */
     private void copy(FileObject source, String destination, String filePattern, FileSystemOptions opts)

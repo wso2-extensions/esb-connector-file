@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *  Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  *  WSO2 Inc. licenses this file to you under the Apache License,
  *  Version 2.0 (the "License"); you may not use this file except
@@ -41,11 +41,16 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * FTP Over Proxy
+ * This class is used to tunnel FTP client over an HTTP proxy connection.
  */
 public class FileFtpOverProxy extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileFtpOverProxy.class);
 
+    /**
+     * Initiate the fileFtpOverProxy method.
+     *
+     * @param messageContext The message context that is used in file FTP over proxy mediation flow.
+     */
     public void connect(MessageContext messageContext) {
         String proxyHost = (String) ConnectorUtils
                 .lookupTemplateParamater(messageContext, FileConstants.PROXY_HOST);
@@ -71,10 +76,10 @@ public class FileFtpOverProxy extends AbstractConnector implements Connector {
     }
 
     /**
-     * Generate the result.
+     * Generate the result is used to display the result(true/false) after file operations complete.
      *
      * @param messageContext The message context that is generated for processing the file
-     * @param resultStatus   true/false
+     * @param resultStatus   Boolean value of the result to display.
      */
     private void generateResult(MessageContext messageContext, boolean resultStatus) {
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
@@ -93,18 +98,18 @@ public class FileFtpOverProxy extends AbstractConnector implements Connector {
     }
 
     /**
-     * Send FTP over Proxy.
+     * Send file FTP over Proxy.
      *
-     * @param proxyHost      Name of the proxy host
-     * @param proxyPort      Proxy port number
-     * @param proxyUsername  User name of the proxy
-     * @param proxyPassword  Password of the proxy
-     * @param ftpServer      FTP server
-     * @param ftpPort        Port number of FTP
-     * @param ftpUsername    User name of the FTP
-     * @param ftpPassword    Password of the FTP
-     * @param messageContext he message context that is generated for processing the ftpOverHttp method
-     * @return true/false
+     * @param proxyHost      Name of the proxy host.
+     * @param proxyPort      Proxy port number.
+     * @param proxyUsername  User name of the proxy.
+     * @param proxyPassword  Password of the proxy.
+     * @param ftpServer      FTP server.
+     * @param ftpPort        Port number of FTP.
+     * @param ftpUsername    User name of the FTP.
+     * @param ftpPassword    Password of the FTP.
+     * @param messageContext he message context that is generated for processing the ftpOverHttp method.
+     * @return true, if the FTP client tunnels over an HTTP proxy connection or stores a file on the server.
      */
     public boolean ftpOverHttp(String proxyHost, String proxyPort, String proxyUsername,
                                String proxyPassword, String ftpServer, String ftpPort,
@@ -220,14 +225,14 @@ public class FileFtpOverProxy extends AbstractConnector implements Connector {
                     ftp.disconnect();
                     ftp.logout();
                 } catch (IOException f) {
-                    // do nothing
+                    log.error("Error while disconnecting/logging out ftp server");
                 }
             }
             if (inputStream != null) {
                 try {
                     inputStream.close();
                 } catch (IOException f) {
-                    // do nothing
+                    log.error("Error while closing inputStream");
                 }
             }
         }
