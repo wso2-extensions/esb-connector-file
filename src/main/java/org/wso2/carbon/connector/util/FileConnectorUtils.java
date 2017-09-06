@@ -34,6 +34,7 @@ import org.wso2.carbon.connector.core.util.ConnectorUtils;
 /**
  * FileConnectorUtils to check whether folder or not, initiate StandardFileSystemManager and configure
  * FileSystemOptions.
+ * @since 2.0.9
  */
 public class FileConnectorUtils {
     private static final Log log = LogFactory.getLog(FileUnzipUtil.class);

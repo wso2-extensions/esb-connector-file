@@ -33,6 +33,10 @@ import java.io.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+/**
+ * This class is used to decompress.
+ * @since 2.0.9
+ */
 public class FileUnzipUtil {
     private static final Log log = LogFactory.getLog(FileUnzipUtil.class);
     private static StandardFileSystemManager manager = null;

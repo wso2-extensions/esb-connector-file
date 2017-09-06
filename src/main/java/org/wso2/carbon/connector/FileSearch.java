@@ -43,6 +43,7 @@ import java.util.List;
 
 /**
  * This class is used to search file for a given pattern.
+ * @since 2.0.9
  */
 
 public class FileSearch extends AbstractConnector implements Connector {

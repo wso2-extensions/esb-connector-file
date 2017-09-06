@@ -34,6 +34,7 @@ import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 /**
  * This class is used to decompress the file.
+ * @since 2.0.9
  */
 public class FileUnzip extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileUnzip.class);
@@ -82,5 +83,3 @@ public class FileUnzip extends AbstractConnector implements Connector {
         }
     }
 }
-
-

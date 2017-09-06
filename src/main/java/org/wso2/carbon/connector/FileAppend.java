@@ -43,6 +43,7 @@ import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 /**
  * This class is used to append file content.
+ * @since 2.0.9
  */
 public class FileAppend extends AbstractConnector implements Connector {
     private static final String DEFAULT_ENCODING = "UTF8";

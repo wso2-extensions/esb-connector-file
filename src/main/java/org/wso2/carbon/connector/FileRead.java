@@ -33,6 +33,7 @@ import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 /**
  * This class is used to read file content.
+ * @since 2.0.9
  */
 public class FileRead extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileRead.class);

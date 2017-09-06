@@ -29,6 +29,7 @@ import java.io.OutputStream;
  * Data source that reads data from a VFS {@link FileObject}.
  * This class is similar to VFS' own FileObjectDataSource implementation, but in addition
  * implements {@link SizeAwareDataSource}.
+ * @since 2.0.9
  */
 public class FileObjectDataSource implements SizeAwareDataSource {
     private final FileObject file;

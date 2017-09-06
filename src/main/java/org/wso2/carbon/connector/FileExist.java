@@ -38,6 +38,7 @@ import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 /**
  * This class is used to check file/folder exists or not.
+ * @since 2.0.9
  */
 public class FileExist extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileExist.class);

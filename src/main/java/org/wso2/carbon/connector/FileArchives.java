@@ -46,6 +46,7 @@ import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 /**
  * The class is used to compress the file.
+ * @since 2.0.9
  */
 public class FileArchives extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileArchives.class);

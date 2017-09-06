@@ -42,6 +42,7 @@ import java.io.InputStream;
 
 /**
  * This class is used to tunnel FTP client over an HTTP proxy connection.
+ * @since 2.0.9
  */
 public class FileFtpOverProxy extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileFtpOverProxy.class);

@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 
 /**
  * Validate the file with given pattern.
+ * @since 2.0.9
  */
 public class FilePattenMatcher {
     private final Pattern pattern;

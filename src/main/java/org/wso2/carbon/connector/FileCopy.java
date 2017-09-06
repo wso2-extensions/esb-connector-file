@@ -27,7 +27,6 @@ import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.Selectors;
-import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.codehaus.jettison.json.JSONException;
@@ -45,6 +44,7 @@ import java.io.IOException;
 
 /**
  * This class is used to copy file/folder to target directory.
+ * @since 2.0.9
  */
 public class FileCopy extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileCopy.class);

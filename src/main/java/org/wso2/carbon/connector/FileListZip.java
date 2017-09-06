@@ -40,6 +40,7 @@ import java.util.zip.ZipInputStream;
 
 /**
  * This class is used to listAllFiles all the files inside zip file file content.
+ * @since 2.0.9
  */
 public class FileListZip extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileListZip.class);

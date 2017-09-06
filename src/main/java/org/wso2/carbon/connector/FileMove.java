@@ -40,6 +40,7 @@ import java.io.IOException;
 
 /**
  * This class is used to move file/folder to target directory.
+ * @since 2.0.9
  */
 public class FileMove extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileMove.class);

@@ -48,6 +48,7 @@ import java.io.IOException;
 
 /**
  * This class is used to send the file to specific location.
+ * @since 2.0.9
  */
 public class FileSend extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileSend.class);

@@ -39,6 +39,7 @@ import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 /**
  * This class is used to delete an existing file/folder.
+ * @since 2.0.9
  */
 public class FileDelete extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileDelete.class);

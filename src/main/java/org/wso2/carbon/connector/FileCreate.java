@@ -41,6 +41,7 @@ import java.io.OutputStream;
 
 /**
  * This class is used to create a new file/folder.
+ * @since 2.0.9
  */
 public class FileCreate extends AbstractConnector implements Connector {
     private static final String DEFAULT_ENCODING = FileConstants.DEFAULT_ENCODING;
