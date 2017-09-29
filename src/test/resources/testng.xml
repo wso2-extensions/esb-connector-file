@@ -3,8 +3,7 @@
     <listeners>
         <listener class-name="org.wso2.carbon.automation.core.PlatformExecutionManager"/>
         <listener class-name="org.wso2.carbon.automation.core.PlatformSuiteManager"/>
-        <listener
-                class-name="org.wso2.carbon.automation.core.PlatformAnnotationTransferManager"/>
+        <listener class-name="org.wso2.carbon.automation.core.PlatformAnnotationTransferManager"/>
         <listener class-name="org.wso2.carbon.automation.core.PlatformTestManager"/>
         <listener class-name="org.wso2.carbon.automation.core.PlatformReportManager"/>
     </listeners>
@@ -12,6 +11,21 @@
         <packages>
             <package name="org.wso2.carbon.connector.integrationTest.FileConnector"/>
         </packages>
+    </test>
+    <test name="File-Connector-Unit-Test" preserve-order="true" verbose="2">
+        <classes>
+            <class name="org.wso2.carbon.connector.integrationTest.FileConnector.FileAppendUnitTest"/>
+            <class name="org.wso2.carbon.connector.integrationTest.FileConnector.FileMoveUnitTest"/>
+            <class name="org.wso2.carbon.connector.integrationTest.FileConnector.FileCreateUnitTest"/>
+            <class name="org.wso2.carbon.connector.integrationTest.FileConnector.FileArchivesUnitTest"/>
+            <class name="org.wso2.carbon.connector.integrationTest.FileConnector.FileListZipUnitTest"/>
+            <class name="org.wso2.carbon.connector.integrationTest.FileConnector.FileCopyUnitTest"/>
+            <class name="org.wso2.carbon.connector.integrationTest.FileConnector.FileExistUnitTest"/>
+            <class name="org.wso2.carbon.connector.integrationTest.FileConnector.FileDeleteUnitTest"/>
+            <class name="org.wso2.carbon.connector.integrationTest.FileConnector.FileUnzipUnitTest"/>
+            <class name="org.wso2.carbon.connector.integrationTest.FileConnector.FileSearchUnitTest"/>
+            <class name="org.wso2.carbon.connector.integrationTest.FileConnector.FileSendUnitTest"/>
+        </classes>
     </test>
 </suite>
 
