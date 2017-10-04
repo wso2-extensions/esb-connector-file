@@ -17,6 +17,10 @@
 */
 package org.wso2.carbon.connector.util;
 
+/*
+ * Class FileConstants defines all constants used in File Connector.
+ * @since 2.0.9
+ */
 public final class FileConstants {
     public static final String FILE_LOCATION = "source";
     public static final String CONTENT_TYPE = "contentType";

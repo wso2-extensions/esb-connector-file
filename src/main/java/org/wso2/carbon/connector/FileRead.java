@@ -31,9 +31,18 @@ import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
+/**
+ * This class is used to read file content.
+ * @since 2.0.9
+ */
 public class FileRead extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileRead.class);
 
+    /**
+     * Initiate the readFile method and read the file content..
+     *
+     * @param messageContext The message context that is generated for processing the read operation.
+     */
     public void connect(MessageContext messageContext) {
         String fileLocation = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);

@@ -24,7 +24,9 @@ import javax.xml.stream.XMLStreamException;
 import org.apache.axiom.om.OMElement;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.*;
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileType;
+import org.apache.commons.vfs2.Selectors;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.codehaus.jettison.json.JSONException;
@@ -35,9 +37,18 @@ import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
+/**
+ * This class is used to delete an existing file/folder.
+ * @since 2.0.9
+ */
 public class FileDelete extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileDelete.class);
 
+    /**
+     * Initiate the deleteFile method.
+     *
+     * @param messageContext The message context that is used in file delete mediation flow.
+     */
     public void connect(MessageContext messageContext) {
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
@@ -46,10 +57,10 @@ public class FileDelete extends AbstractConnector implements Connector {
     }
 
     /**
-     * Generate the result
+     * Generate the result is used to display the result(true/false) after file operations complete.
      *
-     * @param messageContext The message context that is generated for processing the file
-     * @param resultStatus   Result of the status (true/false)
+     * @param messageContext The message context that is generated for processing the file.
+     * @param resultStatus   Boolean value of the result to display.
      */
     private void generateResults(MessageContext messageContext, boolean resultStatus) {
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
@@ -67,11 +78,11 @@ public class FileDelete extends AbstractConnector implements Connector {
     }
 
     /**
-     * Delete the file
+     * Delete an existing file/folder.
      *
      * @param source         Location of the file
      * @param messageContext The message context that is generated for processing the file
-     * @return Return the status
+     * @return true, if the file/folder is successfully deleted.
      */
     private boolean deleteFile(String source, MessageContext messageContext) {
         boolean resultStatus = false;

@@ -36,9 +36,18 @@ import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
+/**
+ * This class is used to check file/folder exists or not.
+ * @since 2.0.9
+ */
 public class FileExist extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileExist.class);
 
+    /**
+     * Initiate the isFileExist method.
+     *
+     * @param messageContext The message context that is used in file exist mediation flow.
+     */
     public void connect(MessageContext messageContext) {
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext
                 , FileConstants.FILE_LOCATION);
@@ -47,10 +56,10 @@ public class FileExist extends AbstractConnector implements Connector {
     }
 
     /**
-     * Generate the result
+     * Generate the result is used to display the result(true/false) after file operations complete.
      *
-     * @param messageContext The message context that is generated for processing the file
-     * @param isFileExist    Result of the status (true/false)
+     * @param messageContext The message context that is generated for processing the file.
+     * @param isFileExist    Boolean value of the result to display.
      */
     private void generateResults(MessageContext messageContext, boolean isFileExist) {
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
@@ -70,11 +79,11 @@ public class FileExist extends AbstractConnector implements Connector {
     }
 
     /**
-     * Check is that file exists
+     * Determine if file/folder exists.
      *
      * @param source         Location of the file
      * @param messageContext The message context that is generated for processing the file
-     * @return return a resultStatus
+     * @return true, if the file/folder exists.
      */
     private boolean isFileExist(String source, MessageContext messageContext) {
         boolean isFileExist = false;

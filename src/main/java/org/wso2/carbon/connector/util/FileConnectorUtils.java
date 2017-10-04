@@ -31,12 +31,19 @@ import org.apache.synapse.MessageContext;
 import org.apache.synapse.task.SynapseTaskException;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
 
+/**
+ * FileConnectorUtils to check whether folder or not, initiate StandardFileSystemManager and configure
+ * FileSystemOptions.
+ * @since 2.0.9
+ */
 public class FileConnectorUtils {
     private static final Log log = LogFactory.getLog(FileUnzipUtil.class);
 
     /**
-     * @param remoteFile Location of the remote file
-     * @return true/false
+     * Check folder or not.
+     *
+     * @param remoteFile Location of the remote file.
+     * @return true, if file object is folder.
      */
     public static boolean isFolder(FileObject remoteFile) {
         boolean isFolder = false;
@@ -46,6 +53,11 @@ public class FileConnectorUtils {
         return isFolder;
     }
 
+    /**
+     * Initiate File System Manager.
+     *
+     * @return Initiated StandardFileSystemManager.
+     */
     public static StandardFileSystemManager getManager() {
         StandardFileSystemManager fsm = null;
         try {
@@ -57,6 +69,12 @@ public class FileConnectorUtils {
         return fsm;
     }
 
+    /**
+     * Configure file system individually.
+     *
+     * @param messageContext The message context that is used in configure file system options mediation flow.
+     * @return Configured file systems.
+     */
     public static FileSystemOptions init(MessageContext messageContext) {
         String setTimeout = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.SET_TIME_OUT);

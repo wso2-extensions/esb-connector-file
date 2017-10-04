@@ -47,11 +47,17 @@ import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 
 /**
- * Send the file to specific location.
+ * This class is used to send the file to specific location.
+ * @since 2.0.9
  */
 public class FileSend extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileSend.class);
 
+    /**
+     * Initiate the sendFile method.
+     *
+     * @param messageContext The message context that is used in file send mediation flow.
+     */
     public void connect(MessageContext messageContext) throws ConnectException {
         boolean append = false;
         String address = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.ADDRESS);
@@ -64,10 +70,10 @@ public class FileSend extends AbstractConnector implements Connector {
     }
 
     /**
-     * Generate the result
+     * Generate the result is used to display the result(true/false) after file operations complete.
      *
-     * @param messageContext The message context that is processed by a handler in the handle method
-     * @param resultStatus   Result of the status (true/false)
+     * @param messageContext The message context that is generated for processing the file.
+     * @param resultStatus   Boolean value of the result to display.
      */
     private void generateResults(MessageContext messageContext, boolean resultStatus) {
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
@@ -84,9 +90,9 @@ public class FileSend extends AbstractConnector implements Connector {
         }
     }
     /**
-     * Get the correct formatter for message
+     * Get the correct formatter for message.
      *
-     * @param msgContext The message context that is generated for processing the file
+     * @param msgContext The message context that is generated for processing the file.
      */
     private MessageFormatter getMessageFormatter(org.apache.axis2.context.MessageContext msgContext) {
         OMElement firstChild = msgContext.getEnvelope().getBody().getFirstElement();
@@ -105,11 +111,11 @@ public class FileSend extends AbstractConnector implements Connector {
     }
 
     /**
-     * Send the files
+     * Send the file to the target directory.
      *
-     * @param address Location for send the file
-     * @param append  If the response should be appended to the response file or not
-     * @return return a resultStatus
+     * @param address Location for send the file.
+     * @param append  If the response should be appended to the response file or not.
+     * @return return true, if file is sent successfully.
      */
     private boolean sendResponseFile(String address, MessageContext messageContext, boolean append) {
         boolean resultStatus = false;

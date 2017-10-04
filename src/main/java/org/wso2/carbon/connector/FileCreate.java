@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+* Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 * WSO2 Inc. licenses this file to you under the Apache License,
 * Version 2.0 (the "License"); you may not use this file except
@@ -39,12 +39,18 @@ import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.OutputStream;
 
+/**
+ * This class is used to create a new file/folder.
+ * @since 2.0.9
+ */
 public class FileCreate extends AbstractConnector implements Connector {
     private static final String DEFAULT_ENCODING = FileConstants.DEFAULT_ENCODING;
     private static final Log log = LogFactory.getLog(FileCreate.class);
 
     /**
-     * @param messageContext The message context that is processed by a handler in the handle method
+     * Initiate the createFile method.
+     *
+     * @param messageContext The message context that is used in file create mediation flow.
      */
     public void connect(MessageContext messageContext) {
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
@@ -58,13 +64,13 @@ public class FileCreate extends AbstractConnector implements Connector {
     }
 
     /**
-     * Create a file with Apache commons
+     *  Create a new file/folder.
      *
-     * @param source         Location of the file/folder
-     * @param content        Content in a file
-     * @param encoding       Encoding type
-     * @param messageContext The message context that is generated for processing the file
-     * @return Return the status
+     * @param source         Location of the file/folder.
+     * @param content        Content in a file.
+     * @param encoding       Encoding type.
+     * @param messageContext The message context that is generated for processing the file.
+     * @return true, if the file/folder is successfully created.
      */
     private boolean createFile(String source, String content,
                                String encoding, MessageContext messageContext) {
@@ -121,10 +127,10 @@ public class FileCreate extends AbstractConnector implements Connector {
     }
 
     /**
-     * Generate the output payload
+     * Generate the result is used to display the result(true/false) after file operations complete.
      *
-     * @param messageContext The message context that is processed by a handler in the handle method
-     * @param resultStatus   Result of the status (true/false)
+     * @param messageContext The message context that is generated for processing the file.
+     * @param resultStatus   Boolean value of the result to display.
      */
     private void generateOutput(MessageContext messageContext, boolean resultStatus) {
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();

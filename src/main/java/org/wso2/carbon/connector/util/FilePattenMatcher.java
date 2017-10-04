@@ -21,6 +21,10 @@ package org.wso2.carbon.connector.util;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Validate the file with given pattern.
+ * @since 2.0.9
+ */
 public class FilePattenMatcher {
     private final Pattern pattern;
     private Matcher matcher;
@@ -30,10 +34,10 @@ public class FilePattenMatcher {
     }
 
     /**
-     * Validate file with regular expression
+     * Validate file with regular expression.
      *
-     * @param image file for validation
-     * @return true valid image, false invalid image
+     * @param image file for validation.
+     * @return true valid image, false invalid image.
      */
     public boolean validate(final String image) {
 

@@ -24,7 +24,8 @@ import org.apache.axiom.om.OMFactory;
 import org.apache.axiom.om.OMNamespace;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.*;
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 
@@ -32,13 +33,21 @@ import java.io.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+/**
+ * This class is used to decompress.
+ * @since 2.0.9
+ */
 public class FileUnzipUtil {
     private static final Log log = LogFactory.getLog(FileUnzipUtil.class);
     private static StandardFileSystemManager manager = null;
 
     /**
-     * @param source        Location of the zip file
-     * @param destDirectory Location of the destination folder
+     * Decompress the compressed file into the given directory.
+     *
+     * @param source         Location of the zip file.
+     * @param destDirectory  Location of the destination folder.
+     * @param messageContext The message context that is generated for processing unzip operation.
+     * @return true, if zip file successfully extracts and false, if not.
      */
     public boolean unzip(String source, String destDirectory, MessageContext messageContext) {
         OMFactory factory = OMAbstractFactory.getOMFactory();
@@ -107,8 +116,10 @@ public class FileUnzipUtil {
     }
 
     /**
-     * @param zipIn    :Input zip stream
-     * @param filePath :Location of each entry of the file.
+     * Extract each zip entry and write it into file.
+     *
+     * @param zipIn    Input zip stream.
+     * @param filePath Location of each entry of the file.
      */
     private void extractFile(ZipInputStream zipIn, String filePath, FileSystemOptions opts) {
         BufferedOutputStream bos = null;

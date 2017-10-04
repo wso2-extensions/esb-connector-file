@@ -41,6 +41,10 @@ import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
+/**
+ * This class is used to append file content.
+ * @since 2.0.9
+ */
 public class FileAppend extends AbstractConnector implements Connector {
     private static final String DEFAULT_ENCODING = "UTF8";
     private static final Log log = LogFactory.getLog(FileAppend.class);
@@ -57,10 +61,10 @@ public class FileAppend extends AbstractConnector implements Connector {
     }
 
     /**
-     * Generate the result
+     *  Generate the result is used to display the result(true/false) after file operations complete.
      *
-     * @param messageContext The message context that is generated for processing the file
-     * @param resultStatus   true/false
+     * @param messageContext The message context that is generated for processing the file.
+     * @param resultStatus   Boolean value of the result to display.
      */
     private void generateResult(MessageContext messageContext, boolean resultStatus) {
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
@@ -79,11 +83,13 @@ public class FileAppend extends AbstractConnector implements Connector {
     }
 
     /**
-     * @param destination    Location if the file
-     * @param content        Content that is going to be added
-     * @param encoding       Encoding type
-     * @param messageContext The message context that is generated for processing the file
-     * @return true/false
+     * Add the content into file.
+     *
+     * @param destination    Location if the file.
+     * @param content        Content that is going to be added.
+     * @param encoding       Encoding type.
+     * @param messageContext The message context that is generated for processing the file.
+     * @return true, if the content is successfully appended.
      */
     private boolean appendFile(String destination, String content,
                                String encoding, MessageContext messageContext) {
