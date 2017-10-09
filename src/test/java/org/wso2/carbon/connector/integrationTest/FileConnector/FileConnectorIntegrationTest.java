@@ -40,7 +40,9 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
      */
     @BeforeClass(alwaysRun = true)
     public void setEnvironment() throws Exception {
-        init("fileconnector-connector-2.0.9-SNAPSHOT");
+        String connectorName = System.getProperty("connector_name") + "-connector-" +
+                System.getProperty("connector_version") + ".zip";
+        init(connectorName);
         esbRequestHeadersMap.put("Accept-Charset", "UTF-8");
         esbRequestHeadersMap.put("Content-Type", "application/json");
         esbRequestHeadersMap.put("Accept", "application/json");
@@ -150,6 +152,31 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
         RestResponse<JSONObject> esbRestResponse =
                 sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
                         "FileCopyMandatoryNegative.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+    }
+
+    /**
+     * Positive test case for read specific lines of a file method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test")
+    public void testReadSpecifiedLines() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:readSpecifiedLines");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "FileReadBetweenLinesMandatory.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+    }
+
+    /**
+     * Negative test case for read specific lines of a file method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test with " +
+            "Negative parameter")
+    public void testReadSpecifiedLinesWithNegativeCase() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:readSpecifiedLines");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "FileReadBetweenLinesNegative.json");
         Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
     }
 

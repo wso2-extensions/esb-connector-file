@@ -30,6 +30,32 @@
             <file>fileread-template.xml</file>
             <description>File Read</description>
         </component>
+        <component name="readSpecifiedLines">
+            <file>readSpecifiedLines.xml</file>
+            <description>Reads specified lines from a file</description>
+        </component>
+        <component name="readALine">
+            <file>readALine.xml</file>
+            <description>Reads specified line from a file</description>
+        </component>
+        <component name="getLastModifiedTime">
+            <file>getLastModifiedTime.xml</file>
+            <description>Returns last modified time of a file</description>
+        </component>
+        <component name="splitFile">
+            <file>splitFile.xml</file>
+            <description>Split files into multiple chunks</description>
+        </component>
+        <component name="mergeFiles">
+            <file>mergeFiles.xml</file>
+            <description>Merge files into a single file</description>
+        </component>
+
+        <component name="getSize">
+            <file>getSize.xml</file>
+            <description>Returns the size of the file</description>
+        </component>
+
         <component name="delete">
             <file>filedelete-template.xml</file>
             <description>File Delete</description>

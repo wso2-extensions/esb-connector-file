@@ -148,6 +148,44 @@
                         <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
                     </fileconnector.read>
                 </case>
+                <case regex="urn:readSpecifiedLines">
+                    <fileconnector.readSpecifiedLines>
+                        <source>{$ctx:source}</source>
+                        <contentType>{$ctx:contentType}</contentType>
+                        <start>{$ctx:start}</start>
+                        <end>{$ctx:end}</end>
+                    </fileconnector.readSpecifiedLines>
+                </case>
+                <case regex="urn:getLastModifiedTime">
+                    <fileconnector.getLastModifiedTime>
+                        <source>{$ctx:source}</source>
+                    </fileconnector.getLastModifiedTime>
+                </case>
+                <case regex="urn:getSize">
+                    <fileconnector.getSize>
+                        <source>{$ctx:source}</source>
+                    </fileconnector.getSize>
+                </case>
+                <case regex="urn:readALine">
+                    <fileconnector.readALine>
+                        <source>{$ctx:source}</source>
+                        <lineNumber>{$ctx:lineNumber}</lineNumber>
+                    </fileconnector.readALine>
+                </case>
+                <case regex="urn:splitFile">
+                    <fileconnector.splitFile>
+                        <source>{$ctx:source}</source>
+                        <destination>{$ctx:destination}</destination>
+                        <chunkSize>{$ctx:chunkSize}</chunkSize>
+                    </fileconnector.splitFile>
+                </case>
+                <case regex="urn:mergeFiles">
+                    <fileconnector.mergeFiles>
+                        <source>{$ctx:source}</source>
+                        <destination>{$ctx:destination}</destination>
+                        <filePattern>{$ctx:filePattern}</filePattern>
+                    </fileconnector.mergeFiles>
+                </case>
                 <case regex="urn:unzip">
                     <fileconnector.unzip>
                         <source>{$ctx:source}</source>
