@@ -1,6 +1,6 @@
 {
-  "source": "%s(source1)",
-  "destination": "%s(destination)",
+  "source": "%s(moveFrom)",
+  "destination": "%s(moveTo)",
   "setTimeout": "%s(setTimeout)",
   "setPassiveMode": "%s(setPassiveMode)",
   "setUserDirIsRoot": "%s(setUserDirIsRoot)",

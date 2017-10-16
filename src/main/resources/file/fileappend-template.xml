@@ -20,6 +20,7 @@
 <template xmlns="http://ws.apache.org/ns/synapse" name="append">
     <parameter name="destination" description="The location of the appended file with file name."/>
     <parameter name="inputContent" description="The content of the file."/>
+    <parameter name="position" description="Position to append the content."/>
     <parameter name="encoding"
                description="The encoding that is supported. Possible values are US-ASCII ,UTF-8  and UTF-16."/>
     <parameter name="setTimeout"
@@ -31,6 +32,7 @@
     <sequence>
         <property name="destination" expression="$func:destination"/>
         <property name="inputContent" expression="$func:inputContent"/>
+        <property name="position" expression="$func:position"/>
         <property name="encoding" expression="$func:encoding"/>
         <property name="setTimeout" expression="$func:setTimeout"/>
         <property name="setPassiveMode" expression="$func:setPassiveMode"/>

@@ -23,9 +23,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
+import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
-import org.apache.synapse.SynapseException;
 import org.codehaus.jettison.json.JSONException;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.Connector;
@@ -38,7 +38,7 @@ import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 
 /**
- * Returns the last updated time of a file.
+ * Returns the size of a file.
  */
 public class GetSize extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(GetSize.class);
@@ -52,25 +52,22 @@ public class GetSize extends AbstractConnector implements Connector {
         try {
             manager = FileConnectorUtils.getManager();
             fileObj = manager.resolveFile(fileLocation, FileConnectorUtils.init(messageContext));
-            if (!fileObj.exists()) {
-                log.warn("File/Folder does not exists.");
-                throw new SynapseException("File/Folder does not exists.");
+            if (!fileObj.exists() || fileObj.getType() != FileType.FILE) {
+                handleException("File does not exists, or source is not a file in the location:" + fileLocation, messageContext);
             } else {
                 generateResults(messageContext, fileObj.getContent().getSize());
             }
         } catch (FileSystemException e) {
-            log.error("Error while processing the file/folder", e);
-            throw new SynapseException("Error while processing the file/folder", e);
+            handleException("Error while processing the file/folder", e, messageContext);
         } finally {
             if (fileObj != null) {
                 try {
                     fileObj.close();
                 } catch (FileSystemException e) {
-                    log.error("Error while closing the sourceFileObj: " + e.getMessage(), e);
+                    log.warn("Error while closing the sourceFileObj: " + e.getMessage(), e);
                 }
             }
             if (manager != null) {
-                //close the StandardFileSystemManager
                 manager.close();
             }
         }
@@ -84,8 +81,7 @@ public class GetSize extends AbstractConnector implements Connector {
      */
     private void generateResults(MessageContext messageContext, long size) {
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
-        String response = FileConstants.FILE_SIZE_START_TAG + size +
-                FileConstants.FILE_SIZE_END_TAG;
+        String response = FileConstants.FILE_SIZE_START_TAG + size + FileConstants.FILE_SIZE_END_TAG;
         OMElement element;
         try {
             element = resultPayload.performSearchMessages(response);

@@ -80,8 +80,7 @@ public class MergeFiles extends AbstractConnector implements Connector {
             manager = FileConnectorUtils.getManager();
             sourceFileObj = manager.resolveFile(source, options);
             if (!sourceFileObj.exists()) {
-                log.warn("File/Folder does not exists");
-                handleException("File/Folder does not exists", messageContext);
+                handleException("File/Folder does not exists in the location: " + source, messageContext);
             } else {
                 if (sourceFileObj.getType() == FileType.FOLDER) {
                     FileObject[] children = sourceFileObj.getChildren();
@@ -99,14 +98,14 @@ public class MergeFiles extends AbstractConnector implements Connector {
                             if (filePattern != null && !filePattern.trim().equals("")) {
                                 if (child.getName().getBaseName().matches(filePattern)) {
                                     fileBytes = new byte[(int) child.getContent().getSize()];
-                                    int read = child.getContent().getInputStream().read(fileBytes);
+                                    child.getContent().getInputStream().read(fileBytes);
                                     bufferedOutputStream.write(fileBytes);
                                     bufferedOutputStream.flush();
                                     outputStream.flush();
                                 }
                             } else {
                                 fileBytes = new byte[(int) child.getContent().getSize()];
-                                int read = child.getContent().getInputStream().read(fileBytes);
+                                child.getContent().getInputStream().read(fileBytes);
                                 bufferedOutputStream.write(fileBytes);
                                 bufferedOutputStream.flush();
                                 outputStream.flush();
@@ -115,44 +114,41 @@ public class MergeFiles extends AbstractConnector implements Connector {
                     }
                     status = true;
                 } else if (sourceFileObj.getType() != FileType.FILE) {
-                    log.warn("File does not exists, or an empty folder.");
                     handleException("File does not exists, or an empty folder.", messageContext);
                 }
             }
         } catch (IOException e) {
-            log.error("Error while processing the file", e);
-            throw new SynapseException("Error while processing the file", e);
+            handleException("Error while processing the file", e, messageContext);
         } finally {
             if (bufferedOutputStream != null) {
                 try {
                     bufferedOutputStream.close();
                 } catch (IOException e) {
-                    log.error("Error while closing the BufferedOutputStream: " + e.getMessage(), e);
+                    log.warn("Error while closing the BufferedOutputStream: " + e.getMessage(), e);
                 }
             }
             if (outputStream != null) {
                 try {
                     outputStream.close();
                 } catch (IOException e) {
-                    log.error("Error while closing the OutputStream: " + e.getMessage(), e);
+                    log.warn("Error while closing the OutputStream: " + e.getMessage(), e);
                 }
             }
             if (outputFileObj != null) {
                 try {
                     outputFileObj.close();
                 } catch (FileSystemException e) {
-                    log.error("Error while closing the outputFileObj: " + e.getMessage(), e);
+                    log.warn("Error while closing the outputFileObj: " + e.getMessage(), e);
                 }
             }
             if (sourceFileObj != null) {
                 try {
                     sourceFileObj.close();
                 } catch (FileSystemException e) {
-                    log.error("Error while closing the sourceFileObj: " + e.getMessage(), e);
+                    log.warn("Error while closing the sourceFileObj: " + e.getMessage(), e);
                 }
             }
             if (manager != null) {
-                //close the StandardFileSystemManager
                 manager.close();
             }
         }

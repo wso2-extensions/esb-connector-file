@@ -53,29 +53,26 @@ public class ReadALine extends AbstractConnector implements Connector {
             manager = FileConnectorUtils.getManager();
             fileObj = manager.resolveFile(fileLocation, FileConnectorUtils.init(messageContext));
             if (!fileObj.exists() || fileObj.getType() != FileType.FILE) {
-                log.error("File does not exists, or source is not a file.");
-                handleException("File does not exists, or source is not a file.", messageContext);
+                handleException("File does not exists, or source is not a file in the location: " + fileLocation,
+                        messageContext);
             } else {
                 if (StringUtils.isEmpty(lineNumber)) {
-                    log.error("Line number is not provided to read.");
                     handleException("Line number is not provided to read.", messageContext);
                 } else {
                     ResultPayloadCreate.readALine(fileObj, messageContext, lineNumber);
                 }
             }
         } catch (FileSystemException e) {
-            log.error("Error while processing the file/folder", e);
             throw new SynapseException("Error while processing the file/folder", e);
         } finally {
             if (fileObj != null) {
                 try {
                     fileObj.close();
                 } catch (FileSystemException e) {
-                    log.error("Error while closing the sourceFileObj: " + e.getMessage(), e);
+                    log.warn("Error while closing the sourceFileObj: " + e.getMessage(), e);
                 }
             }
             if (manager != null) {
-                //close the StandardFileSystemManager
                 manager.close();
             }
         }

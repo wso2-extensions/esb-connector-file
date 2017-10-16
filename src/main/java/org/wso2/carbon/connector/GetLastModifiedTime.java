@@ -25,7 +25,6 @@ import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
-import org.apache.synapse.SynapseException;
 import org.codehaus.jettison.json.JSONException;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.Connector;
@@ -54,25 +53,22 @@ public class GetLastModifiedTime extends AbstractConnector implements Connector 
             manager = FileConnectorUtils.getManager();
             fileObj = manager.resolveFile(fileLocation, FileConnectorUtils.init(messageContext));
             if (!fileObj.exists()) {
-                log.warn("File/Folder does not exists.");
-                throw new SynapseException("File/Folder does not exists.");
+                handleException("File/Folder does not exists in the location: " + fileLocation, messageContext);
             } else {
                 SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
                 generateResults(messageContext, sdf.format(fileObj.getContent().getLastModifiedTime()));
             }
         } catch (FileSystemException e) {
-            log.error("Error while processing the file/folder", e);
-            throw new SynapseException("Error while processing the file/folder", e);
+            handleException("Error while processing the file/folder", e, messageContext);
         } finally {
             if (fileObj != null) {
                 try {
                     fileObj.close();
                 } catch (FileSystemException e) {
-                    log.error("Error while closing the sourceFileObj: " + e.getMessage(), e);
+                    log.warn("Error while closing the sourceFileObj: " + e.getMessage(), e);
                 }
             }
             if (manager != null) {
-                //close the StandardFileSystemManager
                 manager.close();
             }
         }

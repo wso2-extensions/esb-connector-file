@@ -55,6 +55,11 @@
             <property name="localActive" expression="json-eval($.localActive)"/>
             <property name="address" expression="json-eval($.address)"/>
             <property name="append" expression="json-eval($.append)"/>
+            <property name="lineNumber" expression="json-eval($.lineNumber)"/>
+            <property name="chunkSize" expression="json-eval($.chunkSize)"/>
+            <property name="start" expression="json-eval($.start)"/>
+            <property name="end" expression="json-eval($.end)"/>
+            <property name="position" expression="json-eval($.position)"/>
             <switch source="get-property('transport', 'Action')">
                 <case regex="urn:create">
                     <fileconnector.create>
@@ -72,6 +77,7 @@
                     <fileconnector.append>
                         <destination>{$ctx:destination}</destination>
                         <inputContent>{$ctx:inputContent}</inputContent>
+                        <position>{$ctx:position}</position>
                         <encoding>{$ctx:encoding}</encoding>
                         <setTimeout>{$ctx:setTimeout}</setTimeout>
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>

@@ -1,6 +1,6 @@
 {
   "source": "",
-  "destination": "",
+  "destination": "%s(nonExistingDestination)",
   "filePattern": "%s(filePattern)",
   "setTimeout": "%s(setTimeout)",
   "setPassiveMode": "%s(setPassiveMode)",

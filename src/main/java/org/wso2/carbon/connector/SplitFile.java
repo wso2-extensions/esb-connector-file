@@ -29,7 +29,6 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
-import org.apache.synapse.SynapseException;
 import org.codehaus.jettison.json.JSONException;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.Connector;
@@ -39,10 +38,7 @@ import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 import javax.xml.stream.XMLStreamException;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 
 /**
  * Splits the file into multiple chunks and writes them to a file system.
@@ -79,8 +75,8 @@ public class SplitFile extends AbstractConnector implements Connector {
             manager = FileConnectorUtils.getManager();
             sourceFileObj = manager.resolveFile(fileLocation, options);
             if (!sourceFileObj.exists() || sourceFileObj.getType() != FileType.FILE) {
-                log.error("File does not exists, or source is not a file.");
-                handleException("File does not exists, or source is not a file.", messageContext);
+                handleException("File does not exists, or source is not a file in the location: " + fileLocation,
+                        messageContext);
             } else {
                 InputStream inputStream;
                 OutputStream outputStream = null;
@@ -92,8 +88,8 @@ public class SplitFile extends AbstractConnector implements Connector {
                 }
                 inputStream = new AutoCloseInputStream(sourceFileObj.getContent().getInputStream());
                 while (inputStream.read(bytesIn) != -1) {
-                    String outputFileName = destination + String.valueOf(sourceFileObj.getName().getBaseName())
-                            + partNum;
+                    String outputFileName = destination + File.separator
+                            + String.valueOf(sourceFileObj.getName().getBaseName()) + partNum;
                     try {
                         outputFileObj = manager.resolveFile(outputFileName, options);
                         if (!outputFileObj.exists()) {
@@ -105,21 +101,20 @@ public class SplitFile extends AbstractConnector implements Connector {
                         bufferedOutputStream.flush();
                         outputStream.flush();
                     } catch (IOException e) {
-                        log.error("Error while processing the file", e);
-                        throw new SynapseException("Error while processing the file", e);
+                        handleException("Error while processing the file", e, messageContext);
                     } finally {
                         if (bufferedOutputStream != null) {
                             try {
                                 bufferedOutputStream.close();
                             } catch (IOException e) {
-                                log.error("Error while closing the BufferedOutputStream: " + e.getMessage(), e);
+                                log.warn("Error while closing the BufferedOutputStream: " + e.getMessage(), e);
                             }
                         }
                         if (outputStream != null) {
                             try {
                                 outputStream.close();
                             } catch (IOException e) {
-                                log.error("Error while closing the OutputStream: " + e.getMessage(), e);
+                                log.warn("Error while closing the OutputStream: " + e.getMessage(), e);
                             }
                         }
                         if (outputFileObj != null) {
@@ -135,17 +130,16 @@ public class SplitFile extends AbstractConnector implements Connector {
 
         } catch (IOException e) {
             log.error("Error while processing the file", e);
-            throw new SynapseException("Error while processing the file", e);
+            handleException("Error while processing the file", e, messageContext);
         } finally {
             if (sourceFileObj != null) {
                 try {
                     sourceFileObj.close();
                 } catch (FileSystemException e) {
-                    log.error("Error while closing the sourceFileObj: " + e.getMessage(), e);
+                    log.warn("Error while closing the sourceFileObj: " + e.getMessage(), e);
                 }
             }
             if (manager != null) {
-                //close the StandardFileSystemManager
                 manager.close();
             }
         }

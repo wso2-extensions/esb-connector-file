@@ -203,8 +203,8 @@ public class ResultPayloadCreate {
             BufferedReader reader;
 
             if (StringUtils.isEmpty(contentType) || StringUtils.isEmpty(contentType.trim())) {
-                if (fileObj.getName().getExtension().toLowerCase().endsWith("xml")) {
-                    contentType = "application/xml";
+                if (fileObj.getName().getExtension().toLowerCase().endsWith("csv")) {
+                    contentType = "application/csv";
                 } else if (fileObj.getName().getExtension().toLowerCase().endsWith("txt")) {
                     contentType = "text/plain";
                 }
@@ -261,13 +261,10 @@ public class ResultPayloadCreate {
             }
             msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
         } catch (AxisFault e) {
-            log.error("Error while getting the message builder.", e);
             throw new SynapseException("Error while getting the message builder.", e);
         } catch (FileSystemException e) {
-            log.error("Error while processing the file/folder", e);
             throw new SynapseException("Error while processing the file/folder", e);
         } catch (IOException e) {
-            log.error("Error while processing the file/folder", e);
             throw new SynapseException("Error while processing the file/folder", e);
         }
         return true;
@@ -299,7 +296,6 @@ public class ResultPayloadCreate {
             }
 
             if (StringUtils.isEmpty(lineNumber)) {
-                log.error("Line number is not provided to read.");
                 throw new SynapseException("Line number is not provided to read.");
             } else {
                 reader = new BufferedReader(new InputStreamReader(fileObj.getContent().getInputStream()));
@@ -311,13 +307,10 @@ public class ResultPayloadCreate {
                 msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
             }
         } catch (AxisFault e) {
-            log.error("Error while getting the message builder.", e);
             throw new SynapseException("Error while getting the message builder.", e);
         } catch (FileSystemException e) {
-            log.error("Error while processing the file/folder", e);
             throw new SynapseException("Error while processing the file", e);
         } catch (IOException e) {
-            log.error("Error while processing the file/folder", e);
             throw new SynapseException("Error while processing the file", e);
         }
         return true;

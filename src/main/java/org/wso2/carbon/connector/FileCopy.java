@@ -118,6 +118,7 @@ public class FileCopy extends AbstractConnector implements Connector {
                 resultStatus = true;
             } else {
                 if (souFile.exists()) {
+                    System.out.println("111111111111111111111111111111" + souFile.getType());
                     if (souFile.getType() == FileType.FILE) {
                         try {
                             String name = souFile.getName().getBaseName();

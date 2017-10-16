@@ -1,0 +1,4 @@
+Send this content.{
+  "address": "/Users/keerthu/Desktop/esb-connector-file/src/test/resources/sampleFiles/in/sendFile.txt",
+  "append": "true"
+}
