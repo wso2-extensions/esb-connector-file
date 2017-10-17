@@ -64,4 +64,15 @@ public final class FileConstants {
     public static final String DEFAULT_RESPONSE_FILE = "/response.xml";
     public static final String INCLUDE_PARENT_DIRECTORY = "includeParentDirectory";
     public static final String DEFAULT_INCLUDE_PARENT_DIRECTORY = "false";
+    public static final String FROM = "from";
+    public static final String TO = "to";
+    public static final String NEW_LINE = "\n";
+    public static final String LAST_MODIFIED_TIME_START_TAG = "<result><lastModifiedTime>";
+    public static final String LAST_MODIFIED_TIME_END_TAG = "</lastModifiedTime></result>";
+    public static final String LINE_NUMBER = "lineNumber";
+    public static final String CHUNK_SIZE = "chunkSize";
+    public static final String FILE_SIZE_START_TAG = "<result><fileSize>";
+    public static final String FILE_SIZE_END_TAG = "</fileSize></result>";
+    public static final String POSITION = "position";
+    public static final String NUMBER_OF_LINES = "numberOfLines";
 }

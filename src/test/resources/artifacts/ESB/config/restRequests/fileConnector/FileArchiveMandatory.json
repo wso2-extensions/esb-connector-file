@@ -1,6 +1,6 @@
 {
   "source": "%s(source)",
-  "destination": "%s(destination)",
+  "destination": "%s(archiveFileLocation)",
   "setTimeout": "%s(setTimeout)",
   "setPassiveMode": "%s(setPassiveMode)",
   "setUserDirIsRoot": "%s(setUserDirIsRoot)",

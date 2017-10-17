@@ -1,5 +1,5 @@
 {
-  "destination": "%s(destination1)",
+  "destination": "%s(appendFile)",
   "inputContent": "%s(inputContent)",
   "encoding": "%s(encoding)",
   "setTimeout": "%s(setTimeout)",
