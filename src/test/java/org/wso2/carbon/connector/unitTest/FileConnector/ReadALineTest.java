@@ -33,24 +33,12 @@ import org.apache.synapse.SynapseException;
 import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.mediators.template.TemplateContext;
-//import org.mockito.Mock;
-//import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.mockito.Mock;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.testng.PowerMockObjectFactory;
-import org.testng.Assert;
-import org.testng.IObjectFactory;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
 import org.wso2.carbon.connector.ReadALine;
 
 import java.nio.file.Paths;
 import java.util.Stack;
-
-import static org.mockito.MockitoAnnotations.initMocks;
-import static org.powermock.api.mockito.PowerMockito.mockStatic;
-import static org.powermock.api.mockito.PowerMockito.when;
 
 /**
  * Test class for GetSize.java.
@@ -118,10 +106,5 @@ public class ReadALineTest{
         mc.getEnvelope().addChild(OMAbstractFactory.getSOAP12Factory().createSOAPBody());
 
         return mc;
-    }
-
-    @ObjectFactory
-    public IObjectFactory getObjectFactory() {
-        return new PowerMockObjectFactory();
     }
 }
