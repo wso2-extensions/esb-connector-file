@@ -107,6 +107,25 @@ public class SplitFileTest {
         splitFile.connect(ctx);
     }
 
+    /**
+     * Test case for splitFile with non existing file.
+     */
+    @Test(expectedExceptions = SynapseException.class)
+    public void testConnectWithException(){
+        TemplateContext templateContext = new TemplateContext("fileConnector", null);
+        templateContext.getMappedValues().put("source", getFilePath("in"));
+        templateContext.getMappedValues().put("setTimeout", "");
+        templateContext.getMappedValues().put("setPassiveMode", "");
+        templateContext.getMappedValues().put("setUserDirIsRoot", "");
+        templateContext.getMappedValues().put("setSoTimeout", "");
+        templateContext.getMappedValues().put("setStrictHostKeyChecking", "");
+
+        Stack<TemplateContext> fileStack = new Stack<>();
+        fileStack.push(templateContext);
+        ctx.setProperty("_SYNAPSE_FUNCTION_STACK", fileStack);
+        splitFile.connect(ctx);
+    }
+
     private MessageContext createMessageContext() throws AxisFault {
         MessageContext msgCtx = createSynapseMessageContext();
         org.apache.axis2.context.MessageContext axis2MsgCtx = ((Axis2MessageContext) msgCtx).getAxis2MessageContext();

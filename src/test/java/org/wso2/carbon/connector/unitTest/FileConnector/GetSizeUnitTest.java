@@ -28,6 +28,7 @@ import org.apache.axis2.context.OperationContext;
 import org.apache.axis2.context.ServiceContext;
 import org.apache.axis2.description.InOutAxisOperation;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.vfs2.FileSystemException;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.SynapseException;
 import org.apache.synapse.config.SynapseConfiguration;
@@ -106,6 +107,25 @@ public class GetSizeUnitTest {
         fileStack.push(templateContext);
         ctx.setProperty("_SYNAPSE_FUNCTION_STACK", fileStack);
         getSize.connect(ctx);
+    }
+
+    /**
+     * Test case for getSize with non existing file.
+     */
+    @Test(expectedExceptions = SynapseException.class)
+    public void testConnectWithException(){
+        TemplateContext templateContext = new TemplateContext("fileConnector", null);
+        templateContext.getMappedValues().put("source", getFilePath("in"));
+        templateContext.getMappedValues().put("setTimeout", "");
+        templateContext.getMappedValues().put("setPassiveMode", "");
+        templateContext.getMappedValues().put("setUserDirIsRoot", "");
+        templateContext.getMappedValues().put("setSoTimeout", "");
+        templateContext.getMappedValues().put("setStrictHostKeyChecking", "");
+
+        Stack<TemplateContext> fileStack = new Stack<>();
+        fileStack.push(templateContext);
+        ctx.setProperty("_SYNAPSE_FUNCTION_STACK", fileStack);
+            getSize.connect(ctx);
     }
 
     private MessageContext createMessageContext() throws AxisFault {
