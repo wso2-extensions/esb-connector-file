@@ -199,7 +199,6 @@ public class SplitFile extends AbstractConnector implements Connector {
             boolean isClosed = false;
             while ((line = bufferedReader.readLine()) != null) {
                 if (isClosed) {
-                    System.out.println("creating stream");
                     outputFileName = destination + File.separator
                             + String.valueOf(sourceFileObj.getName().getBaseName()) + partNum;
                     outputFileObj = manager.resolveFile(outputFileName, options);
@@ -213,11 +212,9 @@ public class SplitFile extends AbstractConnector implements Connector {
                             outputFileObj.getContent().getOutputStream()));
                     isClosed = false;
                 }
-                System.out.println(line);
                 bufferedWriter.write(line);
                 bufferedWriter.newLine();
                 if (count == Integer.parseInt(splitLength)) {
-                    System.out.println("WRITE TO THE FILE" + partNum);
                     count = 0;
                     partNum++;
                     bufferedWriter.flush();
@@ -231,7 +228,6 @@ public class SplitFile extends AbstractConnector implements Connector {
                 bufferedWriter.flush();
                 bufferedWriter.close();
                 outputFileObj.close();
-                System.out.println("closed the output stream");
             }
         } catch (IOException e) {
             handleException("Error while processing the file", e, messageContext);
