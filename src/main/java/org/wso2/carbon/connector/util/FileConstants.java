@@ -74,4 +74,5 @@ public final class FileConstants {
     public static final String FILE_SIZE_START_TAG = "<result><fileSize>";
     public static final String FILE_SIZE_END_TAG = "</fileSize></result>";
     public static final String POSITION = "position";
+    public static final String NUMBER_OF_LINES = "numberOfLines";
 }

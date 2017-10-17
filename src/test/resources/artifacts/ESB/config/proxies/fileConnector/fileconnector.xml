@@ -183,6 +183,7 @@
                         <source>{$ctx:source}</source>
                         <destination>{$ctx:destination}</destination>
                         <chunkSize>{$ctx:chunkSize}</chunkSize>
+                        <numberOfLines>{$ctx:numberOfLines}</numberOfLines>
                     </fileconnector.splitFile>
                 </case>
                 <case regex="urn:mergeFiles">

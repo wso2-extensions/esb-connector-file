@@ -76,33 +76,7 @@ public class ReadALineTest{
     public void setUp() throws Exception {
         readALine = new ReadALine();
         ctx = createMessageContext();
-//        initMocks(this);
     }
-
-//    /**
-//     * Test case for readALine.
-//     */
-//    @Test
-//    public void testConnect() throws AxisFault {
-//        TemplateContext templateContext = new TemplateContext("fileConnector", null);
-//        templateContext.getMappedValues().put("source", getFilePath("in/sampleFile.txt"));
-//        templateContext.getMappedValues().put("lineNumber", getFilePath("1"));
-//        templateContext.getMappedValues().put("setTimeout", "");
-//        templateContext.getMappedValues().put("setPassiveMode", "");
-//        templateContext.getMappedValues().put("setUserDirIsRoot", "");
-//        templateContext.getMappedValues().put("setSoTimeout", "");
-//        templateContext.getMappedValues().put("setStrictHostKeyChecking", "");
-//
-//        Stack<TemplateContext> fileStack = new Stack<>();
-//        fileStack.push(templateContext);
-//        ctx.setProperty("_SYNAPSE_FUNCTION_STACK", fileStack);
-//        org.apache.axis2.context.MessageContext axis2MessageContext = ((Axis2MessageContext) ctx).getAxis2MessageContext();
-//        mockStatic(BuilderUtil.class);
-//        when(BuilderUtil.getBuilderFromSelector("text/plain", axis2MessageContext)).thenReturn(null);
-//        readALine.connect(ctx);
-//        System.out.println("3#######33  " + ctx.getEnvelope().getBody());
-//        Assert.assertEquals(ctx.getEnvelope().getBody(), "This file is created for testing purpose.");
-//    }
 
     /**
      * Test case for readALine with non existing file.

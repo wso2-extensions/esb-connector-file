@@ -49,6 +49,8 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
         esbRequestHeadersMap.put("Content-Type", "application/json");
         esbRequestHeadersMap.put("Accept", "application/json");
         connectorProperties.put("source", getFilePath("in/sampleText.txt"));
+        connectorProperties.put("splitFile", getFilePath("in/splitFile.csv"));
+        connectorProperties.put("writeTo", getFilePath("out/merge/"));
         connectorProperties.put("address", getFilePath("in/sendFile.txt"));
         connectorProperties.put("archiveFileLocation", getFilePath("out/sampleText.zip"));
         connectorProperties.put("copyFrom", getFilePath("in"));
@@ -292,6 +294,45 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
         RestResponse<JSONObject> esbRestResponse =
                 sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
                         "FileReadMandatoryNegative.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+    }
+
+    /**
+     * Positive test case for split file method based on chunk size.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test",
+            dependsOnMethods = {"testCreateFile"})
+    public void testSplitFileWithChunkSize() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:read");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "SplitFileWithChunkSize.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+    }
+
+    /**
+     * Positive test case for split file method based on number of lines.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test",
+            dependsOnMethods = {"testCreateFile"})
+    public void testSplitFileWithLineNumbers() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:read");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "SplitFileWithLineNumbers.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+    }
+
+    /**
+     * Negative test case for read file method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test with " +
+            "Negative parameter", dependsOnMethods = {"testCreateFile"})
+    public void testSplitFileWithNegativeCase() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:read");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "SplitFileNegative.json");
         Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
     }
 

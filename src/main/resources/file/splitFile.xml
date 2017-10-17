@@ -21,6 +21,7 @@
     <parameter name="source" description="The location of the file."/>
     <parameter name="destination" description="The location to write the files."/>
     <parameter name="chunkSize" description="The chunk size to split the file."/>
+    <parameter name="numberOfLines" description="The number of line per file."/>
     <parameter name="setTimeout" description="Sets the timeout value on Jsch(Java Secure Channel) session."/>
     <parameter name="setPassiveMode" description="Sets the passive mode to enter into passive mode."/>
     <parameter name="setSoTimeout" description="Sets the socket timeout for the FTP client."/>

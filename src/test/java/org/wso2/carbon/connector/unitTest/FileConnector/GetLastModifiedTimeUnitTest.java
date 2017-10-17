@@ -73,7 +73,7 @@ public class GetLastModifiedTimeUnitTest {
     @Test
     public void testConnect(){
         TemplateContext templateContext = new TemplateContext("fileConnector", null);
-        templateContext.getMappedValues().put("source", getFilePath("in/sampleText.txt"));
+        templateContext.getMappedValues().put("source", getFilePath("in/appendFile.txt"));
         templateContext.getMappedValues().put("setTimeout", "");
         templateContext.getMappedValues().put("setPassiveMode", "");
         templateContext.getMappedValues().put("setUserDirIsRoot", "");
@@ -84,7 +84,7 @@ public class GetLastModifiedTimeUnitTest {
         fileStack.push(templateContext);
         ctx.setProperty("_SYNAPSE_FUNCTION_STACK", fileStack);
         getLastModifiedTime.connect(ctx);
-        File file = new File(getFilePath("in/sampleText.txt"));
+        File file = new File(getFilePath("in/appendFile.txt"));
         SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
         Assert.assertEquals(ctx.getEnvelope().getBody().getFirstElement().getText(), sdf.format(file.lastModified()));
     }

@@ -54,23 +54,24 @@ public class SplitFile extends AbstractConnector implements Connector {
                 FileConstants.CHUNK_SIZE);
         String destination = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.NEW_FILE_LOCATION);
+        String numberOfLines = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.NUMBER_OF_LINES);
         FileSystemOptions options = FileConnectorUtils.init(messageContext);
-        boolean resultStatus = splitFile(fileLocation, chunkSize, destination, options, messageContext);
+        boolean resultStatus = splitFile(fileLocation, chunkSize, destination, numberOfLines, options, messageContext);
         generateOutput(messageContext, resultStatus);
     }
 
     /**
-     * @param fileLocation Location of the source file.
-     * @param chunkSize size of the chunks to split the file.
-     * @param destination   Location of the destination to write the splitted files.
-     * @param options Init configuration options.
-     * @param messageContext    Message context.
+     * @param fileLocation   Location of the source file.
+     * @param chunkSize      size of the chunks to split the file.
+     * @param destination    Location of the destination to write the splitted files.
+     * @param options        Init configuration options.
+     * @param messageContext Message context.
      * @return Status true/false.
      */
-    private boolean splitFile(String fileLocation, String chunkSize, String destination, FileSystemOptions options,
-                              MessageContext messageContext) {
+    private boolean splitFile(String fileLocation, String chunkSize, String destination, String splitLength,
+                              FileSystemOptions options, MessageContext messageContext) {
         FileObject sourceFileObj = null;
-        FileObject outputFileObj = null;
         try {
             manager = FileConnectorUtils.getManager();
             sourceFileObj = manager.resolveFile(fileLocation, options);
@@ -78,16 +79,49 @@ public class SplitFile extends AbstractConnector implements Connector {
                 handleException("File does not exists, or source is not a file in the location: " + fileLocation,
                         messageContext);
             } else {
-                InputStream inputStream;
-                OutputStream outputStream = null;
-                BufferedOutputStream bufferedOutputStream = null;
-                int partNum = 0;
-                byte[] bytesIn = new byte[FileConstants.BUFFER_SIZE];
-                if (StringUtils.isNotEmpty(chunkSize)) {
-                    bytesIn = new byte[Integer.parseInt(chunkSize)];
+                if (StringUtils.isNotEmpty(splitLength)) {
+                    splitByLines(sourceFileObj, destination, splitLength, options, messageContext);
+                } else if(StringUtils.isNotEmpty(chunkSize)) {
+                    splitByChunkSize(sourceFileObj, destination, chunkSize, options, messageContext);
                 }
-                inputStream = new AutoCloseInputStream(sourceFileObj.getContent().getInputStream());
-                while (inputStream.read(bytesIn) != -1) {
+            }
+
+        } catch (IOException e) {
+            handleException("Error while processing the file", e, messageContext);
+        } finally {
+            if (sourceFileObj != null) {
+                try {
+                    sourceFileObj.close();
+                } catch (FileSystemException e) {
+                    log.warn("Error while closing the sourceFileObj: " + e.getMessage(), e);
+                }
+            }
+            if (manager != null) {
+                manager.close();
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Splits the file based on chunk size.
+     * @param sourceFileObj Source file object.
+     * @param destination Destination to write the splitted files.
+     * @param chunkSize Size of a file chunk in bytes.
+     * @param options File options.
+     * @param messageContext Message context
+     */
+    private void splitByChunkSize(FileObject sourceFileObj, String destination, String chunkSize,
+                                  FileSystemOptions options, MessageContext messageContext) {
+        byte[] bytesIn = new byte[Integer.parseInt(chunkSize)];
+        InputStream inputStream;
+        OutputStream outputStream = null;
+        BufferedOutputStream bufferedOutputStream = null;
+        FileObject outputFileObj = null;
+        int partNum = 0;
+        try {
+            inputStream = new AutoCloseInputStream(sourceFileObj.getContent().getInputStream());
+            while (inputStream.read(bytesIn) != -1) {
                     String outputFileName = destination + File.separator
                             + String.valueOf(sourceFileObj.getName().getBaseName()) + partNum;
                     try {
@@ -118,7 +152,7 @@ public class SplitFile extends AbstractConnector implements Connector {
                             }
                         }
                         if (outputFileObj != null) {
-                                outputFileObj.close();
+                            outputFileObj.close();
                         }
                     }
                     partNum++;
@@ -126,24 +160,90 @@ public class SplitFile extends AbstractConnector implements Connector {
                         log.debug("Created the file part " + partNum);
                     }
                 }
-            }
-
         } catch (IOException e) {
-            log.error("Error while processing the file", e);
+            handleException("Error while processing the file", e, messageContext);
+        }
+    }
+
+    /**
+     * Splits the file based on number of lines.
+     * @param sourceFileObj Source file object.
+     * @param destination Destination to write the splitted files.
+     * @param splitLength Number of lines per file.
+     * @param options File options.
+     * @param messageContext Message context
+     */
+    private void splitByLines(FileObject sourceFileObj, String destination, String splitLength,
+                              FileSystemOptions options, MessageContext messageContext) {
+        BufferedReader bufferedReader = null;
+        BufferedWriter bufferedWriter;
+        String outputFileName;
+        int partNum = 0;
+        String line;
+        int count = 1;
+        FileObject outputFileObj;
+        try {
+            bufferedReader = new BufferedReader(
+                    new InputStreamReader(sourceFileObj.getContent().getInputStream()));
+            outputFileName = destination + File.separator
+                    + String.valueOf(sourceFileObj.getName().getBaseName()) + partNum;
+            outputFileObj = manager.resolveFile(outputFileName, options);
+            if (!outputFileObj.exists()) {
+                outputFileObj.createFile();
+            }
+            if (log.isDebugEnabled()) {
+                log.debug("Created the file part " + partNum);
+            }
+            bufferedWriter = new BufferedWriter(new OutputStreamWriter(
+                    outputFileObj.getContent().getOutputStream()));
+            boolean isClosed = false;
+            while ((line = bufferedReader.readLine()) != null) {
+                if (isClosed) {
+                    System.out.println("creating stream");
+                    outputFileName = destination + File.separator
+                            + String.valueOf(sourceFileObj.getName().getBaseName()) + partNum;
+                    outputFileObj = manager.resolveFile(outputFileName, options);
+                    if (!outputFileObj.exists()) {
+                        outputFileObj.createFile();
+                    }
+                    if (log.isDebugEnabled()) {
+                        log.debug("Created the file part " + partNum);
+                    }
+                    bufferedWriter = new BufferedWriter(new OutputStreamWriter(
+                            outputFileObj.getContent().getOutputStream()));
+                    isClosed = false;
+                }
+                System.out.println(line);
+                bufferedWriter.write(line);
+                bufferedWriter.newLine();
+                if (count == Integer.parseInt(splitLength)) {
+                    System.out.println("WRITE TO THE FILE" + partNum);
+                    count = 0;
+                    partNum++;
+                    bufferedWriter.flush();
+                    bufferedWriter.close();
+                    outputFileObj.close();
+                    isClosed = true;
+                }
+                count++;
+            }
+            if (!isClosed) {
+                bufferedWriter.flush();
+                bufferedWriter.close();
+                outputFileObj.close();
+                System.out.println("closed the output stream");
+            }
+        } catch (IOException e) {
             handleException("Error while processing the file", e, messageContext);
         } finally {
-            if (sourceFileObj != null) {
+            if(bufferedReader != null) {
                 try {
-                    sourceFileObj.close();
-                } catch (FileSystemException e) {
-                    log.warn("Error while closing the sourceFileObj: " + e.getMessage(), e);
+                    bufferedReader.close();
+                } catch (IOException e) {
+                    log.warn("Error while closing the BufferedReader");
                 }
             }
-            if (manager != null) {
-                manager.close();
-            }
         }
-        return true;
     }
 
     /**
@@ -163,5 +263,4 @@ public class SplitFile extends AbstractConnector implements Connector {
             handleException(e.getMessage(), e, messageContext);
         }
     }
-
 }

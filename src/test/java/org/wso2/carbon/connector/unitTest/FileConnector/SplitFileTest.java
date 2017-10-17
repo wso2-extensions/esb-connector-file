@@ -71,8 +71,9 @@ public class SplitFileTest {
     @Test
     public void testConnect(){
         TemplateContext templateContext = new TemplateContext("fileConnector", null);
-        templateContext.getMappedValues().put("source", getFilePath("in/sampleText.txt"));
+        templateContext.getMappedValues().put("source", getFilePath("in/splitFile.csv"));
         templateContext.getMappedValues().put("destination", getFilePath("out/merge"));
+        templateContext.getMappedValues().put("numberOfLines", "3");
         templateContext.getMappedValues().put("setTimeout", "");
         templateContext.getMappedValues().put("setPassiveMode", "");
         templateContext.getMappedValues().put("setUserDirIsRoot", "");
