@@ -25,7 +25,7 @@
             <class name="org.wso2.carbon.connector.unitTest.FileConnector.MergeFilesTest"/>
             <class name="org.wso2.carbon.connector.unitTest.FileConnector.SplitFileTest"/>
             <class name="org.wso2.carbon.connector.unitTest.FileConnector.ReadALineTest"/>
-
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.AutomateCreateSampleFolderStructure"/>
         </classes>
     </test>
     <test name="File-Connector-Integration-Test" preserve-order="true" verbose="2">

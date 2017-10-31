@@ -150,7 +150,7 @@ public class FileArchivesUnitTest {
     }
 
     @Test
-    public void testZipArchives() throws Exception {
+    public void testFileArchivesDifferentType() throws Exception {
         TemplateContext templateContext = new TemplateContext("fileConnector", null);
         templateContext.getMappedValues().put("source",getFilePath("in/wso2.jpg"));
         templateContext.getMappedValues().put("destination",getFilePath("in/folders1.zip"));
@@ -169,7 +169,6 @@ public class FileArchivesUnitTest {
 
         Assert.assertEquals(ctx.getEnvelope().getBody().getFirstElement().getText(), "true");
     }
-
 
     private MessageContext createMessageContext() throws AxisFault {
         MessageContext msgCtx = createSynapseMessageContext();
