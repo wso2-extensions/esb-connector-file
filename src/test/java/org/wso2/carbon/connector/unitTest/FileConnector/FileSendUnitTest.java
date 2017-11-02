@@ -78,21 +78,6 @@ public class FileSendUnitTest {
 
         Assert.assertEquals(ctx.getEnvelope().getBody().getFirstElement().getText(), "true");
     }
-/*
-    @Test
-    public void testFileSendOMFirstElementNull() throws Exception {
-        TemplateContext templateContext = new TemplateContext("fileConnector", null);
-        templateContext.getMappedValues().put("address","file:///home/nirthika/test/out/");
-        templateContext.getMappedValues().put("append","true");
-
-        Stack<TemplateContext> fileStack= new Stack<>();
-        fileStack.push(templateContext);
-        ctx.setProperty("_SYNAPSE_FUNCTION_STACK",fileStack);
-        fileSend.connect(ctx);
-
-        System.out.println(ctx);
-        Assert.assertEquals(ctx.getEnvelope().getBody().getFirstElement().getText(), "true");
-    }*/
 
     private MessageContext createMessageContext() throws AxisFault {
         MessageContext msgCtx = createSynapseMessageContext();

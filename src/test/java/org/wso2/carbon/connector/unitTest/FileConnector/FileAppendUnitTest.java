@@ -28,6 +28,7 @@ import org.apache.axis2.context.ServiceContext;
 import org.apache.axis2.description.InOutAxisOperation;
 import org.apache.commons.lang.StringUtils;
 import org.apache.synapse.MessageContext;
+import org.apache.synapse.SynapseException;
 import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.mediators.template.TemplateContext;
@@ -85,6 +86,24 @@ public class FileAppendUnitTest {
         fileAppend.connect(ctx);
 
         Assert.assertEquals(ctx.getEnvelope().getBody().getFirstElement().getText(), "true");
+    }
+
+    @Test(expectedExceptions = SynapseException.class)
+    public void testFileAppendError() {
+        TemplateContext templateContext = new TemplateContext("fileConnector", null);
+        templateContext.getMappedValues().put("destination", getFilePath("out/append.txt"));
+        templateContext.getMappedValues().put("inputContent", "It is created");
+        templateContext.getMappedValues().put("encoding", "wrong");
+        templateContext.getMappedValues().put("setTimeout", "");
+        templateContext.getMappedValues().put("setPassiveMode", "");
+        templateContext.getMappedValues().put("setUserDirIsRoot", "");
+        templateContext.getMappedValues().put("setSoTimeout", "");
+        templateContext.getMappedValues().put("setStrictHostKeyChecking", "");
+
+        Stack<TemplateContext> fileStack = new Stack<>();
+        fileStack.push(templateContext);
+        ctx.setProperty("_SYNAPSE_FUNCTION_STACK", fileStack);
+        fileAppend.connect(ctx);
     }
 
     @Test
