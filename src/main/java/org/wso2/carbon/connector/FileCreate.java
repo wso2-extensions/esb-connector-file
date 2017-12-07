@@ -134,7 +134,7 @@ public class FileCreate extends AbstractConnector implements Connector {
                     manager.close();
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             handleException("Unable to create a file/folder.", e, messageContext);
         }
         return resultStatus;
