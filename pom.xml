@@ -24,7 +24,7 @@
     <groupId>org.wso2.carbon.connector</groupId>
     <artifactId>org.wso2.carbon.connector.fileconnector</artifactId>
     <packaging>jar</packaging>
-    <version>2.0.10-SNAPSHOT</version>
+    <version>2.0.10</version>
     <name>WSO2 Carbon - Mediation Library Connector For fileconnector</name>
     <url>http://wso2.org</url>
     <properties>
@@ -45,6 +45,8 @@
         <jacoco.version>0.7.9</jacoco.version>
         <powermock.version>1.6.6</powermock.version>
         <maven.surefire.plugin.version>2.18.1</maven.surefire.plugin.version>
+        <integration.base.version>1.0.2</integration.base.version>
+        <skip-tests>true</skip-tests>
     </properties>
     <dependencies>
         <dependency>
@@ -188,7 +190,7 @@
         <dependency>
             <groupId>org.wso2.esb.integration</groupId>
             <artifactId>integration-base</artifactId>
-            <version>1.0.2</version>
+            <version>${integration.base.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -340,6 +342,7 @@
                 <version>2.12.4</version>
                 <inherited>false</inherited>
                 <configuration>
+                    <skipTests>${skip-tests}</skipTests>
                     <argLine>${surefireArgLine} -ea -Xmx512m</argLine>
                     <!--<argLine>-Xms512m -Xmx1024m -XX:MaxPermSize=128m</argLine>-->
                     <disableXmlReport>false</disableXmlReport>
