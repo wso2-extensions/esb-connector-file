@@ -10,25 +10,25 @@ For a sample proxy service that illustrates how to work with the file connector,
 
 | Operation        | Description |
 | ------------- |-------------|
-| [append](#append)    | Appends content to an existing file. |
-| [archive](#archive)      | Archives a file or folder. |
-| [copy](#copy)      | Copies a file or folder. |
-| [create](#create)      | Creates a file or folder. |
-| [delete](#delete)      | Deletes a file or folder. |
-| [isFileExist](#isFileExist)      | Checks the existence of a file. |
-| [listFileZip](#listFileZip)      | Lists all files inside zip file. |
-| [move](#move)      | Moves a file or folder. |
-| [read](#read)      | Reads content from a file. |
-| [search](#search)      | Finds a file based on a file pattern and directory pattern. |
-| [unzip](#unzip)      | Decompresses a zip file. |
-| [ftpOverProxy](#ftpOverProxy)      | Connects to a FTP server through a proxy. |
-| [send](#send)      | Sends a file to a specified location. |
-| [getSize](#getSize)      | Returns the size of the file. |
-| [getLastModifiedTime](#getLastModifiedTime)      | Returns last modified time of a file. |
-| [splitFile](#splitFile)      | Splits files into multiple chunks. |
-| [mergeFiles](#mergeFiles)      | Merges files into a single file. |
-| [readSpecifiedLines](#readSpecifiedLines)      | Reads specified lines from a file. |
-| [readALine](#readALine)      | Reads specified line from a file. |
+| [append](#appending-content-to-an-existing-file)    | Appends content to an existing file. |
+| [archive](#archiving-a-file-or-folder)      | Archives a file or folder. |
+| [copy](#copying-a-file)      | Copies a file or folder. |
+| [create](#creating-a-file-or-folder)      | Creates a file or folder. |
+| [delete](#deleting-a-file-or-folder)      | Deletes a file or folder. |
+| [isFileExist](#checking-the-existence-of-a-file)      | Checks the existence of a file. |
+| [listFileZip](#listing-all-files-inside-a-compressed-file)      | Lists all files inside zip file. |
+| [move](#moving-a-file)      | Moves a file or folder. |
+| [read](#reading-content-from-a-file)      | Reads content from a file. |
+| [search](#searching-for-a-file)      | Finds a file based on a file pattern and directory pattern. |
+| [unzip](#decompressing-a-file)      | Decompresses a zip file. |
+| [ftpOverProxy](#-onnect-to-a-FTP-server-through-a-proxy)      | Connects to a FTP server through a proxy. |
+| [send](#sending-a-file)      | Sends a file to a specified location. |
+| [getSize](#getting-size-of-a-file)      | Returns the size of the file. |
+| [getLastModifiedTime](#getting-last-modified-time-of-a-file)      | Returns last modified time of a file. |
+| [splitFile](#splitting-a-file-into-multiple-chunks)      | Splits files into multiple chunks. |
+| [mergeFiles](#merging-multiple-chunks-into-a-file)      | Merges files into a single file. |
+| [readSpecifiedLines](#reading-specific-lines-from-a-file)      | Reads specified lines from a file. |
+| [readALine](#reading-a-specific-line-from-a-file)      | Reads specified line from a file. |
 
 ### Operation details
 This section provides further details on the operations related to file connector version2.
