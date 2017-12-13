@@ -30,14 +30,26 @@ import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.codehaus.jettison.json.JSONException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.Connector;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
+import javax.xml.transform.*;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.xpath.*;
 import java.io.*;
 
 /**
@@ -56,8 +68,11 @@ public class SplitFile extends AbstractConnector implements Connector {
                 FileConstants.NEW_FILE_LOCATION);
         String numberOfLines = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.NUMBER_OF_LINES);
+        String xpathExpression = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.XPATH_EXPRESSION);
         FileSystemOptions options = FileConnectorUtils.init(messageContext);
-        boolean resultStatus = splitFile(fileLocation, chunkSize, destination, numberOfLines, options, messageContext);
+        boolean resultStatus = splitFile(fileLocation, chunkSize, destination, numberOfLines, xpathExpression, options,
+                messageContext);
         generateOutput(messageContext, resultStatus);
     }
 
@@ -70,7 +85,7 @@ public class SplitFile extends AbstractConnector implements Connector {
      * @return Status true/false.
      */
     private boolean splitFile(String fileLocation, String chunkSize, String destination, String splitLength,
-                              FileSystemOptions options, MessageContext messageContext) {
+                              String xpathExpression, FileSystemOptions options, MessageContext messageContext) {
         FileObject sourceFileObj = null;
         try {
             manager = FileConnectorUtils.getManager();
@@ -81,11 +96,12 @@ public class SplitFile extends AbstractConnector implements Connector {
             } else {
                 if (StringUtils.isNotEmpty(splitLength)) {
                     splitByLines(sourceFileObj, destination, splitLength, options, messageContext);
-                } else if(StringUtils.isNotEmpty(chunkSize)) {
+                } else if (StringUtils.isNotEmpty(chunkSize)) {
                     splitByChunkSize(sourceFileObj, destination, chunkSize, options, messageContext);
+                } else if (StringUtils.isNotEmpty(xpathExpression)) {
+                    splitByXPathExpression(sourceFileObj, destination, xpathExpression, options, messageContext);
                 }
             }
-
         } catch (IOException e) {
             handleException("Error while processing the file", e, messageContext);
         } finally {
@@ -237,6 +253,100 @@ public class SplitFile extends AbstractConnector implements Connector {
                     bufferedReader.close();
                 } catch (IOException e) {
                     log.warn("Error while closing the BufferedReader");
+                }
+            }
+        }
+    }
+
+    /**
+     * Split xml document based on xpath expression.
+     *
+     * @param sourceFileObj   Source file object.
+     * @param destination     Destination to write the splitted files.
+     * @param xpathExpression XPath expression to be used.
+     * @param options File options.
+     * @param messageContext  Message context.
+     */
+    private void splitByXPathExpression(FileObject sourceFileObj, String destination, String xpathExpression,
+                                        FileSystemOptions options, MessageContext messageContext) {
+
+        DocumentBuilderFactory documentFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder documentBuilder = null;
+        Document sourceXmlDocument = null;
+        try {
+            documentBuilder = documentFactory.newDocumentBuilder();
+            sourceXmlDocument = documentBuilder.parse(sourceFileObj.getContent().getInputStream());
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            handleException("Failed to read source xml file ", e, messageContext);
+        }
+
+        XPathFactory xPathFactory = XPathFactory.newInstance();
+        XPath xpath = xPathFactory.newXPath();
+        XPathExpression expression;
+        NodeList nodeList = null;
+        try {
+            expression = xpath.compile(xpathExpression);
+            nodeList = (NodeList) expression.evaluate(sourceXmlDocument, XPathConstants.NODESET);
+        } catch (XPathExpressionException e) {
+            handleException("Error while evaluating xpath expression ", e, messageContext);
+        }
+
+        OutputStream outputStream = null;
+        FileObject outputFileObj = null;
+        assert nodeList != null;
+        for (int i = 0; i < nodeList.getLength(); ++i) {
+            assert documentBuilder != null;
+            Document distinationXmlDocument = documentBuilder.newDocument();
+
+            String parentNode = nodeList.item(i).getParentNode().getNodeName();
+            Element root = distinationXmlDocument.createElement(parentNode);
+            distinationXmlDocument.appendChild(root);
+            Node currentNode = nodeList.item(i);
+
+            Node clonedNode = currentNode.cloneNode(true);
+            distinationXmlDocument.adoptNode(clonedNode);
+            root.appendChild(clonedNode);
+
+            //At the end, we save the file XML on disk
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer;
+            DOMSource source = null;
+            StreamResult result = null;
+            try {
+                transformer = transformerFactory.newTransformer();
+                transformer.setOutputProperty(OutputKeys.INDENT, FileConstants.YES);
+                source = new DOMSource(distinationXmlDocument);
+
+                outputFileObj = manager.resolveFile(destination + File.separator + parentNode + (i + 1) + ".xml"
+                        , options);
+                if (!outputFileObj.exists()) {
+                    outputFileObj.createFile();
+                }
+                outputStream = outputFileObj.getContent().getOutputStream();
+
+                result = new StreamResult(outputStream);
+                transformer.transform(source, result);
+                if (log.isDebugEnabled()) {
+                    log.debug("Created the xml file part " + (i + 1));
+                }
+            } catch (TransformerException e) {
+                handleException("Failed to transform " + source + " to " + result, e, messageContext);
+            } catch (FileSystemException e) {
+                handleException("Error while processing the output xml file ", e, messageContext);
+            } finally {
+                if (outputStream != null) {
+                    try {
+                        outputStream.close();
+                    } catch (IOException e) {
+                        log.warn("Error while closing the OutputStream: " + e.getMessage(), e);
+                    }
+                }
+                if (outputFileObj != null) {
+                    try {
+                        outputFileObj.close();
+                    } catch (FileSystemException e) {
+                        handleException("Error while closing the file", e, messageContext);
+                    }
                 }
             }
         }

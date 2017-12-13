@@ -57,6 +57,8 @@
             <property name="append" expression="json-eval($.append)"/>
             <property name="lineNumber" expression="json-eval($.lineNumber)"/>
             <property name="chunkSize" expression="json-eval($.chunkSize)"/>
+            <property name="numberOfLines" expression="json-eval($.numberOfLines)"/>
+            <property name="xpathExpression" expression="json-eval($.xpathExpression)"/>
             <property name="start" expression="json-eval($.start)"/>
             <property name="end" expression="json-eval($.end)"/>
             <property name="position" expression="json-eval($.position)"/>
@@ -184,6 +186,7 @@
                         <destination>{$ctx:destination}</destination>
                         <chunkSize>{$ctx:chunkSize}</chunkSize>
                         <numberOfLines>{$ctx:numberOfLines}</numberOfLines>
+                        <xpathExpression>{$ctx:xpathExpression}</xpathExpression>
                     </fileconnector.splitFile>
                 </case>
                 <case regex="urn:mergeFiles">

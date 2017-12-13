@@ -22,6 +22,7 @@
     <parameter name="destination" description="The location to write the files."/>
     <parameter name="chunkSize" description="The chunk size to split the file."/>
     <parameter name="numberOfLines" description="The number of line per file."/>
+    <parameter name="xpathExpression" description="Defines a pattern in order to select a set of nodes in xml document."/>
     <parameter name="setTimeout" description="Sets the timeout value on Jsch(Java Secure Channel) session."/>
     <parameter name="setPassiveMode" description="Sets the passive mode to enter into passive mode."/>
     <parameter name="setSoTimeout" description="Sets the socket timeout for the FTP client."/>
@@ -31,6 +32,8 @@
         <property name="source" expression="$func:source"/>
         <property name="destination" expression="$func:destination"/>
         <property name="chunkSize" expression="$func:chunkSize"/>
+        <property name="numberOfLines" expression="$func:numberOfLines"/>
+        <property name="xpathExpression" expression="$func:xpathExpression"/>
         <property name="setTimeout" expression="$func:setTimeout"/>
         <property name="setPassiveMode" expression="$func:setPassiveMode"/>
         <property name="setSoTimeout" expression="$func:setSoTimeout"/>

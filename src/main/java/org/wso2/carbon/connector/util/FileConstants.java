@@ -24,6 +24,7 @@ public final class FileConstants {
     public static final String NEW_FILE_LOCATION = "destination";
     public static final String CONTENT = "inputContent";
     public static final String FILE_NAME = "fileName";
+    public static final String YES = "yes";
     public static final String DEFAULT_FILE_NAME = "output.txt";
     public static final String ENCODING = "encoding";
     public static final String NAMESPACE = "ns";
@@ -71,6 +72,7 @@ public final class FileConstants {
     public static final String LAST_MODIFIED_TIME_END_TAG = "</lastModifiedTime></result>";
     public static final String LINE_NUMBER = "lineNumber";
     public static final String CHUNK_SIZE = "chunkSize";
+    public static final String XPATH_EXPRESSION = "xpathExpression";
     public static final String FILE_SIZE_START_TAG = "<result><fileSize>";
     public static final String FILE_SIZE_END_TAG = "</fileSize></result>";
     public static final String POSITION = "position";
