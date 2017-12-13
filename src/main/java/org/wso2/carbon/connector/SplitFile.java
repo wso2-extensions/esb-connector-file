@@ -41,7 +41,10 @@ import org.wso2.carbon.connector.util.FileConnectorUtils;
 import org.wso2.carbon.connector.util.FileConstants;
 import org.wso2.carbon.connector.util.ResultPayloadCreate;
 import org.xml.sax.SAXException;
+import org.apache.xerces.impl.Constants;
+import org.apache.xerces.util.SecurityManager;
 
+import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -58,6 +61,7 @@ import java.io.*;
 public class SplitFile extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(SplitFile.class);
     private StandardFileSystemManager manager = null;
+    private static final int ENTITY_EXPANSION_LIMIT = 0;
 
     public void connect(MessageContext messageContext) {
         String fileLocation = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
@@ -270,7 +274,7 @@ public class SplitFile extends AbstractConnector implements Connector {
     private void splitByXPathExpression(FileObject sourceFileObj, String destination, String xpathExpression,
                                         FileSystemOptions options, MessageContext messageContext) {
 
-        DocumentBuilderFactory documentFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilderFactory documentFactory = getSecuredDocumentBuilder();
         DocumentBuilder documentBuilder = null;
         Document sourceXmlDocument = null;
         try {
@@ -353,6 +357,36 @@ public class SplitFile extends AbstractConnector implements Connector {
     }
 
     /**
+     * Get document builder factory instance.
+     *
+     * @return documentBuilderFactory
+     */
+    private DocumentBuilderFactory getSecuredDocumentBuilder() {
+        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+        documentBuilderFactory.setNamespaceAware(true);
+        documentBuilderFactory.setXIncludeAware(false);
+        documentBuilderFactory.setExpandEntityReferences(false);
+        try {
+            documentBuilderFactory.setFeature(Constants.SAX_FEATURE_PREFIX +
+                    Constants.EXTERNAL_GENERAL_ENTITIES_FEATURE, false);
+            documentBuilderFactory.setFeature(Constants.SAX_FEATURE_PREFIX +
+                    Constants.EXTERNAL_PARAMETER_ENTITIES_FEATURE, false);
+            documentBuilderFactory.setFeature(Constants.XERCES_FEATURE_PREFIX +
+                    Constants.LOAD_EXTERNAL_DTD_FEATURE, false);
+            documentBuilderFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        } catch (ParserConfigurationException e) {
+            log.error("Failed to load XML Processor Feature " + Constants.EXTERNAL_GENERAL_ENTITIES_FEATURE + " or " +
+                    Constants.EXTERNAL_PARAMETER_ENTITIES_FEATURE + " or " + Constants.LOAD_EXTERNAL_DTD_FEATURE);
+        }
+
+        SecurityManager securityManager = new SecurityManager();
+        securityManager.setEntityExpansionLimit(ENTITY_EXPANSION_LIMIT);
+        documentBuilderFactory.setAttribute(Constants.XERCES_PROPERTY_PREFIX +
+                Constants.SECURITY_MANAGER_PROPERTY, securityManager);
+        return documentBuilderFactory;
+    }
+
+    /**
      * Generate the output payload
      *
      * @param messageContext The message context that is processed by a handler in the handle method
@@ -369,4 +403,5 @@ public class SplitFile extends AbstractConnector implements Connector {
             handleException(e.getMessage(), e, messageContext);
         }
     }
+
 }
