@@ -18,4 +18,4 @@ STEPS:
 2. Copy the wso2ei-6.1.1.zip in to location "{Connector_Home}/repository/".
 
 3. Navigate to "{Connector_Home}/" and run the following command.
-      $ mvn clean install
+      $ mvn clean install -Dskip-tests=false
