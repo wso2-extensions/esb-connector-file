@@ -50,6 +50,7 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
         esbRequestHeadersMap.put("Accept", "application/json");
         connectorProperties.put("source", getFilePath("in/sampleText.txt"));
         connectorProperties.put("splitFile", getFilePath("in/splitFile.csv"));
+        connectorProperties.put("splitFileXml", getFilePath("in/products.xml"));
         connectorProperties.put("writeTo", getFilePath("out/merge/"));
         connectorProperties.put("address", getFilePath("in/sendFile.txt"));
         connectorProperties.put("archiveFileLocation", getFilePath("out/sampleText.zip"));
@@ -303,7 +304,7 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
     @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test",
             dependsOnMethods = {"testCreateFile"})
     public void testSplitFileWithChunkSize() throws Exception {
-        esbRequestHeadersMap.put("Action", "urn:read");
+        esbRequestHeadersMap.put("Action", "urn:splitFile");
         RestResponse<JSONObject> esbRestResponse =
                 sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
                         "SplitFileWithChunkSize.json");
@@ -316,10 +317,22 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
     @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test",
             dependsOnMethods = {"testCreateFile"})
     public void testSplitFileWithLineNumbers() throws Exception {
-        esbRequestHeadersMap.put("Action", "urn:read");
+        esbRequestHeadersMap.put("Action", "urn:splitFile");
         RestResponse<JSONObject> esbRestResponse =
                 sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
                         "SplitFileWithLineNumbers.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+    }
+
+    /**
+     * Positive test case for split file method based on xpath expression.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector splitFile integration test")
+    public void testSplitFileWithXPathExpression() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:splitFile");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "SplitFileWithXPathExpression.json");
         Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
     }
 
@@ -329,7 +342,7 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
     @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test with " +
             "Negative parameter", dependsOnMethods = {"testCreateFile"})
     public void testSplitFileWithNegativeCase() throws Exception {
-        esbRequestHeadersMap.put("Action", "urn:read");
+        esbRequestHeadersMap.put("Action", "urn:splitFile");
         RestResponse<JSONObject> esbRestResponse =
                 sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
                         "SplitFileNegative.json");

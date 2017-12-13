@@ -133,7 +133,6 @@ public class FileCopy extends AbstractConnector implements Connector {
                             destFile = manager.resolveFile(destination + File.separator +
                                     souFile.getName().getBaseName(), opts);
                             destFile.createFolder();
-                            destFile.copyFrom(souFile, Selectors.SELECT_ALL);
                         }
                         destFile.copyFrom(souFile, Selectors.SELECT_ALL);
                         resultStatus = true;
