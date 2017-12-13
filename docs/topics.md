@@ -21,7 +21,7 @@ For a sample proxy service that illustrates how to work with the file connector,
 | [read](#reading-content-from-a-file)      | Reads content from a file. |
 | [search](#searching-for-a-file)      | Finds a file based on a file pattern and directory pattern. |
 | [unzip](#decompressing-a-file)      | Decompresses a zip file. |
-| [ftpOverProxy](#-onnect-to-a-FTP-server-through-a-proxy)      | Connects to a FTP server through a proxy. |
+| [ftpOverProxy](#-onnect-to-a-ftp-server-through-a-proxy)      | Connects to a FTP server through a proxy. |
 | [send](#sending-a-file)      | Sends a file to a specified location. |
 | [getSize](#getting-size-of-a-file)      | Returns the size of the file. |
 | [getLastModifiedTime](#getting-last-modified-time-of-a-file)      | Returns last modified time of a file. |
