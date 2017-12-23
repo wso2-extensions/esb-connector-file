@@ -52,20 +52,17 @@ public class FileCreate extends AbstractConnector implements Connector {
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
 
-        boolean isBinary = false;
-        String setInputBinary = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                FileConstants.SET_INPUT_BINARY);
-        if (!StringUtils.isEmpty(setInputBinary)) {
-            setInputBinary = setInputBinary.trim().toLowerCase();
-            if (setInputBinary.equals("1") || setInputBinary.equals("on") || setInputBinary.equals("true")) {
-                isBinary = true;
-            }
+        boolean isBinaryContent = false;
+        String binaryContent = ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.IS_BINARY_CONTENT).toString();
+        if (binaryContent != null) {
+            isBinaryContent = Boolean.parseBoolean(binaryContent);
         }
 
         String content = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.CONTENT);
         String encoding = null;
-        if (!isBinary) {
+        if (!isBinaryContent) {
             encoding = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                     FileConstants.ENCODING);
         }
