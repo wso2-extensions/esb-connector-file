@@ -35,6 +35,8 @@ import org.wso2.carbon.connector.util.ResultPayloadCreate;
 public class FileRead extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileRead.class);
 
+    private static final String READING_FILE_NAME = "readingFileName";
+
     public void connect(MessageContext messageContext) {
         String fileLocation = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
@@ -47,6 +49,7 @@ public class FileRead extends AbstractConnector implements Connector {
         StandardFileSystemManager manager = null;
         try {
             manager = FileConnectorUtils.getManager();
+            boolean fileWithGivenPatternExists = true;
             FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, fileLocation, manager);
             fileObj = manager.resolveFile(fileLocation, fso);
             if (fileObj.exists()) {
@@ -65,9 +68,9 @@ public class FileRead extends AbstractConnector implements Connector {
                             }
                         }
                         if (!bFound) {
-                            log.warn("File does not exists for the mentioned pattern.");
-                            handleException("File does not exists for the mentioned pattern.",
-                                    messageContext);
+                            fileWithGivenPatternExists = false;
+                            log.warn("File does not exists in location : " + fileLocation + " ,with the mentioned "
+                                             + "pattern of : " + filePattern);
                         }
                     } else {
                         fileObj = children[0];
@@ -81,8 +84,12 @@ public class FileRead extends AbstractConnector implements Connector {
                 handleException("File/Folder does not exists", messageContext);
             }
             // Set the property for file name.
-            messageContext.setProperty("readingFileName", fileObj.getName().getBaseName());
-            ResultPayloadCreate.buildFile(fileObj, messageContext, contentType, streaming);
+            if (fileWithGivenPatternExists) {
+                messageContext.setProperty(READING_FILE_NAME, fileObj.getName().getBaseName());
+                ResultPayloadCreate.buildFile(fileObj, messageContext, contentType, streaming);
+            } else {
+                messageContext.setProperty(READING_FILE_NAME, null);
+            }
             if (log.isDebugEnabled()) {
                 log.debug("File read completed." + fileLocation);
             }
