@@ -1,5 +1,5 @@
 {
-  "source": "%s(source)",
+  "source": "%s(copyFrom)",
   "filePattern": "%s(filePattern)",
   "recursiveSearch": "%s(recursiveSearch)",
   "setTimeout": "%s(setTimeout)",

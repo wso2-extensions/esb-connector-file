@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.connector.integrationTest.FileConnector;
 
+import org.apache.commons.lang.StringUtils;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -25,6 +26,7 @@ import org.testng.annotations.Test;
 import org.wso2.connector.integration.test.base.ConnectorIntegrationTestBase;
 import org.wso2.connector.integration.test.base.RestResponse;
 
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -40,10 +42,37 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
      */
     @BeforeClass(alwaysRun = true)
     public void setEnvironment() throws Exception {
-        init("fileconnector-connector-2.0.9-SNAPSHOT");
+        String connectorName = System.getProperty("connector_name") + "-connector-" +
+                System.getProperty("connector_version") + ".zip";
+        init(connectorName);
         esbRequestHeadersMap.put("Accept-Charset", "UTF-8");
         esbRequestHeadersMap.put("Content-Type", "application/json");
         esbRequestHeadersMap.put("Accept", "application/json");
+        connectorProperties.put("source", getFilePath("in/sampleText.txt"));
+        connectorProperties.put("splitFile", getFilePath("in/splitFile.csv"));
+        connectorProperties.put("splitFileXml", getFilePath("in/products.xml"));
+        connectorProperties.put("writeTo", getFilePath("out/merge/"));
+        connectorProperties.put("address", getFilePath("in/sendFile.txt"));
+        connectorProperties.put("archiveFileLocation", getFilePath("out/sampleText.zip"));
+        connectorProperties.put("copyFrom", getFilePath("in"));
+        connectorProperties.put("copyTo", getFilePath("out"));
+        connectorProperties.put("appendFile", getFilePath("in/appendFile.txt"));
+        connectorProperties.put("destination", getFilePath("out"));
+        connectorProperties.put("moveFrom", getFilePath("in/moveFile.txt"));
+        connectorProperties.put("moveTo", getFilePath("out/moveFile.txt"));
+        connectorProperties.put("nonExistingSource", getFilePath("out/nonExistingFile.txt"));
+        connectorProperties.put("nonExistingDestination", getFilePath("out/nonExistingFile.txt"));
+        connectorProperties.put("archiveDestination", getFilePath("out/test" +
+                ".zip"));
+    }
+
+    public static String getFilePath(String fileName) {
+        if (StringUtils.isNotBlank(fileName)) {
+            return Paths
+                    .get(System.getProperty("framework.resource.location"), "sampleFiles", fileName)
+                    .toString();
+        }
+        return null;
     }
 
     /**
@@ -86,24 +115,10 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
     }
 
     /**
-     * Negative test case for append file method with mandatory parameters.
-     */
-    @Test(groups = {"wso2.esb"}, description = "FileConnector append file integration test with "
-            + "Negative Parameters")
-    public void testAppendFileWithNegativeCase() throws Exception {
-        esbRequestHeadersMap.put("Action", "urn:append");
-        RestResponse<JSONObject> esbRestResponse =
-                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
-                        "FileAppendMandatoryNegative.json");
-        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
-        Assert.assertEquals(true, esbRestResponse.getBody().toString().contains("true"));
-    }
-
-    /**
      * Positive test case for delete file method with mandatory parameters.
      */
     @Test(groups = {"wso2.esb"}, description = "FileConnector delete file integration test",
-            dependsOnMethods = {"testisFileExistFile"})
+            dependsOnMethods = {"testisFileExistFile", "testReadFile"})
     public void testDeleteFile() throws Exception {
         esbRequestHeadersMap.put("Action", "urn:delete");
         RestResponse<JSONObject> esbRestResponse =
@@ -154,9 +169,114 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
     }
 
     /**
+     * Positive test case for read specific lines of a file method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read specific lines of a file integration test",
+                    dependsOnMethods = {"testCreateFile"})
+    public void testReadSpecifiedLines() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:readSpecifiedLines");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "FileReadBetweenLinesMandatory.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+    }
+
+    /**
+     * Negative test case for read specific lines of a file method.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read specific lines of a file integration test with " +
+            "Negative parameter", dependsOnMethods = {"testCreateFile"})
+    public void testReadSpecifiedLinesWithNegativeCase() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:readSpecifiedLines");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "FileReadBetweenLinesNegative.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+    }
+
+    /**
+     * Positive test case for read a specific line of a file method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read a specific line of a file integration test",
+            dependsOnMethods = {"testCreateFile"})
+    public void testReadALine() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:readALine");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "FileReadALineMandatory.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+    }
+
+    /**
+     * Negative test case for read a specific line of a file method.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read a specific line of a file integration test with " +
+            "Negative parameter", dependsOnMethods = {"testCreateFile"})
+    public void testReadALineWithNegativeCase() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:readALine");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "FileReadALineNegative.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+    }
+
+    /**
+     * Positive test case for get size of a file method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test",
+            dependsOnMethods = {"testCreateFile"})
+    public void testGetSizeMandatory() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:getSize");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "getFileSizeMandatory.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+    }
+
+    /**
+     * Negative test case for get size  of a file method.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test with " +
+            "Negative parameter", dependsOnMethods = {"testCreateFile"})
+    public void testGetSizeWithNegativeCase() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:getSize");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "getFileSizeNegative.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+    }
+
+    /**
+     * Positive test case for get last modified of a file method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test",
+            dependsOnMethods = {"testCreateFile"})
+    public void testGetLastModifiedTimeMandatory() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:getLastModifiedTime");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "getLastModifiedTimeMandatory.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+    }
+
+    /**
+     * Negative test case for get last modified time  of a file method.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test with " +
+            "Negative parameter", dependsOnMethods = {"testCreateFile"})
+    public void testGetLastModifiedTimeWithNegativeCase() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:getLastModifiedTime");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "getLastModifiedTimeNegative.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+    }
+
+    /**
      * Positive test case for read file method with mandatory parameters.
      */
-    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test")
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test",
+            dependsOnMethods = {"testCreateFile"})
     public void testReadFile() throws Exception {
         esbRequestHeadersMap.put("Action", "urn:read");
         RestResponse<JSONObject> esbRestResponse =
@@ -169,12 +289,63 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
      * Negative test case for read file method with mandatory parameters.
      */
     @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test with " +
-            "Negative parameter")
+            "Negative parameter", dependsOnMethods = {"testCreateFile"})
     public void testReadFileWithNegativeCase() throws Exception {
         esbRequestHeadersMap.put("Action", "urn:read");
         RestResponse<JSONObject> esbRestResponse =
                 sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
                         "FileReadMandatoryNegative.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+    }
+
+    /**
+     * Positive test case for split file method based on chunk size.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test",
+            dependsOnMethods = {"testCreateFile"})
+    public void testSplitFileWithChunkSize() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:splitFile");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "SplitFileWithChunkSize.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+    }
+
+    /**
+     * Positive test case for split file method based on number of lines.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test",
+            dependsOnMethods = {"testCreateFile"})
+    public void testSplitFileWithLineNumbers() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:splitFile");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "SplitFileWithLineNumbers.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+    }
+
+    /**
+     * Positive test case for split file method based on xpath expression.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector splitFile integration test")
+    public void testSplitFileWithXPathExpression() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:splitFile");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "SplitFileWithXPathExpression.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+    }
+
+    /**
+     * Negative test case for read file method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector read file integration test with " +
+            "Negative parameter", dependsOnMethods = {"testCreateFile"})
+    public void testSplitFileWithNegativeCase() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:splitFile");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "SplitFileNegative.json");
         Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
     }
 
@@ -201,13 +372,14 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
         RestResponse<JSONObject> esbRestResponse =
                 sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
                         "FileArchiveMandatoryNegative.json");
-        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+        Assert.assertEquals(true, esbRestResponse.getBody().toString().contains("false"));
     }
 
     /**
      * Positive test case for unzip method with mandatory parameters.
      */
-    @Test(groups = {"wso2.esb"}, description = "FileConnector unZip file integration test")
+    @Test(groups = {"wso2.esb"}, description = "FileConnector unZip file integration test",
+            dependsOnMethods ={"testArchiveFile", "testListFileZip"} )
     public void testUnZipFile() throws Exception {
         esbRequestHeadersMap.put("Action", "urn:unzip");
         RestResponse<JSONObject> esbRestResponse =
@@ -227,7 +399,7 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
         RestResponse<JSONObject> esbRestResponse =
                 sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
                         "FileUnzipMandatoryNegative.json");
-        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+        Assert.assertEquals(true, esbRestResponse.getBody().toString().contains("false"));
     }
 
     /**
@@ -259,7 +431,8 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
     /**
      * Positive test case for listFileZip method with mandatory parameters.
      */
-    @Test(groups = {"wso2.esb"}, description = "FileConnector listFileZip file integration test")
+    @Test(groups = {"wso2.esb"}, description = "FileConnector listFileZip file integration test",
+            dependsOnMethods ={"testArchiveFile"})
     public void testListFileZip() throws Exception {
         esbRequestHeadersMap.put("Action", "urn:listFileZip");
         RestResponse<JSONObject> esbRestResponse = sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
@@ -291,6 +464,9 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
                         "FileMoveMandatory.json");
         Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
         Assert.assertEquals(true, esbRestResponse.getBody().toString().contains("true"));
+        esbRequestHeadersMap.put("Action", "urn:move");
+        sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "FileMoveBack.json");
     }
 
     /**
@@ -331,31 +507,32 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
         Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
     }
 
-    /**
-     * Positive test case for ftp over proxy method with mandatory parameters.
-     */
-    @Test(groups = {"wso2.esb"}, description = "FileConnector ftpOverProxy file integration test")
-    public void testFtpOverProxy() throws Exception {
-        esbRequestHeadersMap.put("Action", "urn:ftpOverProxy");
-        RestResponse<JSONObject> esbRestResponse =
-                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
-                        "FileFtpOverProxyMandatory.json");
-        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
-        Assert.assertEquals(true, esbRestResponse.getBody().toString().contains("true"));
-    }
-
-    /**
-     * Negative test case for ftp over proxy method with mandatory parameters.
-     */
-    @Test(groups = {"wso2.esb"}, description = "FileConnector ftpOverProxy file integration test")
-    public void testFtpOverProxyWithNegativeCase() throws Exception {
-        esbRequestHeadersMap.put("Action", "urn:ftpOverProxy");
-        RestResponse<JSONObject> esbRestResponse =
-                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
-                        "FileFtpOverProxyMandatoryNegative.json");
-        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
-    }
-
+//  Commented this test case as this requires the ftp server.
+//    /**
+//     * Positive test case for ftp over proxy method with mandatory parameters.
+//     */
+//    @Test(groups = {"wso2.esb"}, description = "FileConnector ftpOverProxy file integration test")
+//    public void testFtpOverProxy() throws Exception {
+//        esbRequestHeadersMap.put("Action", "urn:ftpOverProxy");
+//        RestResponse<JSONObject> esbRestResponse =
+//                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+//                        "FileFtpOverProxyMandatory.json");
+//        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+//        Assert.assertEquals(true, esbRestResponse.getBody().toString().contains("true"));
+//    }
+//
+//    /**
+//     * Negative test case for ftp over proxy method with mandatory parameters.
+//     */
+//    @Test(groups = {"wso2.esb"}, description = "FileConnector ftpOverProxy file integration test")
+//    public void testFtpOverProxyWithNegativeCase() throws Exception {
+//        esbRequestHeadersMap.put("Action", "urn:ftpOverProxy");
+//        RestResponse<JSONObject> esbRestResponse =
+//                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+//                        "FileFtpOverProxyMandatoryNegative.json");
+//        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+//    }
+//
     /**
      * Positive test case for send method with mandatory parameters.
      */

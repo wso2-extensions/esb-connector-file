@@ -24,6 +24,7 @@ public final class FileConstants {
     public static final String NEW_FILE_LOCATION = "destination";
     public static final String CONTENT = "inputContent";
     public static final String FILE_NAME = "fileName";
+    public static final String YES = "yes";
     public static final String DEFAULT_FILE_NAME = "output.txt";
     public static final String IS_BINARY_CONTENT = "isBinaryContent";
     public static final String ENCODING = "encoding";
@@ -65,4 +66,3 @@ public final class FileConstants {
     public static final String DEFAULT_RESPONSE_FILE = "/response.xml";
     public static final String INCLUDE_PARENT_DIRECTORY = "includeParentDirectory";
     public static final String DEFAULT_INCLUDE_PARENT_DIRECTORY = "false";
-}

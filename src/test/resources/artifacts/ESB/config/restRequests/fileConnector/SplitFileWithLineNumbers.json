@@ -1,7 +1,7 @@
 {
-  "destination": "",
-  "inputContent": "%s(inputContent)",
-  "encoding": "%s(encoding)",
+  "source": "%s(splitFile)",
+  "destination": "%s(writeTo)",
+  "numberOfLines": "%s(numberOfLines)",
   "setTimeout": "%s(setTimeout)",
   "setPassiveMode": "%s(setPassiveMode)",
   "setUserDirIsRoot": "%s(setUserDirIsRoot)",

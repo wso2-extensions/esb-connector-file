@@ -55,6 +55,13 @@
             <property name="localActive" expression="json-eval($.localActive)"/>
             <property name="address" expression="json-eval($.address)"/>
             <property name="append" expression="json-eval($.append)"/>
+            <property name="lineNumber" expression="json-eval($.lineNumber)"/>
+            <property name="chunkSize" expression="json-eval($.chunkSize)"/>
+            <property name="numberOfLines" expression="json-eval($.numberOfLines)"/>
+            <property name="xpathExpression" expression="json-eval($.xpathExpression)"/>
+            <property name="start" expression="json-eval($.start)"/>
+            <property name="end" expression="json-eval($.end)"/>
+            <property name="position" expression="json-eval($.position)"/>
             <switch source="get-property('transport', 'Action')">
                 <case regex="urn:create">
                     <fileconnector.create>
@@ -72,6 +79,7 @@
                     <fileconnector.append>
                         <destination>{$ctx:destination}</destination>
                         <inputContent>{$ctx:inputContent}</inputContent>
+                        <position>{$ctx:position}</position>
                         <encoding>{$ctx:encoding}</encoding>
                         <setTimeout>{$ctx:setTimeout}</setTimeout>
                         <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
@@ -147,6 +155,46 @@
                         <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
                         <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
                     </fileconnector.read>
+                </case>
+                <case regex="urn:readSpecifiedLines">
+                    <fileconnector.readSpecifiedLines>
+                        <source>{$ctx:source}</source>
+                        <contentType>{$ctx:contentType}</contentType>
+                        <start>{$ctx:start}</start>
+                        <end>{$ctx:end}</end>
+                    </fileconnector.readSpecifiedLines>
+                </case>
+                <case regex="urn:getLastModifiedTime">
+                    <fileconnector.getLastModifiedTime>
+                        <source>{$ctx:source}</source>
+                    </fileconnector.getLastModifiedTime>
+                </case>
+                <case regex="urn:getSize">
+                    <fileconnector.getSize>
+                        <source>{$ctx:source}</source>
+                    </fileconnector.getSize>
+                </case>
+                <case regex="urn:readALine">
+                    <fileconnector.readALine>
+                        <source>{$ctx:source}</source>
+                        <lineNumber>{$ctx:lineNumber}</lineNumber>
+                    </fileconnector.readALine>
+                </case>
+                <case regex="urn:splitFile">
+                    <fileconnector.splitFile>
+                        <source>{$ctx:source}</source>
+                        <destination>{$ctx:destination}</destination>
+                        <chunkSize>{$ctx:chunkSize}</chunkSize>
+                        <numberOfLines>{$ctx:numberOfLines}</numberOfLines>
+                        <xpathExpression>{$ctx:xpathExpression}</xpathExpression>
+                    </fileconnector.splitFile>
+                </case>
+                <case regex="urn:mergeFiles">
+                    <fileconnector.mergeFiles>
+                        <source>{$ctx:source}</source>
+                        <destination>{$ctx:destination}</destination>
+                        <filePattern>{$ctx:filePattern}</filePattern>
+                    </fileconnector.mergeFiles>
                 </case>
                 <case regex="urn:unzip">
                     <fileconnector.unzip>

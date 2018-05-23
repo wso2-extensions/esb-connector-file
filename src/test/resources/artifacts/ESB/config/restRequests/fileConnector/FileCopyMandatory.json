@@ -1,6 +1,6 @@
 {
-  "source": "%s(source)",
-  "destination": "%s(destination)",
+  "source": "%s(copyFrom)",
+  "destination": "%s(copyTo)",
   "filePattern": "%s(filePattern)",
   "setTimeout": "%s(setTimeout)",
   "setPassiveMode": "%s(setPassiveMode)",

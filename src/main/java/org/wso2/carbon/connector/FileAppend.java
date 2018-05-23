@@ -17,8 +17,12 @@
 */
 package org.wso2.carbon.connector;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -52,7 +56,9 @@ public class FileAppend extends AbstractConnector implements Connector {
                 FileConstants.CONTENT);
         String encoding = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.ENCODING);
-        boolean resultStatus = appendFile(destination, content, encoding, messageContext);
+        String position = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.POSITION);
+        boolean resultStatus = appendFile(destination, content, position, encoding, messageContext);
         generateResult(messageContext, resultStatus);
     }
 
@@ -69,11 +75,7 @@ public class FileAppend extends AbstractConnector implements Connector {
         try {
             element = resultPayload.performSearchMessages(response);
             resultPayload.preparePayload(messageContext, element);
-        } catch (XMLStreamException e) {
-            handleException(e.getMessage(), e, messageContext);
-        } catch (IOException e) {
-            handleException(e.getMessage(), e, messageContext);
-        } catch (JSONException e) {
+        } catch (XMLStreamException | IOException | JSONException e) {
             handleException(e.getMessage(), e, messageContext);
         }
     }
@@ -85,17 +87,34 @@ public class FileAppend extends AbstractConnector implements Connector {
      * @param messageContext The message context that is generated for processing the file
      * @return true/false
      */
-    private boolean appendFile(String destination, String content,
+    private boolean appendFile(String destination, String content, String position,
                                String encoding, MessageContext messageContext) {
         OutputStream out = null;
         boolean resultStatus = false;
         FileObject fileObj = null;
         StandardFileSystemManager manager = null;
+        BufferedReader reader = null;
         try {
             manager = FileConnectorUtils.getManager();
             fileObj = manager.resolveFile(destination, FileConnectorUtils.init(messageContext));
             if (!fileObj.exists()) {
                 fileObj.createFile();
+            }
+            reader = new BufferedReader(new InputStreamReader(fileObj.getContent().getInputStream()));
+            List<String> lines = reader.lines().collect(Collectors.toList());
+            if (StringUtils.isNotEmpty(position) && Integer.parseInt(position) <= lines.size()
+                    && Integer.parseInt(position) > 0) {
+                lines.add(Integer.parseInt(position) - 1, content);
+                out = fileObj.getContent().getOutputStream();
+                if(StringUtils.isEmpty(encoding)) {
+                    IOUtils.writeLines(lines, null, out, DEFAULT_ENCODING);
+                } else {
+                    IOUtils.writeLines(lines, null, out, encoding);
+                }
+                return true;
+            } else if(StringUtils.isNotEmpty(position)) {
+                log.warn("Position is greater/less than the file size. " +
+                        "Appending the content at the end of the file");
             }
             out = fileObj.getContent().getOutputStream(true);
             if (StringUtils.isEmpty(encoding)) {
@@ -111,6 +130,13 @@ public class FileAppend extends AbstractConnector implements Connector {
         } catch (IOException e) {
             handleException("Error while appending a file.", e, messageContext);
         } finally {
+            if(reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    log.warn("Error while closing the BufferedReader: " + e.getMessage(), e);
+                }
+            }
             try {
                 if (fileObj != null) {
                     //close the file object

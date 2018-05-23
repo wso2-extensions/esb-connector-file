@@ -23,6 +23,7 @@ import org.apache.axiom.om.OMFactory;
 import org.apache.axiom.om.OMNamespace;
 import org.apache.axiom.om.util.AXIOMUtil;
 import org.apache.axiom.soap.SOAPBody;
+import org.apache.axis2.AxisFault;
 import org.apache.axis2.Constants;
 import org.apache.axis2.builder.Builder;
 import org.apache.axis2.builder.BuilderUtil;
@@ -35,6 +36,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemException;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.SynapseException;
 import org.apache.synapse.transport.passthru.util.BinaryRelayBuilder;
@@ -42,9 +44,10 @@ import org.codehaus.jettison.json.JSONException;
 import javax.mail.internet.ContentType;
 import javax.mail.internet.ParseException;
 import javax.xml.stream.XMLStreamException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.Iterator;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @SuppressWarnings("ALL")
 public class ResultPayloadCreate {
@@ -178,6 +181,137 @@ public class ResultPayloadCreate {
             if (dataSource != null) {
                 dataSource.destroy();
             }
+        }
+        return true;
+    }
+
+
+    /**
+     * @param file        File to read
+     * @param msgCtx      Message Context
+     * @param contentType Content type of the file
+     * @param start       Read from this line number
+     * @param end         Read up to this line number
+     * @return return the status
+     */
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public static boolean readSpecificLines(FileObject fileObj, MessageContext msgCtx, String contentType, String from, String to) {
+        try {
+            long startFrom = 0;
+            Stream<String> stream = null;
+            Builder builder;
+            BufferedReader reader;
+
+            if (StringUtils.isEmpty(contentType) || StringUtils.isEmpty(contentType.trim())) {
+                if (fileObj.getName().getExtension().toLowerCase().endsWith("csv")) {
+                    contentType = "application/csv";
+                } else if (fileObj.getName().getExtension().toLowerCase().endsWith("txt")) {
+                    contentType = "text/plain";
+                }
+            } else {
+                // Extract the charset encoding from the configured content type and
+                // set the CHARACTER_SET_ENCODING property as e.g. SOAPBuilder relies on this.
+                String charSetEnc = null;
+                try {
+                    charSetEnc = new ContentType(contentType).getParameter("charset");
+                } catch (ParseException ex) {
+                    log.warn("Invalid encoding type.", ex);
+                }
+                msgCtx.setProperty(Constants.Configuration.CHARACTER_SET_ENCODING, charSetEnc);
+            }
+            org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
+                    Axis2MessageContext) msgCtx).getAxis2MessageContext();
+
+            // Determine the message builder to use
+            if (StringUtils.isEmpty(contentType)) {
+                log.debug("No content type specified. Using RELAY builder.");
+                builder = new BinaryRelayBuilder();
+            } else {
+                int index = contentType.indexOf(';');
+                String type = index > 0 ? contentType.substring(0, index) : contentType;
+                builder = BuilderUtil.getBuilderFromSelector(type, axis2MsgCtx);
+                if (builder == null) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("No message builder found for type '" + type + "'. Falling back "
+                                + "to" + " RELAY builder.");
+                    }
+                    builder = new BinaryRelayBuilder();
+                }
+            }
+
+            //Set startFrom value if start value is given. Otherwise use the default value 1.
+            if (StringUtils.isNotEmpty(from)) {
+                if (Integer.parseInt(from) < 1) {
+                    log.warn("Illegal argument value for \"from\". Start to read from line number 1.");
+                } else {
+                    startFrom = Long.parseLong(from) - 1;
+                }
+            }
+            reader = new BufferedReader(new InputStreamReader(fileObj.getContent().getInputStream()));
+            if (StringUtils.isNotEmpty(to) && Long.parseLong(to) >= startFrom) {
+                stream = reader.lines().skip(startFrom).limit(Long.parseLong(to) - startFrom);
+            } else {
+                stream = reader.lines().skip(startFrom);
+            }
+            OMElement documentElement = null;
+            try (ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(stream.collect(
+                    Collectors.joining(FileConstants.NEW_LINE)).toString().getBytes())) {
+                documentElement = builder.processDocument(byteArrayInputStream, contentType, axis2MsgCtx);
+
+            }
+            msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
+        } catch (AxisFault e) {
+            throw new SynapseException("Error while getting the message builder.", e);
+        } catch (FileSystemException e) {
+            throw new SynapseException("Error while processing the file/folder", e);
+        } catch (IOException e) {
+            throw new SynapseException("Error while processing the file/folder", e);
+        }
+        return true;
+    }
+
+    /**
+     * @param file        File to read
+     * @param msgCtx      Message Context
+     * @param contentType Content type of the file
+     * @param lineNumber  Line number to read
+     * @return return the status
+     */
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public static boolean readALine(FileObject fileObj, MessageContext msgCtx, String lineNumber) {
+        try {
+            long startFrom = 0;
+            Stream<String> stream = null;
+            Builder builder;
+            BufferedReader reader;
+            org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
+                    Axis2MessageContext) msgCtx).getAxis2MessageContext();
+            builder = BuilderUtil.getBuilderFromSelector("text/plain", axis2MsgCtx);
+            if (builder == null) {
+                if (log.isDebugEnabled()) {
+                    log.debug("No message builder found for type '" + "'. Falling back "
+                            + "to" + " RELAY builder.");
+                }
+                builder = new BinaryRelayBuilder();
+            }
+
+            if (StringUtils.isEmpty(lineNumber)) {
+                throw new SynapseException("Line number is not provided to read.");
+            } else {
+                reader = new BufferedReader(new InputStreamReader(fileObj.getContent().getInputStream()));
+                String line = reader.lines().skip(Long.parseLong(lineNumber) - 1).findFirst().get();
+                OMElement documentElement = null;
+                try (ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(line.getBytes())) {
+                    documentElement = builder.processDocument(byteArrayInputStream, "text/plain", axis2MsgCtx);
+                }
+                msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
+            }
+        } catch (AxisFault e) {
+            throw new SynapseException("Error while getting the message builder.", e);
+        } catch (FileSystemException e) {
+            throw new SynapseException("Error while processing the file", e);
+        } catch (IOException e) {
+            throw new SynapseException("Error while processing the file", e);
         }
         return true;
     }
