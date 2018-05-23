@@ -109,7 +109,7 @@ public class FileCopy extends AbstractConnector implements Connector {
                 FileObject[] children = souFile.getChildren();
                 for (FileObject child : children) {
                     if (child.getType() == FileType.FILE) {
-                        copy(child, destination, filePattern, opts);
+                        copy(child, destination, filePattern, opts, messageContext);
                     } else if (child.getType() == FileType.FOLDER) {
                         String newSource = source + File.separator + child.getName().getBaseName();
                         copyFile(newSource, destination, filePattern, messageContext, opts, includeParentDirectory);
@@ -163,7 +163,7 @@ public class FileCopy extends AbstractConnector implements Connector {
      * @param opts        FileSystemOptions
      * @throws IOException
      */
-    private void copy(FileObject source, String destination, String filePattern, FileSystemOptions opts)
+    private void copy(FileObject source, String destination, String filePattern, FileSystemOptions opts, MessageContext messageContext)
             throws IOException {
         StandardFileSystemManager manager = FileConnectorUtils.getManager();
         FileObject souFile = manager.resolveFile(String.valueOf(source), opts);
@@ -176,6 +176,7 @@ public class FileCopy extends AbstractConnector implements Connector {
             }
         } catch (IOException e) {
             log.error("Error occurred while copying a file. " + e.getMessage(), e);
+			handleException("Error occurred while copying a file.", e, messageContext);
         } finally {
             manager.close();
         }
