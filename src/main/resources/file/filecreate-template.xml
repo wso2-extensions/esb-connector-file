@@ -20,7 +20,8 @@
 <template xmlns="http://ws.apache.org/ns/synapse" name="create">
     <parameter name="source" description="The location of the file."/>
     <parameter name="inputContent" description="The content of the file."/>
-    <parameter name="encoding" description="The encoding that is supported."/>
+    <parameter name="isBinaryContent" description="Sets the content as binary. The content will be deserialized from base64."/>
+    <parameter name="encoding" description="The encoding that is supported (for text content)."/>
     <parameter name="setTimeout" description="Sets the timeout value on Jsch(Java Secure Channel) session."/>
     <parameter name="setPassiveMode" description="Sets the passive mode to enter into passive mode."/>
     <parameter name="setSoTimeout" description="Sets the socket timeout for the FTP client."/>
@@ -29,6 +30,7 @@
     <sequence>
         <property name="source" expression="$func:source"/>
         <property name="inputContent" expression="$func:inputContent"/>
+        <property name="isBinaryContent" expression="$func:isBinaryContent"/>
         <property name="encoding" expression="$func:encoding"/>
         <property name="setTimeout" expression="$func:setTimeout"/>
         <property name="setPassiveMode" expression="$func:setPassiveMode"/>
