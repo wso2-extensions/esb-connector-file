@@ -53,8 +53,8 @@ public class FileCreate extends AbstractConnector implements Connector {
                 FileConstants.FILE_LOCATION);
 
         boolean isBinaryContent = false;
-        String binaryContent = ConnectorUtils.lookupTemplateParamater(messageContext,
-                FileConstants.IS_BINARY_CONTENT).toString();
+        String binaryContent = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.IS_BINARY_CONTENT);
         if (binaryContent != null) {
             isBinaryContent = Boolean.parseBoolean(binaryContent);
         }

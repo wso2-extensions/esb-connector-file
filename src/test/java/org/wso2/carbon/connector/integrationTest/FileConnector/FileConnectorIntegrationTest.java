@@ -45,6 +45,7 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
         String connectorName = System.getProperty("connector_name") + "-connector-" +
                 System.getProperty("connector_version") + ".zip";
         init(connectorName);
+        getApiConfigProperties();
         esbRequestHeadersMap.put("Accept-Charset", "UTF-8");
         esbRequestHeadersMap.put("Content-Type", "application/json");
         esbRequestHeadersMap.put("Accept", "application/json");
@@ -62,6 +63,7 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
         connectorProperties.put("moveTo", getFilePath("out/moveFile.txt"));
         connectorProperties.put("nonExistingSource", getFilePath("out/nonExistingFile.txt"));
         connectorProperties.put("nonExistingDestination", getFilePath("out/nonExistingFile.txt"));
+        connectorProperties.put("targetPath", getFilePath("out"));
         connectorProperties.put("archiveDestination", getFilePath("out/test" +
                 ".zip"));
     }
@@ -507,32 +509,31 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
         Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
     }
 
-//  Commented this test case as this requires the ftp server.
-//    /**
-//     * Positive test case for ftp over proxy method with mandatory parameters.
-//     */
-//    @Test(groups = {"wso2.esb"}, description = "FileConnector ftpOverProxy file integration test")
-//    public void testFtpOverProxy() throws Exception {
-//        esbRequestHeadersMap.put("Action", "urn:ftpOverProxy");
-//        RestResponse<JSONObject> esbRestResponse =
-//                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
-//                        "FileFtpOverProxyMandatory.json");
-//        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
-//        Assert.assertEquals(true, esbRestResponse.getBody().toString().contains("true"));
-//    }
-//
-//    /**
-//     * Negative test case for ftp over proxy method with mandatory parameters.
-//     */
-//    @Test(groups = {"wso2.esb"}, description = "FileConnector ftpOverProxy file integration test")
-//    public void testFtpOverProxyWithNegativeCase() throws Exception {
-//        esbRequestHeadersMap.put("Action", "urn:ftpOverProxy");
-//        RestResponse<JSONObject> esbRestResponse =
-//                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
-//                        "FileFtpOverProxyMandatoryNegative.json");
-//        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
-//    }
-//
+    /**
+     * Positive test case for ftp over proxy method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector ftpOverProxy file integration test")
+    public void testFtpOverProxy() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:ftpOverProxy");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "FileFtpOverProxyMandatory.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 200);
+        Assert.assertEquals(true, esbRestResponse.getBody().toString().contains("true"));
+    }
+
+    /**
+     * Negative test case for ftp over proxy method with mandatory parameters.
+     */
+    @Test(groups = {"wso2.esb"}, description = "FileConnector ftpOverProxy file integration test")
+    public void testFtpOverProxyWithNegativeCase() throws Exception {
+        esbRequestHeadersMap.put("Action", "urn:ftpOverProxy");
+        RestResponse<JSONObject> esbRestResponse =
+                sendJsonRestRequest(proxyUrl, "POST", esbRequestHeadersMap,
+                        "FileFtpOverProxyMandatoryNegative.json");
+        Assert.assertEquals(esbRestResponse.getHttpStatusCode(), 202);
+    }
+
     /**
      * Positive test case for send method with mandatory parameters.
      */
