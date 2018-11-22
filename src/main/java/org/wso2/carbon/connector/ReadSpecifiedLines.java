@@ -46,9 +46,9 @@ public class ReadSpecifiedLines extends AbstractConnector implements Connector {
         String contentType = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.CONTENT_TYPE);
         String from = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                FileConstants.FROM);
+                FileConstants.START);
         String to = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                FileConstants.TO);
+                FileConstants.END);
         FileObject fileObj = null;
         StandardFileSystemManager manager = null;
         try {
