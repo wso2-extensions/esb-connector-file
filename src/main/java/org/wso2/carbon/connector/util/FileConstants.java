@@ -68,6 +68,8 @@ public final class FileConstants {
     public static final String DEFAULT_INCLUDE_PARENT_DIRECTORY = "false";
     public static final String FROM = "from";
     public static final String TO = "to";
+    public static final String START = "start";
+    public static final String END = "end";
     public static final String NEW_LINE = "\n";
     public static final String LAST_MODIFIED_TIME_START_TAG = "<result><lastModifiedTime>";
     public static final String LAST_MODIFIED_TIME_END_TAG = "</lastModifiedTime></result>";
