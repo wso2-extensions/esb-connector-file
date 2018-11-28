@@ -66,8 +66,6 @@ public final class FileConstants {
     public static final String DEFAULT_RESPONSE_FILE = "/response.xml";
     public static final String INCLUDE_PARENT_DIRECTORY = "includeParentDirectory";
     public static final String DEFAULT_INCLUDE_PARENT_DIRECTORY = "false";
-    public static final String FROM = "from";
-    public static final String TO = "to";
     public static final String START = "start";
     public static final String END = "end";
     public static final String NEW_LINE = "\n";
