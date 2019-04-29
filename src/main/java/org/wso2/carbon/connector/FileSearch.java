@@ -70,8 +70,8 @@ public class FileSearch extends AbstractConnector implements Connector {
 		} else {
 			try {
 				manager = FileConnectorUtils.getManager();
-				FileSystemOptions opt = FileConnectorUtils.init(messageContext);
-				FileObject remoteFile = manager.resolveFile(source, opt);
+				FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, source, manager);
+				FileObject remoteFile = manager.resolveFile(source, fso);
 				if (remoteFile.exists()) {
 					FileObject[] children = remoteFile.getChildren();
 					OMFactory factory = OMAbstractFactory.getOMFactory();

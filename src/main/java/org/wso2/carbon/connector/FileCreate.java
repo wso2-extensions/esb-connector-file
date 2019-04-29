@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileContent;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
+import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.codehaus.jettison.json.JSONException;
@@ -87,8 +88,8 @@ public class FileCreate extends AbstractConnector implements Connector {
             OutputStream out = null;
             manager = FileConnectorUtils.getManager();
             if (manager != null) {
-                FileObject sourceFile = manager.resolveFile(source
-                        , FileConnectorUtils.init(messageContext));
+                FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, source, manager);
+                FileObject sourceFile = manager.resolveFile(source, fso);
                 try {
                     if (FileConnectorUtils.isFolder(sourceFile)) {
                         sourceFile.createFolder();

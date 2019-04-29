@@ -78,9 +78,9 @@ public class FileDelete extends AbstractConnector implements Connector {
         StandardFileSystemManager manager = null;
         try {
             manager = FileConnectorUtils.getManager();
+            FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, source, manager);
             // Create remote object
-            FileObject remoteFile = manager.resolveFile(source
-                    , FileConnectorUtils.init(messageContext));
+            FileObject remoteFile = manager.resolveFile(source, fso);
             if (remoteFile.exists()) {
                 if (remoteFile.getType() == FileType.FILE) {
                     //delete a file

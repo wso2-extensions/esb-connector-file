@@ -79,11 +79,12 @@ public class FileExist extends AbstractConnector implements Connector {
     private boolean isFileExist(String source, MessageContext messageContext) {
         boolean isFileExist = false;
         StandardFileSystemManager manager = null;
-        FileSystemOptions opt = FileConnectorUtils.init(messageContext);
+
         try {
             manager = FileConnectorUtils.getManager();
+            FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, source, manager);
             // Create remote object
-            FileObject remoteFile = manager.resolveFile(source, opt);
+            FileObject remoteFile = manager.resolveFile(source, fso);
             if (remoteFile.exists()) {
                 isFileExist = true;
             }
