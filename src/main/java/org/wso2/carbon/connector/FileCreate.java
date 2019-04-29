@@ -45,6 +45,7 @@ import java.util.Base64;
 public class FileCreate extends AbstractConnector implements Connector {
     private static final String DEFAULT_ENCODING = FileConstants.DEFAULT_ENCODING;
     private static final Log log = LogFactory.getLog(FileCreate.class);
+    private boolean isBinaryContent;
 
     /**
      * @param messageContext The message context that is processed by a handler in the handle method
@@ -53,7 +54,6 @@ public class FileCreate extends AbstractConnector implements Connector {
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
 
-        boolean isBinaryContent = false;
         String binaryContent = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.IS_BINARY_CONTENT);
         if (binaryContent != null) {
@@ -99,7 +99,7 @@ public class FileCreate extends AbstractConnector implements Connector {
                         } else {
                             FileContent fileContent = sourceFile.getContent();
                             out = fileContent.getOutputStream();
-                            if (encoding == null) {
+                            if (isBinaryContent) {
                                 // Write binary content decoded from a base64 string
                                 byte[] decoded = Base64.getDecoder().decode(content);
                                 out.write(decoded);
