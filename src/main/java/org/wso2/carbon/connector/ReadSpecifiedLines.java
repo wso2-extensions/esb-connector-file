@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
+import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
@@ -53,7 +54,8 @@ public class ReadSpecifiedLines extends AbstractConnector implements Connector {
         StandardFileSystemManager manager = null;
         try {
             manager = FileConnectorUtils.getManager();
-            fileObj = manager.resolveFile(fileLocation, FileConnectorUtils.init(messageContext));
+            FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, fileLocation, manager);
+            fileObj = manager.resolveFile(fileLocation, fso);
             if (!fileObj.exists() || fileObj.getType() != FileType.FILE) {
                 handleException("File does not exists, or source is not a file in the location: " + fileLocation,
                         messageContext);

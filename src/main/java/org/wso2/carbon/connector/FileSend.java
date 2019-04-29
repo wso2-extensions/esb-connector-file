@@ -31,6 +31,7 @@ import org.apache.commons.io.output.CountingOutputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
@@ -123,10 +124,11 @@ public class FileSend extends AbstractConnector implements Connector {
             manager = FileConnectorUtils.getManager();
             org.apache.axis2.context.MessageContext axis2MessageContext = ((Axis2MessageContext) messageContext).
                     getAxis2MessageContext();
-            fileObj = manager.resolveFile(address, FileConnectorUtils.init(messageContext));
+            FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, address, manager);
+            fileObj = manager.resolveFile(address, fso);
             if (fileObj.getType() == FileType.FOLDER) {
                 address = address.concat(FileConstants.DEFAULT_RESPONSE_FILE);
-                fileObj = manager.resolveFile(address, FileConnectorUtils.init(messageContext));
+                fileObj = manager.resolveFile(address, fso);
             }
             // Get the message formatter.
             MessageFormatter messageFormatter = getMessageFormatter(axis2MessageContext);

@@ -60,8 +60,10 @@ public class FileArchives extends AbstractConnector implements Connector {
      * @throws SynapseException
      */
     private boolean fileCompress(MessageContext messageContext, String source, String destination) {
-        StandardFileSystemManager manager;
-        FileSystemOptions opts = FileConnectorUtils.init(messageContext);
+        StandardFileSystemManager manager = FileConnectorUtils.getManager();
+        FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
+        FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+
         String inputContent = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.CONTENT);
         String fileName = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.FILE_NAME);
         if (StringUtils.isEmpty(fileName)) {
@@ -69,14 +71,13 @@ public class FileArchives extends AbstractConnector implements Connector {
         }
         ZipOutputStream outputStream = null;
         InputStream fileIn = null;
-        manager = FileConnectorUtils.getManager();
 
         if (StringUtils.isEmpty(source) && StringUtils.isEmpty(inputContent)) {
             log.error("The File location does not exist or Input content does not provide.");
             return false;
         }
         try {
-            FileObject destObj = manager.resolveFile(destination, opts);
+            FileObject destObj = manager.resolveFile(destination, destinationFso);
             if (StringUtils.isNotEmpty(inputContent)) {
                 outputStream = new ZipOutputStream(destObj.getContent().getOutputStream());
                 ZipEntry zipEntry = new ZipEntry(fileName);
@@ -86,7 +87,7 @@ public class FileArchives extends AbstractConnector implements Connector {
                 outputStream.closeEntry();
                 return true;
             }
-            FileObject fileObj = manager.resolveFile(source, opts);
+            FileObject fileObj = manager.resolveFile(source, sourceFso);
             if (!fileObj.exists()) {
                 log.error("File location does not exit.");
                 return false;

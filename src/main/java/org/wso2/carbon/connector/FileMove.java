@@ -22,6 +22,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
@@ -94,8 +95,9 @@ public class FileMove extends AbstractConnector implements Connector {
         StandardFileSystemManager manager = null;
         try {
             manager = FileConnectorUtils.getManager();
+            FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, source, manager);
             // Create remote object
-            FileObject remoteFile = manager.resolveFile(source, FileConnectorUtils.init(messageContext));
+            FileObject remoteFile = manager.resolveFile(source, fso);
             if (remoteFile.exists()) {
                 if (remoteFile.getType() == FileType.FILE) {
                     fileMove(destination, remoteFile, messageContext, manager);
@@ -130,13 +132,13 @@ public class FileMove extends AbstractConnector implements Connector {
      */
     private void fileMove(String destination, FileObject remoteFile, MessageContext messageContext,
                           StandardFileSystemManager manager) throws IOException {
-        FileObject file = manager.resolveFile(destination, FileConnectorUtils.init(messageContext));
+        FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, destination, manager);
+        FileObject file = manager.resolveFile(destination, fso);
         if (FileConnectorUtils.isFolder(file)) {
             if (!file.exists()) {
                 file.createFolder();
             }
-            file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(),
-                    FileConnectorUtils.init(messageContext));
+            file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(), fso);
         } else if (!file.exists()) {
             file.createFile();
         }
@@ -154,8 +156,11 @@ public class FileMove extends AbstractConnector implements Connector {
      */
     private void folderMove(String source, String destination, String filePattern, boolean includeParentDirectory,
                             MessageContext messageContext, StandardFileSystemManager manager) throws IOException {
-        FileObject remoteFile = manager.resolveFile(source, FileConnectorUtils.init(messageContext));
-        FileObject file = manager.resolveFile(destination, FileConnectorUtils.init(messageContext));
+        FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
+        FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+
+        FileObject remoteFile = manager.resolveFile(source, sourceFso);
+        FileObject file = manager.resolveFile(destination, destinationFso);
         if (StringUtils.isNotEmpty(filePattern)) {
             FileObject[] children = remoteFile.getChildren();
             for (FileObject child : children) {
@@ -168,7 +173,7 @@ public class FileMove extends AbstractConnector implements Connector {
             }
         } else if (includeParentDirectory) {
             file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(),
-                    FileConnectorUtils.init(messageContext));
+                                       destinationFso);
             file.createFolder();
             remoteFile.moveTo(file);
         } else {
@@ -193,12 +198,12 @@ public class FileMove extends AbstractConnector implements Connector {
         FilePattenMatcher patternMatcher = new FilePattenMatcher(filePattern);
         try {
             if (patternMatcher.validate(remoteFile.getName().getBaseName())) {
-                FileObject file = manager.resolveFile(destination, FileConnectorUtils.init(messageContext));
+                FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, destination, manager);
+                FileObject file = manager.resolveFile(destination, fso);
                 if (!file.exists()) {
                     file.createFolder();
                 }
-                file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(),
-                        FileConnectorUtils.init(messageContext));
+                file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(), fso);
                 remoteFile.moveTo(file);
             }
         } catch (IOException e) {

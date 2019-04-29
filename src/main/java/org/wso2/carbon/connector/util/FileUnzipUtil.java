@@ -45,12 +45,15 @@ public class FileUnzipUtil {
         OMNamespace ns = factory.createOMNamespace(FileConstants.FILECON, FileConstants.NAMESPACE);
         OMElement result = factory.createOMElement(FileConstants.RESULT, ns);
         boolean resultStatus = false;
-        FileSystemOptions opts = FileConnectorUtils.init(messageContext);
+
         try {
             manager = FileConnectorUtils.getManager();
+            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
+            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destDirectory, manager);
+
             // Create remote object
-            FileObject remoteFile = manager.resolveFile(source, opts);
-            FileObject remoteDesFile = manager.resolveFile(destDirectory, opts);
+            FileObject remoteFile = manager.resolveFile(source, sourceFso);
+            FileObject remoteDesFile = manager.resolveFile(destDirectory, destinationFso);
             // File destDir = new File(destDirectory);
             if (remoteFile.exists()) {
                 if (!remoteDesFile.exists()) {
@@ -66,14 +69,14 @@ public class FileUnzipUtil {
                         // boolean testResult;
                         String filePath = destDirectory + File.separator + entry.getName();
                         // Create remote object
-                        FileObject remoteFilePath = manager.resolveFile(filePath, opts);
+                        FileObject remoteFilePath = manager.resolveFile(filePath, destinationFso);
                         if (log.isDebugEnabled()) {
                             log.debug("The created path is " + remoteFilePath.toString());
                         }
                         try {
                             if (!entry.isDirectory()) {
                                 // if the entry is a file, extracts it
-                                extractFile(zipIn, filePath, opts);
+                                extractFile(zipIn, filePath, destinationFso);
                                 OMElement messageElement = factory.createOMElement(FileConstants.FILE
                                         , ns);
                                 messageElement.setText(entry.getName() + " | status:" + "true");
