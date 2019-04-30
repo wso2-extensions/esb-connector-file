@@ -175,6 +175,7 @@ The create operation creates a file or folder in a specified location. When crea
     <source>{$ctx:source}</source>
     <inputContent>{$ctx:inputContent}</inputContent>
 	<encoding>{$ctx:encoding}</encoding>
+	<isBinaryContent>{$ctx:isBinaryContent}</isBinaryContent>
     <setTimeout>{$ctx:setTimeout}</setTimeout>
     <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
     <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
@@ -190,6 +191,7 @@ The create operation creates a file or folder in a specified location. When crea
 * For files on an FTP server, the URI format is ftp://[ username[: password]@] hostname[: port][ relative-path]  (e.g., ftp://myusername:mypassword@somehost/pub/downloads/test.txt). For creating a file, the file path should have extension (e.g. , file:///home/user/test/test.txt)
 * inputContent [optional] : The content of the file.
 * encoding [optional] : The encoding that is supported. Possible values are US-ASCII ,UTF-8  and UTF-16 .
+* isBinaryContent [optional] : Set to true if input content should be handled as binary data. Input content is expected to be base64 encoded binary content.
 * setTimeout [optional]: The timeout value on the JSC(Java Secure Channel) session in milliseconds. e.g., 100000.
 * setPassiveMode [optional]: Set to true if you want to enable passive mode.
 * setSoTimeout [optional]: The socket timeout value for the FTP client. e.g., 100000.
