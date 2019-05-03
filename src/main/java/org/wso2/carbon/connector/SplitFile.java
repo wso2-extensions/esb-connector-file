@@ -74,8 +74,8 @@ public class SplitFile extends AbstractConnector implements Connector {
                 FileConstants.NUMBER_OF_LINES);
         String xpathExpression = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.XPATH_EXPRESSION);
-        FileSystemOptions options = FileConnectorUtils.init(messageContext);
-        boolean resultStatus = splitFile(fileLocation, chunkSize, destination, numberOfLines, xpathExpression, options,
+
+        boolean resultStatus = splitFile(fileLocation, chunkSize, destination, numberOfLines, xpathExpression,
                 messageContext);
         generateOutput(messageContext, resultStatus);
     }
@@ -84,26 +84,27 @@ public class SplitFile extends AbstractConnector implements Connector {
      * @param fileLocation   Location of the source file.
      * @param chunkSize      size of the chunks to split the file.
      * @param destination    Location of the destination to write the splitted files.
-     * @param options        Init configuration options.
      * @param messageContext Message context.
      * @return Status true/false.
      */
     private boolean splitFile(String fileLocation, String chunkSize, String destination, String splitLength,
-                              String xpathExpression, FileSystemOptions options, MessageContext messageContext) {
+                              String xpathExpression, MessageContext messageContext) {
         FileObject sourceFileObj = null;
         try {
             manager = FileConnectorUtils.getManager();
-            sourceFileObj = manager.resolveFile(fileLocation, options);
+            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, fileLocation, manager);
+            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+            sourceFileObj = manager.resolveFile(fileLocation, sourceFso);
             if (!sourceFileObj.exists() || sourceFileObj.getType() != FileType.FILE) {
                 handleException("File does not exists, or source is not a file in the location: " + fileLocation,
                         messageContext);
             } else {
                 if (StringUtils.isNotEmpty(splitLength)) {
-                    splitByLines(sourceFileObj, destination, splitLength, options, messageContext);
+                    splitByLines(sourceFileObj, destination, splitLength, destinationFso, messageContext);
                 } else if (StringUtils.isNotEmpty(chunkSize)) {
-                    splitByChunkSize(sourceFileObj, destination, chunkSize, options, messageContext);
+                    splitByChunkSize(sourceFileObj, destination, chunkSize, destinationFso, messageContext);
                 } else if (StringUtils.isNotEmpty(xpathExpression)) {
-                    splitByXPathExpression(sourceFileObj, destination, xpathExpression, options, messageContext);
+                    splitByXPathExpression(sourceFileObj, destination, xpathExpression, destinationFso, messageContext);
                 }
             }
         } catch (IOException e) {

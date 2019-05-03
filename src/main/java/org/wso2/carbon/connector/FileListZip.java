@@ -25,6 +25,7 @@ import org.apache.axiom.om.OMNamespace;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.core.AbstractConnector;
@@ -55,11 +56,11 @@ public class FileListZip extends AbstractConnector implements Connector {
         StandardFileSystemManager manager = null;
         try {
             manager = FileConnectorUtils.getManager();
+            FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, source, manager);
             ResultPayloadCreate resultPayload = new ResultPayloadCreate();
 
             // Create remote object
-            FileObject remoteFile = manager.resolveFile(source
-                    , FileConnectorUtils.init(messageContext));
+            FileObject remoteFile = manager.resolveFile(source, fso);
             if (remoteFile != null && remoteFile.exists()) {
                 // open the zip file
                 InputStream input = remoteFile.getContent().getInputStream();

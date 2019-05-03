@@ -55,8 +55,8 @@ public class FileCopy extends AbstractConnector implements Connector {
         } else {
             includeParentDirectory = Boolean.parseBoolean(includeParentDir);
         }
-        FileSystemOptions opts = FileConnectorUtils.init(messageContext);
-        boolean resultStatus = copyFile(source, destination, filePattern, messageContext, opts, includeParentDirectory);
+
+        boolean resultStatus = copyFile(source, destination, filePattern, messageContext, includeParentDirectory);
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
         generateResults(messageContext, resultStatus, resultPayload);
     }
@@ -94,25 +94,27 @@ public class FileCopy extends AbstractConnector implements Connector {
      * @param destination    new file location
      * @param filePattern    pattern of the file
      * @param messageContext The message context that is generated for processing the file
-     * @param opts           FileSystemOptions
      * @return return a resultStatus
      */
     private boolean copyFile(String source, String destination, String filePattern,
-                             MessageContext messageContext, FileSystemOptions opts, boolean includeParentDirectory) {
+                             MessageContext messageContext, boolean includeParentDirectory) {
         boolean resultStatus = false;
         StandardFileSystemManager manager = null;
         try {
             manager = FileConnectorUtils.getManager();
-            FileObject souFile = manager.resolveFile(source, opts);
-            FileObject destFile = manager.resolveFile(destination, opts);
+            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
+            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+
+            FileObject souFile = manager.resolveFile(source, sourceFso);
+            FileObject destFile = manager.resolveFile(destination, destinationFso);
             if (StringUtils.isNotEmpty(filePattern)) {
                 FileObject[] children = souFile.getChildren();
                 for (FileObject child : children) {
                     if (child.getType() == FileType.FILE) {
-                        copy(child, destination, filePattern, opts, messageContext);
+                        copy(child, destination, filePattern, destinationFso, messageContext);
                     } else if (child.getType() == FileType.FOLDER) {
                         String newSource = source + File.separator + child.getName().getBaseName();
-                        copyFile(newSource, destination, filePattern, messageContext, opts, includeParentDirectory);
+                        copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory);
                     }
                 }
                 resultStatus = true;
@@ -122,7 +124,7 @@ public class FileCopy extends AbstractConnector implements Connector {
                         try {
                             String name = souFile.getName().getBaseName();
                             FileObject outFile = manager.resolveFile(destination + File.separator
-                                    + name, opts);
+                                    + name, destinationFso);
                             outFile.copyFrom(souFile, Selectors.SELECT_ALL);
                             resultStatus = true;
                         } catch (FileSystemException e) {
@@ -131,7 +133,7 @@ public class FileCopy extends AbstractConnector implements Connector {
                     } else if (souFile.getType() == FileType.FOLDER) {
                         if (includeParentDirectory) {
                             destFile = manager.resolveFile(destination + File.separator +
-                                    souFile.getName().getBaseName(), opts);
+                                    souFile.getName().getBaseName(), destinationFso);
                             destFile.createFolder();
                         }
                         destFile.copyFrom(souFile, Selectors.SELECT_ALL);

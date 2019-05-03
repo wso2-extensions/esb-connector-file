@@ -24,10 +24,12 @@ import org.apache.axiom.om.OMNamespace;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
+import org.apache.commons.vfs2.provider.local.LocalFileName;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.Connector;
@@ -70,8 +72,8 @@ public class FileSearch extends AbstractConnector implements Connector {
 		} else {
 			try {
 				manager = FileConnectorUtils.getManager();
-				FileSystemOptions opt = FileConnectorUtils.init(messageContext);
-				FileObject remoteFile = manager.resolveFile(source, opt);
+				FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, source, manager);
+				FileObject remoteFile = manager.resolveFile(source, fso);
 				if (remoteFile.exists()) {
 					FileObject[] children = remoteFile.getChildren();
 					OMFactory factory = OMAbstractFactory.getOMFactory();
@@ -86,7 +88,7 @@ public class FileSearch extends AbstractConnector implements Connector {
 						try {
 							if (child.getType() == FileType.FILE && fpm.validate(child.getName().
 									getBaseName())) {
-								outputResult = child.getName().getPath();
+								outputResult = getFilePath(child.getName());
 								OMElement messageElement = factory.createOMElement(FileConstants.FILE, ns);
 								messageElement.setText(outputResult);
 								result.addChild(messageElement);
@@ -162,7 +164,7 @@ public class FileSearch extends AbstractConnector implements Connector {
 			for (FileObject file : fileList) {
 				if (file.getType() == FileType.FILE) {
 					if (fpm.validate(file.getName().getBaseName().toLowerCase())) {
-						outputResult = file.getName().getPath();
+						outputResult = getFilePath(file.getName());
 						OMElement messageElement = factory.createOMElement(FileConstants.FILE, ns);
 						messageElement.setText(outputResult);
 						result.addChild(messageElement);
@@ -181,6 +183,21 @@ public class FileSearch extends AbstractConnector implements Connector {
 			} catch (IOException e) {
 				log.error("Error while closing Directory: " + e.getMessage(), e);
 			}
+		}
+	}
+
+	/**
+	 * Get the file path of a file including the drive letter of windows files.
+	 *
+	 * @param fileName fileName
+	 * @return file path
+	 */
+	private String getFilePath(FileName fileName) {
+		if (fileName instanceof LocalFileName) {
+			LocalFileName localFileName = (LocalFileName) fileName;
+			return localFileName.getRootFile() + localFileName.getPath();
+		} else {
+			return fileName.getPath();
 		}
 	}
 }

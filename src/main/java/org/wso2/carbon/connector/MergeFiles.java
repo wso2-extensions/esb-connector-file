@@ -54,8 +54,8 @@ public class MergeFiles extends AbstractConnector implements Connector {
                 FileConstants.NEW_FILE_LOCATION);
         String filePattern = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_PATTERN);
-        FileSystemOptions options = FileConnectorUtils.init(messageContext);
-        boolean status = mergeFiles(fileLocation, destination, filePattern, options, messageContext);
+
+        boolean status = mergeFiles(fileLocation, destination, filePattern, messageContext);
         generateOutput(messageContext, status);
     }
 
@@ -67,7 +67,7 @@ public class MergeFiles extends AbstractConnector implements Connector {
      * @param messageContext    Message context.
      * @return Status true/false.
      */
-    private boolean mergeFiles(String source, String destination, String filePattern, FileSystemOptions options,
+    private boolean mergeFiles(String source, String destination, String filePattern,
                                MessageContext messageContext) {
         FileObject sourceFileObj = null;
         FileObject outputFileObj = null;
@@ -78,7 +78,10 @@ public class MergeFiles extends AbstractConnector implements Connector {
         byte[] fileBytes;
         try {
             manager = FileConnectorUtils.getManager();
-            sourceFileObj = manager.resolveFile(source, options);
+            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
+            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+
+            sourceFileObj = manager.resolveFile(source, sourceFso);
             if (!sourceFileObj.exists()) {
                 handleException("File/Folder does not exists in the location: " + source, messageContext);
             } else {
@@ -88,7 +91,7 @@ public class MergeFiles extends AbstractConnector implements Connector {
                         log.warn("Empty folder.");
                         handleException("Empty folder.", messageContext);
                     } else {
-                        outputFileObj = manager.resolveFile(destination, options);
+                        outputFileObj = manager.resolveFile(destination, destinationFso);
                         if (!outputFileObj.exists()) {
                             outputFileObj.createFile();
                         }
