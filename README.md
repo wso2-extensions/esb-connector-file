@@ -30,6 +30,10 @@ The File [Connector](https://docs.wso2.com/display/EI650/Working+with+Connectors
 3. For more information on using connectors and their operations in your WSO2 EI configurations, see [Using a Connector](https://docs.wso2.com/display/EI650/Using+a+Connector).
 4. If you want to work with connectors via WSO2 EI Tooling, see [Working with Connectors via Tooling](https://docs.wso2.com/display/EI650/Working+with+Connectors+via+Tooling).
 
+#### Configuring the connector operations
+
+To get started with File connector and their operations, see [Working with the File Connector](docs/topics.md).
+
 ## Building from the source
 
 Follow the steps given below to build the File connector from the source code.
