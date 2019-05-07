@@ -1,4 +1,4 @@
-## Working with the File Connector Version 2
+## Working with the File Connector
 
 [[Overview]](#overview)  [[Operation details]](#operation-details) [[Sample configuration]](#sample-configuration)
 
