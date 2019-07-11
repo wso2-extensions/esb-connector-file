@@ -113,6 +113,11 @@ public class MergeFiles extends AbstractConnector implements Connector {
                                 bufferedOutputStream.flush();
                                 outputStream.flush();
                             }
+                            try {
+                                child.close();
+                            } catch (IOException e) {
+                                log.warn("Error while closing a file in the source folder: " + e.getMessage(), e);
+                            }
                         }
                     }
                     status = true;
