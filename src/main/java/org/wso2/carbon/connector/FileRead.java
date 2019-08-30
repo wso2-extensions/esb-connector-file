@@ -90,6 +90,14 @@ public class FileRead extends AbstractConnector implements Connector {
             handleException(e.getMessage(), messageContext);
         } finally {
             try {
+                if (fileObj != null) {
+                    fileObj.close();
+                }
+            } catch (Exception e) {
+                // ignore the warning, since we handed over the stream close job to
+                // AutoCloseInputStream..
+            }
+            try {
                 // Close the File system if it is not already closed by the finally block of
                 // processFile method
                 if (fileObj != null && fileObj.getParent() != null
@@ -97,14 +105,6 @@ public class FileRead extends AbstractConnector implements Connector {
                     manager.closeFileSystem(fileObj.getParent().getFileSystem());
                 }
             } catch (FileSystemException warn) {
-                // ignore the warning, since we handed over the stream close job to
-                // AutoCloseInputStream..
-            }
-            try {
-                if (fileObj != null) {
-                    fileObj.close();
-                }
-            } catch (Exception e) {
                 // ignore the warning, since we handed over the stream close job to
                 // AutoCloseInputStream..
             }
