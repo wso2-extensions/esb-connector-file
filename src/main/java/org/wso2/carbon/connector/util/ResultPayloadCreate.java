@@ -112,6 +112,8 @@ public class ResultPayloadCreate {
     @SuppressWarnings("ResultOfMethodCallIgnored")
     public static boolean buildFile(FileObject file, MessageContext msgCtx, String contentType, String streaming) {
         ManagedDataSource dataSource = null;
+        // set the message payload to the message context
+        InputStream in = null;
         try {
             if (StringUtils.isEmpty(contentType) || StringUtils.isEmpty(contentType.trim())) {
                 if (file.getName().getExtension().toLowerCase().endsWith("xml")) {
@@ -152,8 +154,6 @@ public class ResultPayloadCreate {
                     builder = new BinaryRelayBuilder();
                 }
             }
-            // set the message payload to the message context
-            InputStream in;
             if (builder instanceof DataSourceMessageBuilder && "true".equals(streaming)) {
                 in = null;
                 dataSource = ManagedDataSourceFactory.create(new FileObjectDataSource(file, contentType));
@@ -180,6 +180,14 @@ public class ResultPayloadCreate {
         } finally {
             if (dataSource != null) {
                 dataSource.destroy();
+            }
+            try {
+                if (in != null) {
+                    in.close();
+                }
+            } catch (IOException e) {
+                log.error("Error while closing the input stream", e);
+                throw new SynapseException("Error while closing the input stream", e);
             }
         }
         return true;
