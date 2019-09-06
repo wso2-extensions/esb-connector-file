@@ -1,0 +1,38 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+<suite name="ESBTestSuite" parallel="false">
+    <listeners>
+        <listener class-name="org.wso2.carbon.automation.engine.testlisteners.TestExecutionListener"/>
+        <listener class-name="org.wso2.carbon.automation.engine.testlisteners.TestSuiteListener"/>
+        <listener class-name="org.wso2.carbon.automation.engine.testlisteners.TestTransformerListener"/>
+        <listener class-name="org.wso2.carbon.automation.engine.testlisteners.TestManagerListener"/>
+        <listener class-name="org.wso2.carbon.automation.engine.testlisteners.TestReportListener"/>
+    </listeners>
+    <test name="File-Connector-Unit-Test" preserve-order="true" verbose="2">
+        <classes>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.FileAppendUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.FileMoveUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.FileCreateUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.FileArchivesUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.FileListZipUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.FileCopyUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.FileExistUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.FileDeleteUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.FileUnzipUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.FileSearchUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.FileSendUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.GetLastModifiedTimeUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.GetSizeUnitTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.MergeFilesTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.SplitFileTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.ReadALineTest"/>
+            <class name="org.wso2.carbon.connector.unitTest.FileConnector.AutomateCreateSampleFolderStructure"/>
+        </classes>
+    </test>
+    <test name="File-Connector-Integration-Test" preserve-order="true" verbose="2">
+        <packages>
+            <package name="org.wso2.carbon.connector.integrationTest.FileConnector"/>
+        </packages>
+    </test>
+</suite>
+
+

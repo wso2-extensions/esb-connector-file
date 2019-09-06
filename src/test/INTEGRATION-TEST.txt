@@ -1,0 +1,25 @@
+Product: Integration tests for WSO2 ESB File Connector version 2
+
+Pre-requisites:
+
+ - Maven 3.x
+ - Java 1.8
+
+Tested Platform:
+
+ - UBUNTU 14.04, Mac OSx 10.9,Microsoft WINDOWS V-7
+ - WSO2 EI 6.5.0
+ - Java 1.8
+
+STEPS:
+
+1. Download EI 6.5.0 by navigating the following the URL: https://wso2.com/integration/.
+
+2. Copy the wso2ei-6.4.0.zip in to location "{Connector_Home}/repository/".
+
+3. Install And Configure FTP Server using https://www.unixmen.com/install-configure-ftp-server-ubuntu/ and obtain ftpUsername, ftpPassword, ftpServer, ftpPort.
+
+4. Update the "esb-connector-fileconnector.properties" file at "{Connector_Home}/repository/" and "fileconnector.properties" file at "{Connector_Home}/src/test/resources/artifacts/ESB/connector/config/".
+
+5. Navigate to "{Connector_Home}/" and run the following command.
+      $ mvn clean install -Dskip-tests=false

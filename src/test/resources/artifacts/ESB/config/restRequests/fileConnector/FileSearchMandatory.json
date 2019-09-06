@@ -1,0 +1,10 @@
+{
+  "source": "%s(copyFrom)",
+  "filePattern": "%s(filePattern)",
+  "recursiveSearch": "%s(recursiveSearch)",
+  "setTimeout": "%s(setTimeout)",
+  "setPassiveMode": "%s(setPassiveMode)",
+  "setUserDirIsRoot": "%s(setUserDirIsRoot)",
+  "setSoTimeout": "%s(setSoTimeout)",
+  "setStrictHostKeyChecking": "%s(setStrictHostKeyChecking)"
+}

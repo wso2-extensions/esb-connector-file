@@ -1,0 +1,12 @@
+{
+  "ftpUsername":"%s(ftpUsername)",
+  "ftpPassword":"%s(ftpPassword)",
+  "targetPath":"%s(targetPath)",
+  "targetFile":"%s(targetFile)",
+  "proxyHost":"%s(proxyHost)",
+  "proxyPort":"%s(proxyPort)",
+  "proxyUsername":"%s(proxyUsername)",
+  "proxyPassword":"%s(proxyPassword)",
+  "ftpServer":"%s(ftpServer)",
+  "ftpPort":"%s(ftpPort)"
+}
