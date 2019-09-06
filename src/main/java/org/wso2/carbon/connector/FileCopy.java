@@ -113,8 +113,17 @@ public class FileCopy extends AbstractConnector implements Connector {
                     if (child.getType() == FileType.FILE) {
                         copy(child, destination, filePattern, destinationFso, messageContext);
                     } else if (child.getType() == FileType.FOLDER) {
-                        String newSource = source + File.separator + child.getName().getBaseName();
-                        copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory);
+                        String[] urlParts = source.split("\\?");
+                        if (urlParts.length > 1) {
+                            String urlWithoutParam = urlParts[0];
+                            String param = urlParts[1];
+                            String newSource = urlWithoutParam + child.getName().getBaseName() +
+                                    FileConstants.QUERY_PARAM_SEPARATOR + param;
+                            copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory);
+                        } else {
+                            String newSource = source + File.separator + child.getName().getBaseName();
+                            copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory);
+                        }
                     }
                 }
                 resultStatus = true;

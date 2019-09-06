@@ -67,7 +67,16 @@ public class FileUnzipUtil {
                     // iterates over entries in the zip file
                     while (entry != null) {
                         // boolean testResult;
-                        String filePath = destDirectory + File.separator + entry.getName();
+                        String[] urlParts = destDirectory.split("\\?");
+                        String filePath;
+                        if (urlParts.length > 1) {
+                            String urlWithoutParam = urlParts[0];
+                            String param = urlParts[1];
+                            filePath = urlWithoutParam + File.separator + entry.getName() +
+                                    FileConstants.QUERY_PARAM_SEPARATOR + param;
+                        } else {
+                            filePath = destDirectory + File.separator + entry.getName();
+                        }
                         // Create remote object
                         FileObject remoteFilePath = manager.resolveFile(filePath, destinationFso);
                         if (log.isDebugEnabled()) {
