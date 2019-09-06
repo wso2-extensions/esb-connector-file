@@ -78,4 +78,8 @@ public final class FileConstants {
     public static final String FILE_SIZE_END_TAG = "</fileSize></result>";
     public static final String POSITION = "position";
     public static final String NUMBER_OF_LINES = "numberOfLines";
+    
+    // Added for includeSubdirectories property name
+    public static final String INCLUDE_SUBDIRECTORIES = "includeSubdirectories";
+    public static final String DEFAULT_INCLUDE_SUBDIRECTORIES = "false";
 }

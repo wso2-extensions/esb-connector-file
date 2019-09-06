@@ -42,6 +42,8 @@ public class FileCopy extends AbstractConnector implements Connector {
 
     public void connect(MessageContext messageContext) {
         boolean includeParentDirectory;
+        boolean includeSubdirectories;
+        
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
         String destination = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
@@ -50,13 +52,23 @@ public class FileCopy extends AbstractConnector implements Connector {
                 FileConstants.FILE_PATTERN);
         String includeParentDir = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.INCLUDE_PARENT_DIRECTORY);
+        // New Include Subdirs parameter
+        String includeSubDirs = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.INCLUDE_SUBDIRECTORIES);
+        
         if (StringUtils.isEmpty(includeParentDir)) {
             includeParentDirectory = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_PARENT_DIRECTORY);
         } else {
             includeParentDirectory = Boolean.parseBoolean(includeParentDir);
         }
+        
+        if (StringUtils.isEmpty(includeSubDirs)) {
+        	includeSubdirectories = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_SUBDIRECTORIES);
+        } else {
+        	includeSubdirectories = Boolean.parseBoolean(includeSubDirs);
+        }
 
-        boolean resultStatus = copyFile(source, destination, filePattern, messageContext, includeParentDirectory);
+        boolean resultStatus = copyFile(source, destination, filePattern, messageContext, includeParentDirectory, includeSubdirectories);
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
         generateResults(messageContext, resultStatus, resultPayload);
     }
@@ -97,7 +109,7 @@ public class FileCopy extends AbstractConnector implements Connector {
      * @return return a resultStatus
      */
     private boolean copyFile(String source, String destination, String filePattern,
-                             MessageContext messageContext, boolean includeParentDirectory) {
+                             MessageContext messageContext, boolean includeParentDirectory, boolean includeSubirectories) {
         boolean resultStatus = false;
         StandardFileSystemManager manager = null;
         try {
@@ -113,8 +125,11 @@ public class FileCopy extends AbstractConnector implements Connector {
                     if (child.getType() == FileType.FILE) {
                         copy(child, destination, filePattern, destinationFso, messageContext);
                     } else if (child.getType() == FileType.FOLDER) {
-                        String newSource = source + File.separator + child.getName().getBaseName();
-                        copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory);
+                    	if(includeSubirectories)
+                    	{
+                    		String newSource = source + File.separator + child.getName().getBaseName();
+                    		copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory, includeSubirectories);
+                    	}
                     }
                 }
                 resultStatus = true;
@@ -136,7 +151,16 @@ public class FileCopy extends AbstractConnector implements Connector {
                                     souFile.getName().getBaseName(), destinationFso);
                             destFile.createFolder();
                         }
-                        destFile.copyFrom(souFile, Selectors.SELECT_ALL);
+                        // Added check for subdirs
+                        if(includeSubirectories)
+                    	{
+                        	destFile.copyFrom(souFile, Selectors.SELECT_ALL);
+                    	}
+                        else
+                        {
+                        	destFile.copyFrom(souFile, Selectors.SELECT_FILES);
+                        }
+                        
                         resultStatus = true;
                     }
                     if (log.isDebugEnabled()) {
