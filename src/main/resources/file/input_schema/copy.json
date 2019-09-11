@@ -46,6 +46,11 @@
       "id":"http:\/\/wso2jsonschema.org\/includeParentDirectory",
       "type":"string",
       "nullable":"true"
+    },
+    "includeSubdirectories":{
+      "id":"http:\/\/wso2jsonschema.org\/includeSubdirectories",
+      "type":"string",
+      "nullable":"true"
     }
   }
 }
