@@ -111,7 +111,14 @@ public class FileCopy extends AbstractConnector implements Connector {
                 FileObject[] children = souFile.getChildren();
                 for (FileObject child : children) {
                     if (child.getType() == FileType.FILE) {
-                        copy(child, destination, filePattern, destinationFso, messageContext);
+                        if (filePattern != null) {
+                            FilePattenMatcher patternMatcher = new FilePattenMatcher(filePattern);
+                            if (patternMatcher.validate(child.getName().getBaseName())) {
+                                copy(child, destination, filePattern, destinationFso, messageContext);
+                            }
+                        } else {
+                            copy(child, destination, filePattern, destinationFso, messageContext);
+                        }
                     } else if (child.getType() == FileType.FOLDER) {
                         String[] urlParts = source.split("\\?");
                         if (urlParts.length > 1) {
