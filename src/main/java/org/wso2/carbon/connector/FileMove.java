@@ -139,8 +139,6 @@ public class FileMove extends AbstractConnector implements Connector {
                 file.createFolder();
             }
             file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(), fso);
-        } else if (!file.exists()) {
-            file.createFile();
         }
         remoteFile.moveTo(file);
     }
