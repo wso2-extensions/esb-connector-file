@@ -34,7 +34,8 @@ import java.util.zip.ZipInputStream;
 
 public class FileUnzipUtil {
     private static final Log log = LogFactory.getLog(FileUnzipUtil.class);
-    private static StandardFileSystemManager manager = null;
+    private static StandardFileSystemManager sourceManager = null;
+    private static StandardFileSystemManager destinationManager = null;
 
     /**
      * @param source        Location of the zip file
@@ -47,13 +48,14 @@ public class FileUnzipUtil {
         boolean resultStatus = false;
 
         try {
-            manager = FileConnectorUtils.getManager();
-            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
-            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destDirectory, manager);
+            sourceManager = FileConnectorUtils.getManager();
+            destinationManager = FileConnectorUtils.getManager();
+            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, sourceManager);
+            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destDirectory, destinationManager);
 
             // Create remote object
-            FileObject remoteFile = manager.resolveFile(source, sourceFso);
-            FileObject remoteDesFile = manager.resolveFile(destDirectory, destinationFso);
+            FileObject remoteFile = sourceManager.resolveFile(source, sourceFso);
+            FileObject remoteDesFile = destinationManager.resolveFile(destDirectory, destinationFso);
             // File destDir = new File(destDirectory);
             if (remoteFile.exists()) {
                 if (!remoteDesFile.exists()) {
@@ -78,7 +80,7 @@ public class FileUnzipUtil {
                             filePath = destDirectory + File.separator + entry.getName();
                         }
                         // Create remote object
-                        FileObject remoteFilePath = manager.resolveFile(filePath, destinationFso);
+                        FileObject remoteFilePath = destinationManager.resolveFile(filePath, destinationFso);
                         if (log.isDebugEnabled()) {
                             log.debug("The created path is " + remoteFilePath.toString());
                         }
@@ -113,7 +115,8 @@ public class FileUnzipUtil {
         } catch (IOException e) {
             log.error("Unable to process the zip file." + e.getMessage(), e);
         } finally {
-            manager.close();
+            sourceManager.close();
+            destinationManager.close();
         }
         return resultStatus;
     }
@@ -126,7 +129,7 @@ public class FileUnzipUtil {
         BufferedOutputStream bos = null;
         try {
             // Create remote object
-            FileObject remoteFilePath = manager.resolveFile(filePath, opts);
+            FileObject remoteFilePath = destinationManager.resolveFile(filePath, opts);
             //open the zip file
             OutputStream fOut = remoteFilePath.getContent().getOutputStream();
             bos = new BufferedOutputStream(fOut);
