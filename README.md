@@ -5,6 +5,7 @@ The File [Connector](https://docs.wso2.com/display/EI650/Working+with+Connectors
 
 | Connector version | Supported WSO2 ESB/EI version |
 | ------------- |------------- |
+|  [2.0.20](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-2.0.20)        |  EI 6.5.0, EI 6.4.0 |
 |  [2.0.19](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-2.0.19)        |  EI 6.5.0, EI 6.4.0 |
 |  [2.0.18](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-2.0.18)        |  EI 6.5.0, EI 6.4.0 |
 |  [2.0.17](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-2.0.17)        |  EI 6.5.0, EI 6.4.0 |
