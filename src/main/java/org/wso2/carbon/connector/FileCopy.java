@@ -114,10 +114,10 @@ public class FileCopy extends AbstractConnector implements Connector {
                         if (filePattern != null) {
                             FilePattenMatcher patternMatcher = new FilePattenMatcher(filePattern);
                             if (patternMatcher.validate(child.getName().getBaseName())) {
-                                copy(child, destination, filePattern, destinationFso, messageContext);
+                                copy(child, destination, filePattern, sourceFso, destinationFso, messageContext);
                             }
                         } else {
-                            copy(child, destination, filePattern, destinationFso, messageContext);
+                            copy(child, destination, filePattern, sourceFso, destinationFso, messageContext);
                         }
                     } else if (child.getType() == FileType.FOLDER) {
                         String[] urlParts = source.split("\\?");
@@ -178,18 +178,21 @@ public class FileCopy extends AbstractConnector implements Connector {
      * @param source      file location
      * @param destination target file location
      * @param filePattern pattern of the file
-     * @param opts        FileSystemOptions
+     * @param sourceFso   source file's FileSystemOptions
+     * @param destinationFso destination file's FileSystemOptions
+     * @param messageContext the message context that is generated for processing the file
      * @throws IOException
      */
-    private void copy(FileObject source, String destination, String filePattern, FileSystemOptions opts, MessageContext messageContext)
+    private void copy(FileObject source, String destination, String filePattern, FileSystemOptions sourceFso,
+                      FileSystemOptions destinationFso, MessageContext messageContext)
             throws IOException {
         StandardFileSystemManager manager = FileConnectorUtils.getManager();
-        FileObject souFile = manager.resolveFile(String.valueOf(source), opts);
+        FileObject souFile = manager.resolveFile(String.valueOf(source), sourceFso);
         FilePattenMatcher patternMatcher = new FilePattenMatcher(filePattern);
         try {
             if (patternMatcher.validate(source.getName().getBaseName())) {
                 String name = source.getName().getBaseName();
-                FileObject outFile = manager.resolveFile(destination + File.separator + name, opts);
+                FileObject outFile = manager.resolveFile(destination + File.separator + name, destinationFso);
                 outFile.copyFrom(souFile, Selectors.SELECT_ALL);
             }
         } catch (IOException e) {
