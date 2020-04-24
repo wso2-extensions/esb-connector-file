@@ -52,7 +52,7 @@ public class FileCreate extends AbstractConnector implements Connector {
      */
     public void connect(MessageContext messageContext) {
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                FileConstants.FILE_LOCATION);
+                FileConstants.FILE_PATH);
 
         String binaryContent = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.IS_BINARY_CONTENT);
