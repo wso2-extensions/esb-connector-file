@@ -24,6 +24,7 @@
         <inSequence>
             <property name="OUT_ONLY" value="true"/>
             <property name="ClientApiNonBlocking" value="true" scope="axis2" action="remove"/>
+            <property name="filePath" expression="json-eval($.filePath)"/>
             <property name="source" expression="json-eval($.source)"/>
             <property name="destination" expression="json-eval($.destination)"/>
             <property name="inputContent" expression="json-eval($.inputContent)"/>
@@ -65,7 +66,7 @@
             <switch source="get-property('transport', 'Action')">
                 <case regex="urn:create">
                     <fileconnector.create>
-                        <source>{$ctx:source}</source>
+                        <filePath>{$ctx:filePath}</filePath>
                         <inputContent>{$ctx:inputContent}</inputContent>
                         <encoding>{$ctx:encoding}</encoding>
                         <setTimeout>{$ctx:setTimeout}</setTimeout>

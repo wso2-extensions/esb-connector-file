@@ -8,14 +8,14 @@ Pre-requisites:
 Tested Platform:
 
  - UBUNTU 14.04, Mac OSx 10.9,Microsoft WINDOWS V-7
- - WSO2 EI 6.5.0
+ - WSO2 EI 6.6.0
  - Java 1.8
 
 STEPS:
 
-1. Download EI 6.5.0 by navigating the following the URL: https://wso2.com/integration/.
+1. Download EI 6.6.0 by navigating the following the URL: https://wso2.com/integration/.
 
-2. Copy the wso2ei-6.4.0.zip in to location "{Connector_Home}/repository/".
+2. Copy the wso2ei-6.6.0.zip in to location "{Connector_Home}/repository/".
 
 3. Install And Configure FTP Server using https://www.unixmen.com/install-configure-ftp-server-ubuntu/ and obtain ftpUsername, ftpPassword, ftpServer, ftpPort.
 

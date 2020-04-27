@@ -1,5 +1,5 @@
 {
-  "source": "%s(source)",
+  "filePath": "%s(filePath)",
   "inputContent": "%s(inputContent)",
   "encoding": "%s(encoding)",
   "setTimeout": "%s(setTimeout)",
