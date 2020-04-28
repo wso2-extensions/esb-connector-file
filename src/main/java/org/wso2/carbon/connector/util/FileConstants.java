@@ -79,4 +79,10 @@ public final class FileConstants {
     public static final String POSITION = "position";
     public static final String NUMBER_OF_LINES = "numberOfLines";
     public static final String QUERY_PARAM_SEPARATOR = "?";
+
+    //File Connector related error codes
+    public static final String FILE_NOT_FOUND_ERROR_CODE = "90001";
+    public static final String FILE_NOT_FOUND_ERROR_MESSAGE = " ";
+    public static final String FILE_NOT_ACCESSIBLE_ERROR_CODE = "90002";
+    public static final String FILE_NOT_ACCESSIBLE_ERROR_MESSAGE = "FILE_CONNECTOR:FILE_OR_DIR_ACCESS_DENIED";
 }
