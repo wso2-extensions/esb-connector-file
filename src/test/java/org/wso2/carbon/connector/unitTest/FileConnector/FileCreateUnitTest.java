@@ -67,7 +67,7 @@ public class FileCreateUnitTest {
     @Test
     public void testFileCreate() throws Exception {
         TemplateContext templateContext = new TemplateContext("fileConnector", null);
-        templateContext.getMappedValues().put("source", getFilePath("in/test.txt"));
+        templateContext.getMappedValues().put("filePath", getFilePath("in/test.txt"));
         templateContext.getMappedValues().put("inputContent", "It is created");
         templateContext.getMappedValues().put("encoding", "UTF8");
         templateContext.getMappedValues().put("setTimeout", "");
@@ -87,7 +87,7 @@ public class FileCreateUnitTest {
     @Test
     public void testFileCreateError() throws Exception {
         TemplateContext templateContext = new TemplateContext("fileConnector", null);
-        templateContext.getMappedValues().put("source", getFilePath("in/test1.txt"));
+        templateContext.getMappedValues().put("filePath", getFilePath("in/test1.txt"));
         templateContext.getMappedValues().put("inputContent", "It is created");
         templateContext.getMappedValues().put("encoding", "");
         templateContext.getMappedValues().put("setTimeout", "");
@@ -107,7 +107,7 @@ public class FileCreateUnitTest {
     @Test
     public void testFileCreateEmptyContentAndEncoding() throws Exception {
         TemplateContext templateContext = new TemplateContext("fileConnector", null);
-        templateContext.getMappedValues().put("source", getFilePath("in/test.txt"));
+        templateContext.getMappedValues().put("filePath", getFilePath("in/test.txt"));
         templateContext.getMappedValues().put("inputContent", "");
         templateContext.getMappedValues().put("encoding", "");
         templateContext.getMappedValues().put("setTimeout", "");
@@ -127,7 +127,7 @@ public class FileCreateUnitTest {
     @Test
     public void testFolderCreate() throws Exception {
         TemplateContext templateContext = new TemplateContext("fileConnector", null);
-        templateContext.getMappedValues().put("source", getFilePath("in/testFolder"));
+        templateContext.getMappedValues().put("filePath", getFilePath("in/testFolder"));
         templateContext.getMappedValues().put("inputContent", "");
         templateContext.getMappedValues().put("encoding", "");
         templateContext.getMappedValues().put("setTimeout", "");

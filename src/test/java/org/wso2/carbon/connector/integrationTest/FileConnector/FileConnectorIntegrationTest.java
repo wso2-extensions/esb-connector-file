@@ -49,6 +49,7 @@ public class FileConnectorIntegrationTest extends ConnectorIntegrationTestBase {
         esbRequestHeadersMap.put("Accept-Charset", "UTF-8");
         esbRequestHeadersMap.put("Content-Type", "application/json");
         esbRequestHeadersMap.put("Accept", "application/json");
+        connectorProperties.put("filePath", getFilePath("out/createFile.txt"));
         connectorProperties.put("source", getFilePath("in/sampleText.txt"));
         connectorProperties.put("splitFile", getFilePath("in/splitFile.csv"));
         connectorProperties.put("splitFileXml", getFilePath("in/products.xml"));

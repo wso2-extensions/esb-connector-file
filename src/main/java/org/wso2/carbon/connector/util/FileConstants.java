@@ -18,6 +18,7 @@
 package org.wso2.carbon.connector.util;
 
 public final class FileConstants {
+    public static final String FILE_PATH = "filePath";
     public static final String FILE_LOCATION = "source";
     public static final String CONTENT_TYPE = "contentType";
     public static final String FILE_PATTERN = "filePattern";
