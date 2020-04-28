@@ -81,6 +81,8 @@ public class FileRead extends AbstractConnector implements Connector {
                 }
             } else {
                 log.warn("File/Folder does not exists");
+                messageContext.setProperty("ERROR_CODE", FileConstants.FILE_NOT_FOUND_ERROR_CODE);
+                messageContext.setProperty("ERROR_MESSAGE", FileConstants.FILE_NOT_FOUND_ERROR_MESSAGE);
                 handleException("File/Folder does not exists", messageContext);
             }
             // Set the property for file name.

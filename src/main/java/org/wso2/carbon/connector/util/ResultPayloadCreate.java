@@ -176,6 +176,8 @@ public class ResultPayloadCreate {
             msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
         } catch (Exception e) {
             log.error("Error while processing the file/folder", e);
+            msgCtx.setProperty("ERROR_CODE", FileConstants.FILE_NOT_ACCESSIBLE_ERROR_CODE);
+            msgCtx.setProperty("ERROR_MESSAGE", FileConstants.FILE_NOT_ACCESSIBLE_ERROR_MESSAGE);
             throw new SynapseException("Error while processing the file/folder", e);
         } finally {
             if (dataSource != null) {
