@@ -44,6 +44,8 @@ public class FileRead extends AbstractConnector implements Connector {
                 FileConstants.CONTENT_TYPE);
         String filePattern = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_PATTERN);
+        String numberOfLinesToSkip = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.NUMBER_OF_LINES_TO_SKIP);
         String streaming = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.STREAMING);
         FileObject fileObj = null;
         StandardFileSystemManager manager = null;
@@ -85,10 +87,16 @@ public class FileRead extends AbstractConnector implements Connector {
                 messageContext.setProperty("ERROR_MESSAGE", FileConstants.FILE_NOT_FOUND_ERROR_MESSAGE);
                 handleException("File/Folder does not exists", messageContext);
             }
+            int noOfLinesToSkip = 0;
+            try {
+                noOfLinesToSkip = Integer.parseInt(numberOfLinesToSkip);
+            } catch (NumberFormatException e) {
+                log.warn("numberOfLinesToSkip parameter is not an integer", e);
+            }
             // Set the property for file name.
             if (fileWithGivenPatternExists) {
                 messageContext.setProperty(READING_FILE_NAME, fileObj.getName().getBaseName());
-                ResultPayloadCreate.buildFile(fileObj, messageContext, contentType, streaming);
+                ResultPayloadCreate.buildFile(fileObj, messageContext, contentType, streaming, noOfLinesToSkip);
             } else {
                 messageContext.setProperty(READING_FILE_NAME, null);
             }

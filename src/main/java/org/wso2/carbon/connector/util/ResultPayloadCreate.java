@@ -110,7 +110,8 @@ public class ResultPayloadCreate {
      * @throws SynapseException
      */
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    public static boolean buildFile(FileObject file, MessageContext msgCtx, String contentType, String streaming) {
+    public static boolean buildFile(FileObject file, MessageContext msgCtx, String contentType, String streaming,
+                                    int numberofLinesToSkip) {
         ManagedDataSource dataSource = null;
         // set the message payload to the message context
         InputStream in = null;
@@ -159,6 +160,14 @@ public class ResultPayloadCreate {
                 dataSource = ManagedDataSourceFactory.create(new FileObjectDataSource(file, contentType));
             } else {
                 in = new AutoCloseInputStream(file.getContent().getInputStream());
+                // The following code segment will skip the number of lines specified from the input stream
+                char tmpChar = 'a';
+                int count = 0;
+                while (tmpChar != -1 && count < numberofLinesToSkip) {
+                    tmpChar = (char) in.read();
+                    if (tmpChar == '\n')
+                        count++;
+                }
                 dataSource = null;
             }
             // Inject the message to the sequence.

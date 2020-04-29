@@ -80,6 +80,7 @@ public final class FileConstants {
     public static final String POSITION = "position";
     public static final String NUMBER_OF_LINES = "numberOfLines";
     public static final String QUERY_PARAM_SEPARATOR = "?";
+    public static final String NUMBER_OF_LINES_TO_SKIP = "numberOfLinesToSkip";
 
     //File Connector related error codes
     public static final String FILE_NOT_FOUND_ERROR_CODE = "90001";
