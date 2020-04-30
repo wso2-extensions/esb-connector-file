@@ -27,6 +27,8 @@
     <parameter name="setStrictHostKeyChecking" description="Sets the host key checking to use."/>
     <parameter name="setUserDirIsRoot" description="Sets the whether to use the user directory as root."/>
     <parameter name="streaming" description="The streaming mode, This can be either true or false."/>
+    <parameter name="numberOfLinesToSkip" description="The number of lines to skip reading from the file"/>
+
     <sequence>
         <property name="source" expression="$func:source"/>
         <property name="contentType" expression="$func:contentType"/>
@@ -37,6 +39,7 @@
         <property name="setStrictHostKeyChecking" expression="$func:setStrictHostKeyChecking"/>
         <property name="setUserDirIsRoot" expression="$func:setUserDirIsRoot"/>
         <property name="streaming" expression="$func:streaming"/>
+        <property name="numberOfLinesToSkip" expression="$func:numberOfLinesToSkip"/>
         <class name="org.wso2.carbon.connector.FileRead"/>
     </sequence>
 </template>
