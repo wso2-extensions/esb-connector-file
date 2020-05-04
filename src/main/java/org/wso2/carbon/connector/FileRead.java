@@ -17,6 +17,7 @@
 */
 package org.wso2.carbon.connector;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
@@ -88,10 +89,12 @@ public class FileRead extends AbstractConnector implements Connector {
                 handleException("File/Folder does not exists", messageContext);
             }
             int noOfLinesToSkip = 0;
-            try {
-                noOfLinesToSkip = Integer.parseInt(numberOfLinesToSkip);
-            } catch (NumberFormatException e) {
-                log.warn("numberOfLinesToSkip parameter is not an integer", e);
+            if (StringUtils.isNotBlank(numberOfLinesToSkip)) {
+                try {
+                    noOfLinesToSkip = Integer.parseInt(numberOfLinesToSkip);
+                } catch (NumberFormatException e) {
+                    log.debug("numberOfLinesToSkip parameter is not an integer", e);
+                }
             }
             // Set the property for file name.
             if (fileWithGivenPatternExists) {

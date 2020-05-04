@@ -172,7 +172,7 @@ The create operation creates a file or folder in a specified location. When crea
 **create**
 ```xml
 <fileconnector.create>
-    <source>{$ctx:source}</source>
+    <filePath>{$ctx:source}</filePath>
     <inputContent>{$ctx:inputContent}</inputContent>
 	<encoding>{$ctx:encoding}</encoding>
 	<isBinaryContent>{$ctx:isBinaryContent}</isBinaryContent>
@@ -186,7 +186,7 @@ The create operation creates a file or folder in a specified location. When crea
 
 **Properties**
 
-* source: The location of the file. This can be a file on the local physical file system or a file on an FTP server. 
+* filePath: The location of the file. This can be a file on the local physical file system or a file on an FTP server. 
 * For local files, the URI format is [file://] absolute-path, where absolute-path is a valid absolute file name for the local platform. UNC names are supported under Windows (e.g., file:///home/user/test/test.txt  or  file:///C:/Windows ). 
 * For files on an FTP server, the URI format is ftp://[ username[: password]@] hostname[: port][ relative-path]  (e.g., ftp://myusername:mypassword@somehost/pub/downloads/test.txt). For creating a file, the file path should have extension (e.g. , file:///home/user/test/test.txt)
 * inputContent [optional] : The content of the file.
@@ -387,6 +387,7 @@ The read operation reads content from an existing file in a specified location.
     <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
     <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
     <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
+    <numberOfLinesToSkip>{$ctx:numberOfLinesToSkip}</numberOfLinesToSkip>
 </fileconnector.read>
 ```
 
@@ -401,7 +402,8 @@ The read operation reads content from an existing file in a specified location.
 * setPassiveMode [optional]: Sets the passive mode to enter into passive mode. e.g., true.
 * setSoTimeout [optional]: Sets the socket timeout for the FTP client. e.g., 100000.
 * setUserDirIsRoot [optional]: Sets the whether to use the user directory as root. e.g., flase.
-* setStrictHostKeyChecking [optional]: Sets the host key checking to use .e.g., no. 
+* setStrictHostKeyChecking [optional]: Sets the host key checking to use .e.g., no.
+* numberOfLinesToSkip [optional] : Number of lines to skip from the file reading
 
 >**Info :** To enable streaming for large files, you have to add the following message builder and formatter in the <ESB_HOME>/repository/conf/axis2/axis2.xml file:
             Add <messageFormatter contentType="application/file"
@@ -779,7 +781,7 @@ Following is a sample proxy service that illustrates how to connect to the File 
        startOnLoad="true">
    <target>
       <inSequence>
-         <property name="source" expression="json-eval($.source)"/>
+         <property name="filePath" expression="json-eval($.filePath)"/>
          <property name="inputContent" expression="json-eval($.inputContent)"/>
          <property name="encoding" expression="json-eval($.encoding)"/>
          <property name="setTimeout" expression="json-eval($.setTimeout)"/>
@@ -788,8 +790,9 @@ Following is a sample proxy service that illustrates how to connect to the File 
          <property name="setStrictHostKeyChecking"
                    expression="json-eval($.setStrictHostKeyChecking)"/>
          <property name="setUserDirIsRoot" expression="json-eval($.setUserDirIsRoot)"/>
+         <property name="numberOfLinesToSkip" expression="json-eval($.numberOfLinesToSkip)"/>
          <fileconnector.create>
-            <source>{$ctx:source}</source>
+            <filePath>{$ctx:filePath}</filePath>
             <inputContent>{$ctx:inputContent}</inputContent>
             <encoding>{$ctx:encoding}</encoding>
             <setTimeout>{$ctx:setTimeout}</setTimeout>
@@ -797,6 +800,7 @@ Following is a sample proxy service that illustrates how to connect to the File 
             <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
             <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
             <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
+            <numberOfLinesToSkip>{$ctx:numberOfLinesToSkip}</numberOfLinesToSkip>
          </fileconnector.create>
          <respond/>
       </inSequence>
