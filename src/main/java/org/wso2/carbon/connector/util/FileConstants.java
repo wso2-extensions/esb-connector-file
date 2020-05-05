@@ -84,7 +84,7 @@ public final class FileConstants {
 
     //File Connector related error codes
     public static final String FILE_NOT_FOUND_ERROR_CODE = "90001";
-    public static final String FILE_NOT_FOUND_ERROR_MESSAGE = " ";
+    public static final String FILE_NOT_FOUND_ERROR_MESSAGE = "FILE_CONNECTOR:FILE_OR_DIR_NOT_EXIST";
     public static final String FILE_NOT_ACCESSIBLE_ERROR_CODE = "90002";
     public static final String FILE_NOT_ACCESSIBLE_ERROR_MESSAGE = "FILE_CONNECTOR:FILE_OR_DIR_ACCESS_DENIED";
 }
