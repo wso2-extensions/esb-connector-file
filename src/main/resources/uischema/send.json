@@ -1,0 +1,46 @@
+{
+  "connectorName": "file",
+  "operationName": "send",
+  "title": "Send",
+  "help": "<h1>Send</h1><b>The send operation sends a file to a specified location.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "elements": [
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "address",
+                    "displayName": "Address",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The address where the file has to be sent."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "append",
+                    "displayName": "Append",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Set this to true if you want to append the response to the response file."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

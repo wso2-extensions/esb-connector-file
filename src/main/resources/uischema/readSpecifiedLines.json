@@ -1,0 +1,68 @@
+{
+  "connectorName": "file",
+  "operationName": "readSpecifiedLines",
+  "title": "Read Specified Lines",
+  "help": "<h1>Read Specified Lines</h1><b>The readSpecifiedLines operation reads specific lines between given line numbers from a file.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "elements": [
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "source",
+                    "displayName": "Source",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The location of the file."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "contentType",
+                    "displayName": "Content Type",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Content type of the files processed by the connector."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "start",
+                    "displayName": "Start",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Read from this line number."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "end",
+                    "displayName": "End",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Read up to this line number."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
