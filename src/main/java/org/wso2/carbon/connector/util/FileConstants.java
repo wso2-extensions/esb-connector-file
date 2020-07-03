@@ -40,6 +40,8 @@ public final class FileConstants {
     public static final String SET_SO_TIMEOUT = "setSoTimeout";
     public static final String SET_STRICT_HOST_KEY_CHECKING = "setStrictHostKeyChecking";
     public static final String SET_USER_DIRISROOT = "setUserDirIsRoot";
+    public static final String SFTP_IDENTITIES = "sftpIdentities";
+    public static final String SFTP_IDENTITY_PASSPHRASE = "sftpIdentityPassphrase";
     public static final int TIME_OUT = 100000;
     public static final String START_TAG = "<result><success>";
     public static final String END_TAG = "</success></result>";
