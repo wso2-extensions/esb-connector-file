@@ -30,6 +30,7 @@ import org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder;
 import org.apache.commons.vfs2.provider.ftps.FtpsDataChannelProtectionLevel;
 import org.apache.commons.vfs2.provider.ftps.FtpsFileSystemConfigBuilder;
 import org.apache.commons.vfs2.provider.ftps.FtpsMode;
+import org.apache.commons.vfs2.provider.sftp.IdentityInfo;
 import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 import org.apache.commons.vfs2.util.DelegatingFileSystemOptionsBuilder;
 import org.apache.synapse.MessageContext;
@@ -37,6 +38,7 @@ import org.apache.synapse.commons.vfs.VFSConstants;
 import org.apache.synapse.task.SynapseTaskException;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -119,6 +121,10 @@ public class FileConnectorUtils {
                 (messageContext, FileConstants.SET_STRICT_HOST_KEY_CHECKING);
         String setUserDirIsRoot = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.SET_USER_DIRISROOT);
+        String sftpIdentities = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.SFTP_IDENTITIES);
+        String sftpIdentityPassphrase = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.SFTP_IDENTITY_PASSPHRASE);
 
         if (log.isDebugEnabled()) {
             log.debug("File init starts with " + setTimeout + "," + setPassiveMode + "," +
@@ -134,6 +140,24 @@ public class FileConnectorUtils {
             } catch (FileSystemException e) {
                 log.error("Unable to set options for processed file location ", e);
                 opts = new FileSystemOptions();
+            }
+        }
+
+        if (!StringUtils.isEmpty(sftpIdentityPassphrase)) {
+            try {
+                SftpFileSystemConfigBuilder.getInstance().setIdentityPassPhrase(opts, sftpIdentityPassphrase);
+            } catch (FileSystemException e) {
+                throw new SynapseTaskException("Error occurred while configuring identity pass phrase", e);
+            }
+        }
+
+        if (!StringUtils.isEmpty(sftpIdentities)) {
+            File sftpIdentity = new File(sftpIdentities);
+            try {
+                IdentityInfo identityInfo = new IdentityInfo(sftpIdentity);
+                SftpFileSystemConfigBuilder.getInstance().setIdentityInfo(opts, identityInfo);
+            } catch (FileSystemException e) {
+                throw new SynapseTaskException("Error occurred while configuring identity info", e);
             }
         }
 
