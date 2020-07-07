@@ -1,0 +1,178 @@
+{
+  "connectorName": "file",
+  "operationName": "ftpOverProxy",
+  "title": "FTP Over Proxy",
+  "help": "<h1>FTP Over Proxy</h1><b>The ftpOverProxy operation connects to a FTP server through a proxy.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "elements": [
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "proxyHost",
+                    "displayName": "Proxy Host",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The host name of the proxy."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "proxyPort",
+                    "displayName": "Proxy Port",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The port number of the proxy."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "proxyUsername",
+                    "displayName": "Proxy Username",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The user name of the proxy."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "proxyPassword",
+                    "displayName": "Proxy Password",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The password of the proxy."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "ftpUsername",
+                    "displayName": "FTP Username",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The username of the FTP server.."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "ftpPassword",
+                    "displayName": "FTP Password",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The password of the FTP server."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "ftpServer",
+                    "displayName": "FTP Server.",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The FTP server name."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "ftpPort",
+                    "displayName": "FTP Port",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The port number of the FTP server."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "targetPath",
+                    "displayName": "Target Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The target path."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "targetFile",
+                    "displayName": "Target File",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The name of the file."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "keepAliveTimeout",
+                    "displayName": "Keep Alive Timeout",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The time to wait between sending control connection keep alive messages when processing file upload or download."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "controlKeepAliveReplyTimeout",
+                    "displayName": "Control Keep Alive Reply Timeout",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The time to wait for control keep-alive message replies."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "binaryTransfer",
+                    "displayName": "Binary Transfer",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Set the file type to be transferred."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "localActive",
+                    "displayName": "Local Active",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Set the current data connection mode to either ACTIVE_LOCAL_DATA_CONNECTION_MODE or PASSIVE_LOCAL_DATA_CONNECTION_MODE."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
