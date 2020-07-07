@@ -5,7 +5,9 @@ The File [Connector](https://docs.wso2.com/display/EI650/Working+with+Connectors
 
 | Connector version | Supported WSO2 ESB/EI version |
 | ------------- |------------- |
-|  [2.0.22](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-2.0.21)        |  EI 6.5.0, EI 6.4.0, EI 6.6.0, EI 7.0.x |
+|  [3.0.0](https://github.com/wso2-extensions/esb-connector-file/tree/release-3.0.0)        |  EI 6.5.0, EI 6.4.0, EI 6.6.0, EI 7.0.x |
+|  [2.0.23](https://github.com/wso2-extensions/esb-connector-file/tree/release-2.0.23)        |  EI 6.5.0, EI 6.4.0, EI 6.6.0, EI 7.0.x |
+|  [2.0.22](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-2.0.22)        |  EI 6.5.0, EI 6.4.0, EI 6.6.0, EI 7.0.x |
 |  [2.0.21](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-2.0.21)        |  EI 6.5.0, EI 6.4.0 |
    [2.0.20](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-2.0.20)        |  EI 6.5.0, EI 6.4.0 |
 |  [2.0.19](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-2.0.19)        |  EI 6.5.0, EI 6.4.0 |
@@ -31,16 +33,9 @@ The File [Connector](https://docs.wso2.com/display/EI650/Working+with+Connectors
 |  [1.0.0](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-1.0.0)        |    ESB 4.8.1 |
 
 
-#### Download and install the connector
+## Documentation
 
-1. Download the connector from the [WSO2 Store](https://store.wso2.com/store/assets/esbconnector/details/3fcaf309-1a69-4edf-870a-882bb76fdaa1) by clicking the **Download Connector** button.
-2. You can then follow this [documentation](https://docs.wso2.com/display/EI650/Working+with+Connectors+via+the+Management+Console) to add the connector to your WSO2 EI instance and to enable it (via the management console).
-3. For more information on using connectors and their operations in your WSO2 EI configurations, see [Using a Connector](https://docs.wso2.com/display/EI650/Using+a+Connector).
-4. If you want to work with connectors via WSO2 EI Tooling, see [Working with Connectors via Tooling](https://docs.wso2.com/display/EI650/Working+with+Connectors+via+Tooling).
-
-#### Configuring the connector operations
-
-To get started with File connector and their operations, see [Working with the File Connector](docs/topics.md).
+Please refer to documentation [here](https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-overview/).
 
 ## Building from the source
 
