@@ -129,13 +129,15 @@ The copy operation copies files from one location to another. This operation can
 <fileconnector.copy>
     <source>{$ctx:source}</source>
     <destination>{$ctx:destination}</destination>
-	<filePattern>{$ctx:filePattern}</filePattern>
+    <filePattern>{$ctx:filePattern}</filePattern>
     <setTimeout>{$ctx:setTimeout}</setTimeout>
     <setPassiveMode>{$ctx:setPassiveMode}</setPassiveMode>
     <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
     <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
     <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
-	<includeParentDirectory>{$ctx:includeParentDirectory}</includeParentDirectory>
+    <sftpIdentities>{$ctx:sftpIdentities}</sftpIdentities> 
+    <sftpIdentityPassphrase>{$ctx:sftpIdentityPassphrase}</sftpIdentityPassphrase>
+    <includeParentDirectory>{$ctx:includeParentDirectory}</includeParentDirectory>
 </fileconnector.copy>
 ```
 **Properties**
@@ -151,6 +153,8 @@ The copy operation copies files from one location to another. This operation can
 * setUserDirIsRoot [optional]: Set to true if you want to use root as the user directory.
 * setStrictHostKeyChecking [optional]: Sets the host key checking to use .e.g., no. 
 * includeParentDirectory [optional] : Set to true if you want to include the parent directory.
+* sftpIdentities [optional]: Location of the private key.
+* sftpIdentityPassphrase [optional]: Passphrase of the private key.
 
 **Sample request**
 
