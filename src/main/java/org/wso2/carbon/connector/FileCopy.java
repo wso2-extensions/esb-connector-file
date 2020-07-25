@@ -42,6 +42,7 @@ public class FileCopy extends AbstractConnector implements Connector {
 
     public void connect(MessageContext messageContext) {
         boolean includeParentDirectory;
+        boolean includeSubdirectories;
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
         String destination = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
@@ -50,13 +51,20 @@ public class FileCopy extends AbstractConnector implements Connector {
                 FileConstants.FILE_PATTERN);
         String includeParentDir = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.INCLUDE_PARENT_DIRECTORY);
+        String includeSubDirs = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.INCLUDE_SUBDIRECTORIES);
         if (StringUtils.isEmpty(includeParentDir)) {
             includeParentDirectory = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_PARENT_DIRECTORY);
         } else {
             includeParentDirectory = Boolean.parseBoolean(includeParentDir);
         }
+        if (StringUtils.isEmpty(includeSubDirs)) {
+            includeSubdirectories = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_SUBDIRECTORIES);
+        } else {
+            includeSubdirectories = Boolean.parseBoolean(includeSubDirs);
+        }
 
-        boolean resultStatus = copyFile(source, destination, filePattern, messageContext, includeParentDirectory);
+        boolean resultStatus = copyFile(source, destination, filePattern, messageContext, includeParentDirectory, includeSubdirectories);
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
         generateResults(messageContext, resultStatus, resultPayload);
     }
@@ -97,7 +105,7 @@ public class FileCopy extends AbstractConnector implements Connector {
      * @return return a resultStatus
      */
     private boolean copyFile(String source, String destination, String filePattern,
-                             MessageContext messageContext, boolean includeParentDirectory) {
+                             MessageContext messageContext, boolean includeParentDirectory, boolean includeSubdirectories) {
         boolean resultStatus = false;
         StandardFileSystemManager manager = null;
         try {
@@ -119,17 +127,17 @@ public class FileCopy extends AbstractConnector implements Connector {
                         } else {
                             copy(child, destination, filePattern, sourceFso, destinationFso, messageContext);
                         }
-                    } else if (child.getType() == FileType.FOLDER) {
+                    } else if (includeSubdirectories && child.getType() == FileType.FOLDER) {
                         String[] urlParts = source.split("\\?");
                         if (urlParts.length > 1) {
                             String urlWithoutParam = urlParts[0];
                             String param = urlParts[1];
                             String newSource = urlWithoutParam + child.getName().getBaseName() +
                                     FileConstants.QUERY_PARAM_SEPARATOR + param;
-                            copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory);
+                            copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory, includeSubdirectories);
                         } else {
                             String newSource = source + File.separator + child.getName().getBaseName();
-                            copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory);
+                            copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory, includeSubdirectories);
                         }
                     }
                 }

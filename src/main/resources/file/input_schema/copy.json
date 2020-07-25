@@ -56,6 +56,11 @@
       "id":"http:\/\/wso2jsonschema.org\/sftpIdentityPassphrase",
       "type":"string",
       "nullable":"true"
+    },
+    "includeSubdirectories":{
+      "id":"http:\/\/wso2jsonschema.org\/includeSubdirectories",
+      "type":"string",
+      "nullable":"true"
     }
   }
 }
