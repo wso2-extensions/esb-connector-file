@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.FileType;
+import org.apache.commons.vfs2.Selectors;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
 import org.codehaus.jettison.json.JSONException;
@@ -44,6 +45,7 @@ public class FileMove extends AbstractConnector implements Connector {
 
     public void connect(MessageContext messageContext) {
         boolean includeParentDirectory;
+        boolean includeSubDirectories;
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
         String destination = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
@@ -52,12 +54,20 @@ public class FileMove extends AbstractConnector implements Connector {
                 FileConstants.FILE_PATTERN);
         String includeParentDir = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.INCLUDE_PARENT_DIRECTORY);
+        String includeSubDirs = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.INCLUDE_SUBDIRECTORIES);
         if (StringUtils.isEmpty(includeParentDir)) {
             includeParentDirectory = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_PARENT_DIRECTORY);
         } else {
             includeParentDirectory = Boolean.parseBoolean(includeParentDir);
         }
-        boolean resultStatus = moveFile(source, destination, messageContext, includeParentDirectory, filePattern);
+        if (StringUtils.isEmpty(includeSubDirs)) {
+            includeSubDirectories = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_SUBDIRECTORIES);
+        } else {
+            includeSubDirectories = Boolean.parseBoolean(includeSubDirs);
+        }
+        boolean resultStatus = moveFile(source, destination, messageContext, includeParentDirectory, filePattern,
+                includeSubDirectories);
         generateResults(messageContext, resultStatus);
     }
 
@@ -85,24 +95,37 @@ public class FileMove extends AbstractConnector implements Connector {
     /**
      * Move the files
      *
-     * @param source      Location of the file
-     * @param destination Destination of the file
-     * @return return a resultStatus
+     * @param source                 Location of the file
+     * @param destination            Destination of the file
+     * @param messageContext         The message context that is processed by a handler in the handle method
+     * @param includeParentDirectory Indicating whether the parent directory will be included or not
+     * @param filePattern            Pattern of the file
+     * @param includeSubDirectories  Indicating whether the sub directories will be included or not
+     * @return                       return a resultStatus
      */
     private boolean moveFile(String source, String destination, MessageContext messageContext,
-                             boolean includeParentDirectory, String filePattern) {
+                             boolean includeParentDirectory, String filePattern, boolean includeSubDirectories) {
         boolean resultStatus = false;
         StandardFileSystemManager manager = null;
         try {
             manager = FileConnectorUtils.getManager();
-            FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, source, manager);
+            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
             // Create remote object
-            FileObject remoteFile = manager.resolveFile(source, fso);
+            FileObject remoteFile = manager.resolveFile(source, sourceFso);
             if (remoteFile.exists()) {
+                FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+                if (includeParentDirectory) {
+                    destination = createParentDirectory(remoteFile, destination, manager, messageContext);
+                    destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+                }
                 if (remoteFile.getType() == FileType.FILE) {
-                    fileMove(destination, remoteFile, messageContext, manager);
-                } else {
-                    folderMove(source, destination, filePattern, includeParentDirectory, messageContext, manager);
+                    fileMove(destination, destinationFso, remoteFile, manager);
+                } else if (remoteFile.getType() == FileType.FOLDER) {
+                    folderMove(source, sourceFso, destination, destinationFso, filePattern, includeParentDirectory,
+                            includeSubDirectories, messageContext, manager);
+                    if (remoteFile.getChildren().length == 0 && includeParentDirectory) {
+                        remoteFile.delete(Selectors.SELECT_ALL);
+                    }
                 }
                 resultStatus = true;
                 if (log.isDebugEnabled()) {
@@ -126,19 +149,19 @@ public class FileMove extends AbstractConnector implements Connector {
      * Move the file
      *
      * @param destination    New location of the folder
+     * @param destinationFso            Destination's FileSystemOptions
      * @param remoteFile     Location of the file
-     * @param messageContext The message context that is processed by a handler in the handle method
      * @param manager        Standard file system manager
      */
-    private void fileMove(String destination, FileObject remoteFile, MessageContext messageContext,
+    private void fileMove(String destination, FileSystemOptions destinationFso, FileObject remoteFile,
                           StandardFileSystemManager manager) throws IOException {
-        FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, destination, manager);
-        FileObject file = manager.resolveFile(destination, fso);
+        FileObject file = manager.resolveFile(destination, destinationFso);
         if (FileConnectorUtils.isFolder(file)) {
             if (!file.exists()) {
                 file.createFolder();
             }
-            file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(), fso);
+            file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(),
+                    destinationFso);
         }
         remoteFile.moveTo(file);
     }
@@ -146,66 +169,102 @@ public class FileMove extends AbstractConnector implements Connector {
     /**
      * Move the folder
      *
-     * @param destination            New location of the folder
      * @param source                 Location of the folder
+     * @param sourceFso              Source file's FileSystemOptions
+     * @param destination            New location of the folder
+     * @param destinationFso         Destination's FileSystemOptions
+     * @param filePattern            Pattern of the file
+     * @param includeParentDirectory Indicating whether the parent directory will be included or not
+     * @param includeSubDirectories  Indicating whether the sub directories will be included or not
      * @param messageContext         The message context that is processed by a handler in the handle method
-     * @param includeParentDirectory Boolean type
      * @param manager                Standard file system manager
+     * @throws IOException
      */
-    private void folderMove(String source, String destination, String filePattern, boolean includeParentDirectory,
-                            MessageContext messageContext, StandardFileSystemManager manager) throws IOException {
-        FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
-        FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+    private void folderMove(String source, FileSystemOptions sourceFso, String destination,
+                            FileSystemOptions destinationFso, String filePattern, boolean includeParentDirectory,
+                            boolean includeSubDirectories, MessageContext messageContext,
+                            StandardFileSystemManager manager) throws IOException {
 
         FileObject remoteFile = manager.resolveFile(source, sourceFso);
-        FileObject file = manager.resolveFile(destination, destinationFso);
-        if (StringUtils.isNotEmpty(filePattern)) {
-            FileObject[] children = remoteFile.getChildren();
-            for (FileObject child : children) {
-                if (child.getType() == FileType.FILE) {
-                    moveFileWithPattern(child, destination, filePattern, manager, messageContext);
-                } else if (child.getType() == FileType.FOLDER) {
-                    String newSource = source + File.separator + child.getName().getBaseName();
-                    folderMove(newSource, destination, filePattern, includeParentDirectory, messageContext, manager);
+        FileObject destinationFile = manager.resolveFile(destination, destinationFso);
+        if (!destinationFile.exists()) {
+            destinationFile.createFolder();
+        }
+        FileObject[] children = remoteFile.getChildren();
+        for (FileObject child : children) {
+            if (child.getType() == FileType.FILE) {
+                if (StringUtils.isNotEmpty(filePattern)) {
+                    moveFileWithPattern(child, destination, destinationFso, filePattern, manager);
+                } else {
+                    destinationFile = manager.resolveFile(destination + File.separator
+                            + child.getName().getBaseName(), destinationFso);
+                    child.moveTo(destinationFile);
+                }
+            } else if (child.getType() == FileType.FOLDER && includeSubDirectories) {
+                source += File.separator + child.getName().getBaseName();
+                sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
+
+                String newDestination = destination;
+                if (includeParentDirectory) {
+                    newDestination += File.separator + child.getName().getBaseName();
+                    destinationFso = FileConnectorUtils.getFso(messageContext, newDestination, manager);
+                }
+                folderMove(source, sourceFso, newDestination, destinationFso, filePattern, includeParentDirectory,
+                        includeSubDirectories, messageContext, manager);
+                FileObject sourceFile = manager.resolveFile(source, sourceFso);
+                if (sourceFile.getChildren().length == 0 && includeParentDirectory) {
+                    sourceFile.delete(Selectors.SELECT_ALL);
                 }
             }
-        } else if (includeParentDirectory) {
-            file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(),
-                                       destinationFso);
-            file.createFolder();
-            remoteFile.moveTo(file);
-        } else {
-            if (!file.exists()) {
-                file.createFolder();
-            }
-            remoteFile.moveTo(file);
-            remoteFile.createFolder();
         }
     }
 
     /**
      * @param remoteFile     Location of the file
      * @param destination    New file location
+     * @param destinationFso Destination's FileSystemOptions
      * @param filePattern    Pattern of the file
      * @param manager        Standard file system manager
-     * @param messageContext The message context that is generated for processing the file
      * @throws IOException
      */
-    private void moveFileWithPattern(FileObject remoteFile, String destination, String filePattern,
-                                     StandardFileSystemManager manager, MessageContext messageContext) throws IOException {
+    private void moveFileWithPattern(FileObject remoteFile, String destination, FileSystemOptions destinationFso,
+                                     String filePattern, StandardFileSystemManager manager) throws IOException {
         FilePattenMatcher patternMatcher = new FilePattenMatcher(filePattern);
         try {
             if (patternMatcher.validate(remoteFile.getName().getBaseName())) {
-                FileSystemOptions fso = FileConnectorUtils.getFso(messageContext, destination, manager);
-                FileObject file = manager.resolveFile(destination, fso);
+                FileObject file = manager.resolveFile(destination, destinationFso);
                 if (!file.exists()) {
                     file.createFolder();
                 }
-                file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(), fso);
+                file = manager.resolveFile(destination + File.separator + remoteFile.getName().getBaseName(),
+                        destinationFso);
                 remoteFile.moveTo(file);
             }
         } catch (IOException e) {
             log.error("Error occurred while moving a file. " + e.getMessage(), e);
         }
+    }
+
+    /**
+     *
+     * @param souFile         The source file object
+     * @param destination     The path of destination
+     * @param manager         Standard file system manager
+     * @param messageContext  The message context that is processed by a handler in the handle method
+     * @return                The path of new destination
+     */
+    private String createParentDirectory(FileObject souFile, String destination,
+                                         StandardFileSystemManager manager, MessageContext messageContext) {
+        try {
+            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+            destination += File.separator + souFile.getName().getBaseName();
+            FileObject destFile = manager.resolveFile(destination, destinationFso);
+            if (!destFile.exists()) {
+                destFile.createFolder();
+            }
+        } catch (IOException e) {
+            handleException("Unable to create parent directory", e, messageContext);
+        }
+        return destination;
     }
 }

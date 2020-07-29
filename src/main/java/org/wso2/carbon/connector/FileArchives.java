@@ -45,21 +45,31 @@ public class FileArchives extends AbstractConnector implements Connector {
     private final byte[] bytes = new byte[FileConstants.BUFFER_SIZE];
 
     public void connect(MessageContext messageContext) {
+        boolean includeSubDirectories;
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.FILE_LOCATION);
         String destination =
                 (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.NEW_FILE_LOCATION);
-        boolean resultStatus = fileCompress(messageContext, source, destination);
+        String includeSubDirs = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.INCLUDE_SUBDIRECTORIES);
+        if (StringUtils.isEmpty(includeSubDirs)) {
+            includeSubDirectories = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_SUBDIRECTORIES);
+        } else {
+            includeSubDirectories = Boolean.parseBoolean(includeSubDirs);
+        }
+        boolean resultStatus = fileCompress(messageContext, source, destination, includeSubDirectories);
         generateResults(messageContext, resultStatus);
     }
 
     /**
-     * @param messageContext The message context that is generated for processing the file
-     * @param source         The file to be archived
-     * @param destination    Destination of the archived file
-     * @return return status
+     * @param messageContext        The message context that is generated for processing the file
+     * @param source                The file to be archived
+     * @param destination           Destination of the archived file
+     * @param includeSubDirectories Indicating whether the sub directories will be included or not
+     * @return                      Return status
      * @throws SynapseException
      */
-    private boolean fileCompress(MessageContext messageContext, String source, String destination) {
+    private boolean fileCompress(MessageContext messageContext, String source, String destination,
+                                 boolean includeSubDirectories) {
         StandardFileSystemManager manager = FileConnectorUtils.getManager();
         FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
         FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
@@ -94,7 +104,7 @@ public class FileArchives extends AbstractConnector implements Connector {
             }
             if (fileObj.getType() == FileType.FOLDER) {
                 List<FileObject> fileList = new ArrayList<FileObject>();
-                getAllFiles(fileObj, fileList, messageContext);
+                getAllFiles(fileObj, fileList, includeSubDirectories, messageContext);
                 writeZipFiles(fileObj, destObj, fileList, messageContext);
             } else {
                 outputStream = new ZipOutputStream(destObj.getContent().getOutputStream());
@@ -127,23 +137,27 @@ public class FileArchives extends AbstractConnector implements Connector {
             } catch (IOException e) {
                 log.error("Error while closing InputStream: " + e.getMessage(), e);
             }
-            manager.close();
+            if (manager != null) {
+                manager.close();
+            }
         }
         return true;
     }
 
     /**
-     * @param dir            source file directory
-     * @param fileList       list of file inside directory
-     * @param messageContext The message context that is generated for processing the file
+     * @param dir                   Source file directory
+     * @param fileList              List of file inside directory
+     * @param includeSubDirectories Indicating whether the sub directories will be included or not
+     * @param messageContext        The message context that is generated for processing the file
      */
-    private void getAllFiles(FileObject dir, List<FileObject> fileList, MessageContext messageContext) {
+    private void getAllFiles(FileObject dir, List<FileObject> fileList, boolean includeSubDirectories,
+                             MessageContext messageContext) {
         try {
             FileObject[] children = dir.getChildren();
             for (FileObject child : children) {
                 fileList.add(child);
-                if (child.getType() == FileType.FOLDER) {
-                    getAllFiles(child, fileList, messageContext);
+                if (child.getType() == FileType.FOLDER && includeSubDirectories) {
+                    getAllFiles(child, fileList, includeSubDirectories, messageContext);
                 }
             }
         } catch (IOException e) {
@@ -152,9 +166,9 @@ public class FileArchives extends AbstractConnector implements Connector {
     }
 
     /**
-     * @param fileObj        source fileObject
-     * @param directoryToZip destination fileObject
-     * @param fileList       list of files to be compressed
+     * @param fileObj        Source fileObject
+     * @param directoryToZip Destination fileObject
+     * @param fileList       List of files to be compressed
      * @param messageContext The message context that is generated for processing the file
      * @throws IOException
      */
@@ -212,7 +226,7 @@ public class FileArchives extends AbstractConnector implements Connector {
      * Generate the results
      *
      * @param messageContext The message context that is generated for processing the file
-     * @param resultStatus   output result (true/false)
+     * @param resultStatus   Output result (true/false)
      */
     private void generateResults(MessageContext messageContext, boolean resultStatus) {
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
