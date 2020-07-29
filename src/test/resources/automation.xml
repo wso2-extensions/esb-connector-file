@@ -228,9 +228,20 @@
         <platformExecutionManager>
             <extentionClasses>
                 <class>
+                    <name>org.wso2.connector.integration.test.base.CopyConnectorZipToResources</name>
+                </class>
+                <class>
                     <name>org.wso2.esb.integration.common.extensions.carbonserver.CarbonServerExtension</name>
                     <parameter name="-DportOffset" value="200" />
+                    <!--For EI-->
+                    <parameter name="managementPort" value="9763" />
                     <parameter name="startupScript" value="integrator" />
+                    <!--/For EI-->
+
+                    <!--For MI-->
+                    <!--<parameter name="startupScript" value="micro-integrator" />-->
+                    <!--/For MI-->
+
                     <!--<parameter name="cmdArg" value="debug 5005" />-->
                 </class>
                 <!--<class>-->
