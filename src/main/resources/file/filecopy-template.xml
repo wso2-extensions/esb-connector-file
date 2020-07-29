@@ -29,6 +29,7 @@
                description="Boolean type, indicating whether the parent directory will include or not."/>
     <parameter name="sftpIdentities" description="The location of the private key"/>
     <parameter name="sftpIdentityPassphrase" description="The passphrase of the private key"/>
+    <parameter name="includeSubDirectories" description="Boolean type, indicating whether the sub directories will be included or not."/>
     <sequence>
         <property name="source" expression="$func:source"/>
         <property name="destination" expression="$func:destination"/>
@@ -41,6 +42,7 @@
         <property name="includeParentDirectory" expression="$func:includeParentDirectory"/>
         <property name="sftpIdentities" expression="$func:sftpIdentities"/>
         <property name="sftpIdentityPassphrase" expression="$func:sftpIdentityPassphrase"/>
+        <property name="includeSubDirectories" expression="$func:includeSubDirectories"/>
         <class name="org.wso2.carbon.connector.FileCopy"/>
     </sequence>
 </template>
