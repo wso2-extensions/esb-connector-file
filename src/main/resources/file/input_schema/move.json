@@ -41,6 +41,16 @@
       "id":"http:\/\/wso2jsonschema.org\/filePattern",
       "type":"string",
       "nullable":"true"
+    },
+    "includeSubDirectories":{
+      "id":"http:\/\/wso2jsonschema.org\/includeSubDirectories",
+      "type":"string",
+      "nullable":"true"
+    },
+    "includeParentDirectory":{
+      "id":"http:\/\/wso2jsonschema.org\/includeParentDirectory",
+      "type":"string",
+      "nullable":"true"
     }
   }
 }

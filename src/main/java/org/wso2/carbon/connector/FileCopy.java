@@ -42,6 +42,7 @@ public class FileCopy extends AbstractConnector implements Connector {
 
     public void connect(MessageContext messageContext) {
         boolean includeParentDirectory;
+        boolean includeSubDirectories;
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
         String destination = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
@@ -50,13 +51,21 @@ public class FileCopy extends AbstractConnector implements Connector {
                 FileConstants.FILE_PATTERN);
         String includeParentDir = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.INCLUDE_PARENT_DIRECTORY);
+        String includeSubDirs = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.INCLUDE_SUBDIRECTORIES);
         if (StringUtils.isEmpty(includeParentDir)) {
             includeParentDirectory = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_PARENT_DIRECTORY);
         } else {
             includeParentDirectory = Boolean.parseBoolean(includeParentDir);
         }
+        if (StringUtils.isEmpty(includeSubDirs)) {
+            includeSubDirectories = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_SUBDIRECTORIES);
+        } else {
+            includeSubDirectories = Boolean.parseBoolean(includeSubDirs);
+        }
 
-        boolean resultStatus = copyFile(source, destination, filePattern, messageContext, includeParentDirectory);
+        boolean resultStatus = copyFile(source, destination, filePattern, messageContext, includeParentDirectory,
+                includeSubDirectories);
         ResultPayloadCreate resultPayload = new ResultPayloadCreate();
         generateResults(messageContext, resultStatus, resultPayload);
     }
@@ -90,69 +99,81 @@ public class FileCopy extends AbstractConnector implements Connector {
     /**
      * Copy files
      *
-     * @param source         Location of the file
-     * @param destination    new file location
-     * @param filePattern    pattern of the file
-     * @param messageContext The message context that is generated for processing the file
-     * @return return a resultStatus
+     * @param source                 Location of the file
+     * @param destination            New file location
+     * @param filePattern            Pattern of the file
+     * @param messageContext         The message context that is generated for processing the file
+     * @param includeParentDirectory Indicating whether the parent directory will be included or not
+     * @param includeSubDirectories  Indicating whether the sub directories will be included or not
+     * @return                       Return a resultStatus
      */
     private boolean copyFile(String source, String destination, String filePattern,
-                             MessageContext messageContext, boolean includeParentDirectory) {
+                             MessageContext messageContext, boolean includeParentDirectory,
+                             boolean includeSubDirectories) {
         boolean resultStatus = false;
         StandardFileSystemManager manager = null;
         try {
             manager = FileConnectorUtils.getManager();
             FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
             FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
-
             FileObject souFile = manager.resolveFile(source, sourceFso);
-            FileObject destFile = manager.resolveFile(destination, destinationFso);
             if (StringUtils.isNotEmpty(filePattern)) {
+                if (includeParentDirectory) {
+                    destination = createParentDirectory(souFile, destination, manager, messageContext);
+                    destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+                }
                 FileObject[] children = souFile.getChildren();
                 for (FileObject child : children) {
                     if (child.getType() == FileType.FILE) {
                         if (filePattern != null) {
                             FilePattenMatcher patternMatcher = new FilePattenMatcher(filePattern);
                             if (patternMatcher.validate(child.getName().getBaseName())) {
-                                copy(child, destination, filePattern, sourceFso, destinationFso, messageContext);
+                                copy(child, destination, filePattern, sourceFso, destinationFso, manager,
+                                        messageContext);
                             }
                         } else {
-                            copy(child, destination, filePattern, sourceFso, destinationFso, messageContext);
+                            copy(child, destination, filePattern, sourceFso, destinationFso, manager, messageContext);
                         }
-                    } else if (child.getType() == FileType.FOLDER) {
+                    } else if (child.getType() == FileType.FOLDER && includeSubDirectories) {
                         String[] urlParts = source.split("\\?");
+                        String newSource;
                         if (urlParts.length > 1) {
                             String urlWithoutParam = urlParts[0];
                             String param = urlParts[1];
-                            String newSource = urlWithoutParam + child.getName().getBaseName() +
+                            newSource = urlWithoutParam + child.getName().getBaseName() +
                                     FileConstants.QUERY_PARAM_SEPARATOR + param;
-                            copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory);
                         } else {
-                            String newSource = source + File.separator + child.getName().getBaseName();
-                            copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory);
+                            newSource = source + File.separator + child.getName().getBaseName();
                         }
+                        copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory,
+                                includeSubDirectories);
                     }
                 }
                 resultStatus = true;
             } else {
                 if (souFile.exists()) {
+                    if (includeParentDirectory) {
+                        destination = createParentDirectory(souFile, destination, manager, messageContext);
+                        destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+                    }
                     if (souFile.getType() == FileType.FILE) {
                         try {
-                            String name = souFile.getName().getBaseName();
-                            FileObject outFile = manager.resolveFile(destination + File.separator
-                                    + name, destinationFso);
-                            outFile.copyFrom(souFile, Selectors.SELECT_ALL);
+                            doCopy(souFile, destination, sourceFso, destinationFso, manager, messageContext);
                             resultStatus = true;
                         } catch (FileSystemException e) {
                             log.error("Error while copying a file " + e.getMessage());
                         }
                     } else if (souFile.getType() == FileType.FOLDER) {
-                        if (includeParentDirectory) {
-                            destFile = manager.resolveFile(destination + File.separator +
-                                    souFile.getName().getBaseName(), destinationFso);
-                            destFile.createFolder();
+                        FileObject[] children = souFile.getChildren();
+                        for (FileObject child : children) {
+                            if (child.getType() == FileType.FOLDER && includeSubDirectories) {
+                                String newSource = source + File.separator + child.getName().getBaseName();
+                                copyFile(newSource, destination, filePattern, messageContext, includeParentDirectory,
+                                        includeSubDirectories);
+                            } else if(child.getType() == FileType.FILE) {
+                                doCopy(child, destination, sourceFso, destinationFso, manager, messageContext);
+                            }
                         }
-                        destFile.copyFrom(souFile, Selectors.SELECT_ALL);
                         resultStatus = true;
                     }
                     if (log.isDebugEnabled()) {
@@ -175,31 +196,68 @@ public class FileCopy extends AbstractConnector implements Connector {
     }
 
     /**
-     * @param source      file location
-     * @param destination target file location
-     * @param filePattern pattern of the file
-     * @param sourceFso   source file's FileSystemOptions
-     * @param destinationFso destination file's FileSystemOptions
-     * @param messageContext the message context that is generated for processing the file
+     * @param source         File location
+     * @param destination    Target file location
+     * @param filePattern    Pattern of the file
+     * @param sourceFso      Source file's FileSystemOptions
+     * @param destinationFso Destination's FileSystemOptions
+     * @param manager        Standard file system manager
+     * @param messageContext The message context that is generated for processing the file
      * @throws IOException
      */
     private void copy(FileObject source, String destination, String filePattern, FileSystemOptions sourceFso,
-                      FileSystemOptions destinationFso, MessageContext messageContext)
-            throws IOException {
-        StandardFileSystemManager manager = FileConnectorUtils.getManager();
-        FileObject souFile = manager.resolveFile(String.valueOf(source), sourceFso);
+                      FileSystemOptions destinationFso, StandardFileSystemManager manager,
+                      MessageContext messageContext) throws IOException {
         FilePattenMatcher patternMatcher = new FilePattenMatcher(filePattern);
+        if (patternMatcher.validate(source.getName().getBaseName())) {
+            doCopy(source, destination, sourceFso, destinationFso, manager, messageContext);
+        }
+    }
+
+    /**
+     *
+     * @param source           Location of the file
+     * @param destination      New location of the file
+     * @param sourceFso        Source file's FileSystemOptions
+     * @param destinationFso   Destination's FileSystemOptions
+     * @param manager          Standard file system manager
+     * @param messageContext   The message context that is processed by a handler in the handle method
+     * @throws IOException
+     */
+    private void doCopy(FileObject source, String destination, FileSystemOptions sourceFso,
+                        FileSystemOptions destinationFso, StandardFileSystemManager manager,
+                        MessageContext messageContext) throws IOException {
+        FileObject souFile = manager.resolveFile(String.valueOf(source), sourceFso);
         try {
-            if (patternMatcher.validate(source.getName().getBaseName())) {
-                String name = source.getName().getBaseName();
-                FileObject outFile = manager.resolveFile(destination + File.separator + name, destinationFso);
-                outFile.copyFrom(souFile, Selectors.SELECT_ALL);
-            }
+            String name = source.getName().getBaseName();
+            FileObject outFile = manager.resolveFile(destination + File.separator + name, destinationFso);
+            outFile.copyFrom(souFile, Selectors.SELECT_ALL);
         } catch (IOException e) {
             log.error("Error occurred while copying a file. " + e.getMessage(), e);
-			handleException("Error occurred while copying a file.", e, messageContext);
-        } finally {
-            manager.close();
+            handleException("Error occurred while copying a file.", e, messageContext);
         }
+    }
+
+    /**
+     *
+     * @param souFile         The source file object
+     * @param destination     The path of destination
+     * @param manager         Standard file system manager
+     * @param messageContext  The message context that is processed by a handler in the handle method
+     * @return                The path of new destination
+     */
+    private String createParentDirectory(FileObject souFile, String destination,
+                                                 StandardFileSystemManager manager, MessageContext messageContext) {
+        try {
+            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+            destination += File.separator + souFile.getName().getBaseName();
+            FileObject destFile = manager.resolveFile(destination, destinationFso);
+            if (!destFile.exists()) {
+                destFile.createFolder();
+            }
+        } catch (IOException e) {
+            handleException("Unable to create parent directory", e, messageContext);
+        }
+        return destination;
     }
 }

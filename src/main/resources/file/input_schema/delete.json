@@ -36,6 +36,11 @@
       "id":"http:\/\/wso2jsonschema.org\/setStrictHostKeyChecking",
       "type":"string",
       "nullable":"true"
+    },
+    "includeSubDirectories":{
+      "id":"http:\/\/wso2jsonschema.org\/includeSubDirectories",
+      "type":"string",
+      "nullable":"true"
     }
   }
 }
