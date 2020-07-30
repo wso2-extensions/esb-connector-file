@@ -27,19 +27,41 @@
     <version>2.0.24</version>
     <name>WSO2 Carbon - Mediation Library Connector For fileconnector</name>
     <url>http://wso2.org</url>
+    <profiles>
+        <profile>
+            <id>EI6XX</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>env</name>
+                    <value>EI6XX</value>
+                </property>
+            </activation>
+            <properties>
+                <product.name>wso2ei</product.name>
+                <product.version>6.5.0</product.version>
+                <management.port>9763</management.port>
+                <startup.script>integrator</startup.script>
+            </properties>
+        </profile>
+        <profile>
+            <id>EI7XX</id>
+            <activation>
+                <property>
+                    <name>env</name>
+                    <value>EI7XX</value>
+                </property>
+            </activation>
+            <properties>
+                <product.name>wso2mi</product.name>
+                <product.version>1.2.0-beta</product.version>
+                <management.port>9154</management.port>
+                <startup.script>micro-integrator</startup.script>
+            </properties>
+        </profile>
+    </profiles>
     <properties>
         <connector.name>fileconnector</connector.name>
-        <!--<product.ei.version>6.6.0</product.ei.version>-->
-        <!--EI Versions-->
-        <product.name>wso2ei</product.name>
-        <product.version>6.5.0</product.version>
-        <!--/EI Versions-->
-
-        <!--todo dont use MI use EI 7.X.X and call EI EI 6.X.X-->
-        <!--MI Versions-->
-        <!--<product.name>wso2mi</product.name>-->
-        <!--<product.version>1.2.0-beta</product.version>-->
-        <!--/MI Versions-->
         <carbon.kernel.version>4.4.38</carbon.kernel.version>
         <automation.framework.version>4.5.0</automation.framework.version>
         <integration.base.version>1.0.5-SNAPSHOT</integration.base.version>
@@ -389,6 +411,14 @@
                         <property>
                             <name>connector_version</name>
                             <value>${project.version}</value>
+                        </property>
+                        <property>
+                            <name>managementPort</name>
+                            <value>${management.port}</value>
+                        </property>
+                        <property>
+                            <name>startupScript</name>
+                            <value>${startup.script}</value>
                         </property>
                     </systemProperties>
                     <workingDirectory>${basedir}/target</workingDirectory>
