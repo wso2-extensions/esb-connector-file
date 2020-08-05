@@ -90,7 +90,7 @@ The archive operation archives files or folder. This operation supports the ZIP 
     <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
     <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
     <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
-    <includeSubdirectories>{$ctx:includeSubdirectories}</includeSubdirectories>
+    <includeSubDirectories>{$ctx:includeSubDirectories}</includeSubDirectories>
 </fileconnector.archives>
 ```
 
@@ -107,7 +107,7 @@ The archive operation archives files or folder. This operation supports the ZIP 
 * setSoTimeout [optional]: The socket timeout value for the FTP client. e.g., 100000.
 * setUserDirIsRoot [optional]: Set to true if you want to use root as the user directory.
 * setStrictHostKeyChecking [optional]: Sets the host key checking to use .e.g., no.
-* includeSubdirectories [optional] : Set to true if you want to include the sub directories.
+* includeSubDirectories [optional] : Set to true if you want to include the sub directories.
 
 > NOTE: To make archive operation, you can give either source or inputContent. If inputContent gives as the parameter, we need to specify fileName. Otherwise, it will use the default fileName(output.txt).
 
@@ -119,7 +119,7 @@ Following is a sample REST/JSON request that can be handled by the archives oper
 {
      "source":"/home/vive/Desktop/file",
      "destination":"/home/user/test/file.zip",
-     "includeSubdirectories":"true"
+     "includeSubDirectories":"true"
 }
 ```
 
@@ -141,7 +141,7 @@ The copy operation copies files from one location to another. This operation can
     <sftpIdentities>{$ctx:sftpIdentities}</sftpIdentities> 
     <sftpIdentityPassphrase>{$ctx:sftpIdentityPassphrase}</sftpIdentityPassphrase>
     <includeParentDirectory>{$ctx:includeParentDirectory}</includeParentDirectory>
-    <includeSubdirectories>{$ctx:includeSubdirectories}</includeSubdirectories>
+    <includeSubDirectories>{$ctx:includeSubDirectories}</includeSubDirectories>
 </fileconnector.copy>
 ```
 **Properties**
@@ -159,7 +159,7 @@ The copy operation copies files from one location to another. This operation can
 * includeParentDirectory [optional] : Set to true if you want to include the parent directory.
 * sftpIdentities [optional]: Location of the private key.
 * sftpIdentityPassphrase [optional]: Passphrase of the private key.
-* includeSubdirectories [optional] : Set to true if you want to include the sub directories.
+* includeSubDirectories [optional] : Set to true if you want to include the sub directories.
 
 **Sample request**
 
@@ -171,7 +171,7 @@ Following is a sample REST/JSON request that can be handled by the copy operatio
      "destination":"/home/user/test/fileCopy",
      "filePattern":".*\.xml",
      "includeParentDirectory":"false",
-     "includeSubdirectories":"false"
+     "includeSubDirectories":"false"
 }
 ```
 
@@ -234,7 +234,7 @@ The delete operation deletes a file or folder from the file system.
     <setSoTimeout>{$ctx:setSoTimeout}</setSoTimeout>
     <setUserDirIsRoot>{$ctx:setUserDirIsRoot}</setUserDirIsRoot>
     <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
-    <includeSubdirectories>{$ctx:includeSubdirectories}</includeSubdirectories>
+    <includeSubDirectories>{$ctx:includeSubDirectories}</includeSubDirectories>
 </fileconnector.delete>
 ```
 
@@ -249,7 +249,7 @@ The delete operation deletes a file or folder from the file system.
 * setSoTimeout [optional]: Sets the socket timeout for the FTP client. e.g., 100000.
 * setUserDirIsRoot [optional]: Sets the whether to use the user directory as root. e.g., flase.
 * setStrictHostKeyChecking [optional]: Sets the host key checking to use .e.g., no. 
-* includeSubdirectories [optional] : Set to true if you want to include the sub directories.
+* includeSubDirectories [optional] : Set to true if you want to include the sub directories.
 
 **Sample request**
 
@@ -259,7 +259,7 @@ Following is a sample REST/JSON request that can be handled by the delete operat
 {
      "source":"/home/vive/Desktop/file",
      "filePattern":".*\.txt",
-     "includeSubdirectories":"false"
+     "includeSubDirectories":"false"
 }
 ```
 
@@ -355,7 +355,7 @@ The  move operation moves a file or folder from one location to another.
     <setStrictHostKeyChecking>{$ctx:setStrictHostKeyChecking}</setStrictHostKeyChecking>
     <filePattern>{$ctx:filePattern}</filePattern>
 	<includeParentDirectory>{$ctx:includeParentDirectory}</includeParentDirectory>
-    <includeSubdirectories>{$ctx:includeSubdirectories}</includeSubdirectories>
+    <includeSubDirectories>{$ctx:includeSubDirectories}</includeSubDirectories>
 </fileconnector.move>
 ```
 
@@ -372,7 +372,7 @@ The  move operation moves a file or folder from one location to another.
 * setStrictHostKeyChecking [optional]: Sets the host key checking to use .e.g., no. 
 * filePattern [optional] : The pattern of the files to be copied. (e.g [a-zA-Z][a-zA-Z]*.(txt|xml|jar))
 * includeParentDirectory [optional] : Set to true if you want to include the parent directory.
-* includeSubdirectories [optional] : Set to true if you want to include the sub directories.
+* includeSubDirectories [optional] : Set to true if you want to include the sub directories.
 
 **Sample request**
 
@@ -384,7 +384,7 @@ Following is a sample REST/JSON request that can be handled by the move operatio
      "destination":"/home/vive/Desktop/move",
      "filePattern":".*\.txt",
      "includeParentDirectory":"true",
-     "includeSubdirectories":"true"
+     "includeSubDirectories":"true"
 }
 ```
 
