@@ -30,3 +30,6 @@ target
 # ignore target directories
 target/
 *.*~
+
+connector/repository/*.zip
+*.zip
