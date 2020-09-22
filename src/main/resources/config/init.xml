@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+   Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+
+   WSO2 Inc. licenses this file to you under the Apache License,
+   Version 2.0 (the "License"); you may not use this file except
+   in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing,
+   software distributed under the License is distributed on an
+   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+   KIND, either express or implied. See the License for the
+   specific language governing permissions and limitations
+   under the License.
+-->
+<template name="init" onError="fault" xmlns="http://ws.apache.org/ns/synapse">
+	<!--common params-->
+	<parameter name="name" description="Unique name the connection is identified by"/>
+	<parameter name="connectionType" description="Protocol to communicate with file system. Possible values 'LOCAL', 'FTP', 'FTPS', 'SFTP'"/>
+	<parameter name="workingDir" description="Working directory. File paths in operations should be given w.r.t this folder"/>
+	<parameter name="maxFailureRetryCount" description="Max retry count upon file operation failure"/>
+	<!--remote server params-->
+	<parameter name="host" description="Host name of the file server"/>
+	<parameter name="port" description="The port number of the file server"/>
+	<parameter name="username" description="Username used to connect with the file server"/>
+	<parameter name="password" description="Password to connect with the file server"/>
+	<parameter name="userDirIsRoot" description="Whether to treat the user directory as the root directory"/>
+	<!--FTP/FTPS params-->
+	<parameter name="isPassive" description="True if to enter into passive mode"/>
+	<parameter name="ftpConnectionTimeout" description="Timeout in milisec for initial control connection"/>
+	<parameter name="ftpSocketTimeout" description="Socket timeout for FTP client"/>
+	<!--FTPS specific params-->
+	<parameter name="keyStorePath" description="Path to keyStore"/>
+	<parameter name="keyStorePassword" description="KeyStore password"/>
+	<parameter name="trustStorePath" description="Path to trustStore"/>
+	<parameter name="trustStorePassword" description="TrustStore password"/>
+	<parameter name="implicitModeEnabled" description="True if implicit mode is enabled (https://en.wikipedia.org/wiki/FTPS#Implicit)"/>
+	<parameter name="channelProtectionLevel" description="FTP Data Channel protection level"/>
+	<!--SFTP params-->
+	<parameter name="sftpConnectionTimeout" description="Jsch connection timeout in milliSec"/>
+	<parameter name="sftpSessionTimeout" description="Jsch session timeout in millisec"/>
+	<parameter name="strictHostKeyChecking" description="Host key checking to use. If true it will use 'yes'"/>
+	<parameter name="privateKeyFilePath" description="path to private key file"/>
+	<parameter name="privateKeyPassword" description="Passphrase of the private key"/>
+	<sequence>
+		<property name="name" expression="$func:name"/>
+		<class name="org.wso2.carbon.connector.operations.FileConfig" />
+	</sequence>
+</template>
