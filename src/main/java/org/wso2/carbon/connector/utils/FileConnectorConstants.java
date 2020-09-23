@@ -59,8 +59,13 @@ public final class FileConnectorConstants {
     public static final String PRIVATE_KEY_PASSWORD = "privateKeyPassword";
 
     public static final String DIRECTORY_PATH = "directoryPath";
+    public static final String FILE_OR_DIRECTORY_PATH = "path";
     public static final String LOCAL_FILE_PROTOCOL_PREFIX = "file://";
     public static final String FTP_PROTOCOL_PREFIX = "ftp://";
     public static final String FTPS_PROTOCOL_PREFIX = "ftps://";
     public static final String SFTP_PROTOCOL_PREFIX = "sftp://";
+
+    public static final String FILE_ELEMENT = "file";
+    public static final String STATUS_CODE = "HTTP_SC";
+    public static final Object HTTP_STATUS_500 = "500";
 }

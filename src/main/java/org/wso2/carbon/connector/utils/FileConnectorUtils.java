@@ -50,6 +50,9 @@ public class FileConnectorUtils {
 
         messageContext.setProperty(FileConnectorConstants.PROPERTY_ERROR_CODE, error.getErrorCode());
         messageContext.setProperty(FileConnectorConstants.PROPERTY_ERROR_MESSAGE, error.getErrorDetail());
+        Axis2MessageContext axis2smc = (Axis2MessageContext) messageContext;
+        org.apache.axis2.context.MessageContext axis2MessageCtx = axis2smc.getAxis2MessageContext();
+        axis2MessageCtx.setProperty(FileConnectorConstants.STATUS_CODE, FileConnectorConstants.HTTP_STATUS_500);
     }
 
     /**
@@ -88,16 +91,23 @@ public class FileConnectorUtils {
         if(result.getError() != null) {
             setErrorPropertiesToMessage(msgContext, result.getError());
             //set error code and detail to the message
-            OMElement errorCodeEle = createOMElement("errorCode", result.getError().getErrorCode());
-            OMElement errorMessageEle = createOMElement("errorMessage", result.getError().getErrorDetail());
+            OMElement errorEle = createOMElement("error", result.getError().getErrorCode());
+            OMElement errorCodeEle = createOMElement("code", result.getError().getErrorCode());
+            OMElement errorMessageEle = createOMElement("message", result.getError().getErrorDetail());
+            errorEle.addChild(errorCodeEle);
+            errorEle.addChild(errorMessageEle);
             resultElement.addChild(errorCodeEle);
-            resultElement.addChild(errorMessageEle);
+            //set error detail
+            if(StringUtils.isNotEmpty(result.getErrorMessage())) {
+                OMElement errorDetailEle = createOMElement("detail", result.getErrorMessage());
+                resultElement.addChild(errorDetailEle);
+            }
         }
 
         return resultElement;
     }
 
-    private static OMElement createOMElement(String elementName, String value) {
+    public static OMElement createOMElement(String elementName, String value) {
         OMElement resultElement = null;
         try {
             if (StringUtils.isNotEmpty(value)) {
@@ -118,7 +128,9 @@ public class FileConnectorUtils {
     public static void setResultAsPayload(MessageContext msgContext, FileOperationResult result) {
 
         OMElement resultElement = generateOperationResult(msgContext,result);
-
+        if(result.getResultEle() != null) {
+            resultElement.addChild(result.getResultEle());
+        }
         SOAPBody soapBody = msgContext.getEnvelope().getBody();
         //Detaching first element (soapBody.getFirstElement().detach()) will be done by following method anyway.
         JsonUtil.removeJsonPayload(((Axis2MessageContext)msgContext).getAxis2MessageContext());

@@ -18,6 +18,10 @@
 
 package org.wso2.carbon.connector.operations;
 
+import org.apache.axiom.om.OMElement;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.vfs2.FileFilter;
+import org.apache.commons.vfs2.FileFilterSelector;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
@@ -33,44 +37,78 @@ import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.FileConnectorConstants;
 import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.SimpleFileFiler;
 
 /**
- * Implements Create Directory operation
+ * Implements delete file or folder operation
  */
-public class CreateDirectory extends AbstractConnector {
+public class DeleteFileOrFolder extends AbstractConnector {
 
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-
-        String operationName = "createDirectory";
-        String errorMessage = "Error while performing file:createDirectory for folder ";
+        String operationName = "deleteFile";
+        String errorMessage = "Error while performing file:delete for file/folder ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
-        String folderPath = null;
-        FileObject folderToCreate = null;
+        String fileOrFolderPath = null;
+        FileObject fileObjectToDelete = null;
+        String fileMatchingPattern;
+        boolean isOperationSuccessful = false;
+        FileOperationResult result = null;
         try {
 
             String connectionName = FileConnectorUtils.getConnectionName(messageContext);
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
                     .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
-            folderPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, FileConnectorConstants.DIRECTORY_PATH);
+            fileMatchingPattern = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, "matchingPattern");
+            fileOrFolderPath = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, FileConnectorConstants.FILE_OR_DIRECTORY_PATH);
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
             FileSystemOptions fso = fileSystemHandler.getFsOptions();
-            folderPath = fileSystemHandler.getBaseDirectoryPath() + folderPath;
-            folderToCreate = fsManager.resolveFile(folderPath, fso);
-            //create folder if it doesn't exist
-            folderToCreate.createFolder();
+            fileOrFolderPath = fileSystemHandler.getBaseDirectoryPath() + fileOrFolderPath;
+            fileObjectToDelete = fsManager.resolveFile(fileOrFolderPath, fso);
 
-            FileOperationResult result = new FileOperationResult(operationName,
-                    true);
+            //Deletes this file. Does nothing if this file does not exist
+            if (fileObjectToDelete.isFile()) {
+                isOperationSuccessful = fileObjectToDelete.delete();
+                result = new FileOperationResult(
+                        operationName,
+                        isOperationSuccessful);
+            }
+
+            if (fileObjectToDelete.isFolder()) {
+                int numberOfDeletedFiles;
+                if (StringUtils.isNotEmpty(fileMatchingPattern)) {
+                    FileFilter fileFilter = new SimpleFileFiler(fileMatchingPattern);
+                    FileFilterSelector fileFilterSelector = new FileFilterSelector(fileFilter);
+                    /*
+                     * Deletes all descendants of this file that
+                     * match a selector. Does nothing if this
+                     * file does not exist.
+                     */
+                    numberOfDeletedFiles = fileObjectToDelete.delete(fileFilterSelector);
+                } else {
+                    //Deletes this file and all children.
+                    numberOfDeletedFiles = fileObjectToDelete.deleteAll();
+                }
+                isOperationSuccessful = true;
+                OMElement numOfDeletedFilesEle = FileConnectorUtils.
+                        createOMElement("numOfDeletedFiles",
+                                Integer.toString(numberOfDeletedFiles));
+                result = new FileOperationResult(
+                        operationName,
+                        isOperationSuccessful,
+                        numOfDeletedFilesEle);
+            }
+
             FileConnectorUtils.setResultAsPayload(messageContext, result);
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + folderPath;
+            String errorDetail = errorMessage + fileOrFolderPath;
 
-            FileOperationResult result = new FileOperationResult(
+            result = new FileOperationResult(
                     operationName,
                     false,
                     Error.INVALID_CONFIGURATION,
@@ -81,9 +119,9 @@ public class CreateDirectory extends AbstractConnector {
 
         } catch (FileSystemException e) {
 
-            String errorDetail = errorMessage + folderPath;
+            String errorDetail = errorMessage + fileOrFolderPath;
 
-            FileOperationResult result = new FileOperationResult(
+            result = new FileOperationResult(
                     operationName,
                     false,
                     Error.OPERATION_ERROR,
@@ -94,13 +132,13 @@ public class CreateDirectory extends AbstractConnector {
 
         } finally {
 
-            if (folderToCreate != null) {
+            if (fileObjectToDelete != null) {
                 try {
-                    folderToCreate.close();
+                    fileObjectToDelete.close();
                 } catch (FileSystemException e) {
                     log.error(FileConnectorConstants.CONNECTOR_NAME
                             + ":Error while closing file object while creating directory "
-                            + folderToCreate);
+                            + fileObjectToDelete);
                 }
             }
         }
