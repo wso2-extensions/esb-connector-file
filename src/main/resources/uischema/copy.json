@@ -1,0 +1,108 @@
+{
+  "connectorName": "file",
+  "operationName": "copy",
+  "title": "Copies the File or Folder Specified by SourcePath into TargetPath",
+  "help": "<h1>Create Directory</h1><b>Copies the File or Folder Specified by SourcePath into TargetPath.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "elements": [
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sourcePath",
+                    "displayName": "Source Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The path to the file to be copied."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "targetPath",
+                    "displayName": "Target Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The target directory where to copy the file."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sourceFilePattern",
+                    "displayName": "Source File Pattern",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The pattern (regex) of the files to be copied. (e.g., [a-zA-Z][a-zA-Z]*.(txt|xml|jar))."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "includeParent",
+                    "displayName": "Copy Including Source Parent",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "false",
+                    "helpTip": "Whether to copy including parent folder of the source folder or only content inside."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "overwrite",
+                    "displayName": "Overwrite Existing Files",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "false",
+                    "helpTip": "Whether or not to overwrite the file if the target destination already exists."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "renameTo",
+                    "displayName": "Rename To",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The new name for the copied file. If not provided, the original file name is kept."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

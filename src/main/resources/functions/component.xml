@@ -31,5 +31,9 @@
             <file>delete.xml</file>
             <description>Deletes the file specified by the path.</description>
         </component>
+        <component name="copy" >
+            <file>copy.xml</file>
+            <description>Copies the File or Folder Specified by SourcePath into TargetPath.</description>
+        </component>
     </subComponents>
 </component>
