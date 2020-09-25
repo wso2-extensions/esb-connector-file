@@ -35,5 +35,9 @@
             <file>copy.xml</file>
             <description>Copies the File or Folder Specified by SourcePath into TargetPath.</description>
         </component>
+        <component name="move" >
+            <file>move.xml</file>
+            <description>Moves the File or Folder Specified by SourcePath into TargetPath.</description>
+        </component>
     </subComponents>
 </component>
