@@ -21,11 +21,11 @@
     <subComponents>
         <component name="createDirectory" >
             <file>createDirectory.xml</file>
-            <description>Creates a new directory on Directory path.</description>
+            <description>Creates a new directory on directory path.</description>
         </component>
         <component name="listFiles" >
             <file>listFiles.xml</file>
-            <description>Lists all the files in the Directory path that match a matcher.</description>
+            <description>Lists all the files in the directory path that match a matcher.</description>
         </component>
         <component name="delete" >
             <file>delete.xml</file>
@@ -33,11 +33,15 @@
         </component>
         <component name="copy" >
             <file>copy.xml</file>
-            <description>Copies the File or Folder Specified by SourcePath into TargetPath.</description>
+            <description>Copies the file or folder specified by sourcePath into targetPath.</description>
         </component>
         <component name="move" >
             <file>move.xml</file>
-            <description>Moves the File or Folder Specified by SourcePath into TargetPath.</description>
+            <description>Moves the file or folder specified by sourcePath into targetPath.</description>
+        </component>
+        <component name="rename" >
+            <file>rename.xml</file>
+            <description>Rename the file to the new name specified.</description>
         </component>
     </subComponents>
 </component>
