@@ -2,7 +2,7 @@
   "connectorName": "file",
   "operationName": "copy",
   "title": "Copies the File or Folder Specified by SourcePath into TargetPath",
-  "help": "<h1>Create Directory</h1><b>Copies the File or Folder Specified by SourcePath into TargetPath.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "help": "<h1>Copy Files</h1><b>Copies the File or Folder Specified by SourcePath into TargetPath.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
   "elements": [
     {
       "type": "attributeGroup",
