@@ -43,5 +43,9 @@
             <file>rename.xml</file>
             <description>Rename the file to the new name specified.</description>
         </component>
+        <component name="unzip" >
+            <file>unzip.xml</file>
+            <description>Unzip file to target directory.</description>
+        </component>
     </subComponents>
 </component>

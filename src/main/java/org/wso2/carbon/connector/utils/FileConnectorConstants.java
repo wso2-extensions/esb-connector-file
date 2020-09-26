@@ -68,4 +68,5 @@ public final class FileConnectorConstants {
     public static final String FILE_ELEMENT = "file";
     public static final String STATUS_CODE = "HTTP_SC";
     public static final Object HTTP_STATUS_500 = "500";
+    public static final int UNZIP_BUFFER_SIZE = 4096;
 }

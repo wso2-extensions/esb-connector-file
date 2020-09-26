@@ -19,6 +19,7 @@
 package org.wso2.carbon.connector.utils;
 
 import org.apache.axiom.om.OMElement;
+import org.apache.axiom.om.OMException;
 import org.apache.axiom.om.util.AXIOMUtil;
 import org.apache.axiom.soap.SOAPBody;
 import org.apache.commons.lang.StringUtils;
@@ -119,8 +120,8 @@ public class FileConnectorUtils {
                         stringToOM("<" + elementName
                                 + "></" + elementName + ">");
             }
-        } catch (XMLStreamException e) {
-            log.error("Error while generating OMElement from element name" + elementName, e);
+        } catch (XMLStreamException | OMException e) {
+            log.error("FileConnector:unzip: Error while generating OMElement from element name" + elementName, e);
         }
         return resultElement;
     }
