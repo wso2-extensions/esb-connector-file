@@ -55,5 +55,9 @@
             <file>mergeFiles.xml</file>
             <description>Merge multiple files in a folder to a single file.</description>
         </component>
+        <component name="checkExist" >
+            <file>checkExist.xml</file>
+            <description>Check if a file or directory exists.</description>
+        </component>
     </subComponents>
 </component>
