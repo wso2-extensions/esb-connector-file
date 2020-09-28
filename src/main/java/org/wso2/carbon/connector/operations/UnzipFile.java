@@ -143,7 +143,7 @@ public class UnzipFile extends AbstractConnector {
                     zipFile.close();
                 } catch (FileSystemException e) {
                     log.error(FileConnectorConstants.CONNECTOR_NAME
-                            + ":Error while closing file object while creating directory "
+                            + ":Error while closing file object while unzipping file. "
                             + zipFile);
                 }
             }

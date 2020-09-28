@@ -51,5 +51,9 @@
             <file>splitFile.xml</file>
             <description>Split a file into multiple smaller files.</description>
         </component>
+        <component name="mergeFiles" >
+            <file>mergeFiles.xml</file>
+            <description>Merge multiple files in a folder to a single file.</description>
+        </component>
     </subComponents>
 </component>

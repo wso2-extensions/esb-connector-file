@@ -1,0 +1,89 @@
+
+
+{
+  "connectorName": "file",
+  "operationName": "mergeFiles",
+  "title": "Merge Multiple Files into a Single File",
+  "help": "<h1>Merge Files</h1><b>Merge Multiple Files into a Single File.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "elements": [
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sourceDirectoryPath",
+                    "displayName": "Source Directory Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Path to the source folder containing files to be merged."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "targetFilePath",
+                    "displayName": "Target File Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Path to create merged file. If already exists, it will get overwritten."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "filePattern",
+                    "displayName": "File Pattern",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Pattern of files include in merging."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "writeMode",
+                    "displayName": "Write Mode",
+                    "inputType": "comboOrExpression",
+                    "defaultValue": "Overwrite",
+                    "comboValues": ["Overwrite", "Append"],
+                    "required": "false",
+                    "helpTip": "Pattern of files include in merging."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

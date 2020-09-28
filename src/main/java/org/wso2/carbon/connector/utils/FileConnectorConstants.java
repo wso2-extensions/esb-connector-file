@@ -71,4 +71,5 @@ public final class FileConnectorConstants {
     public static final int UNZIP_BUFFER_SIZE = 4096;
 
     public static final String YES = "yes";
+    public static final String OVERWRITE = "Overwrite";
 }
