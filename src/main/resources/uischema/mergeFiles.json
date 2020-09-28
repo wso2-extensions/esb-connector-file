@@ -75,7 +75,7 @@
                     "inputType": "comboOrExpression",
                     "defaultValue": "Overwrite",
                     "comboValues": ["Overwrite", "Append"],
-                    "required": "false",
+                    "required": "true",
                     "helpTip": "Pattern of files include in merging."
                   }
                 }
