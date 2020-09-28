@@ -47,5 +47,9 @@
             <file>unzip.xml</file>
             <description>Unzip file to target directory.</description>
         </component>
+        <component name="splitFile" >
+            <file>splitFile.xml</file>
+            <description>Split a file into multiple smaller files.</description>
+        </component>
     </subComponents>
 </component>

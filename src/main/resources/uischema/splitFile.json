@@ -1,0 +1,117 @@
+{
+  "connectorName": "file",
+  "operationName": "splitFile",
+  "title": "Split a file into multiple smaller files",
+  "help": "<h1>Split Files</h1><b>Split a File Into Multiple Files.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "elements": [
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sourceFilePath",
+                    "displayName": "Path to the file to split",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Path to the file to split"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "targetDirectory",
+                    "displayName": "Target Directory",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Folder to place split files. If already exists, it will get overwritten."
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Split Mode",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "splitMode",
+                    "displayName": "Split Mode",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Chunk Size", "Line Count", "XPATH Expression"],
+                    "defaultValue": "Chunk Size",
+                    "required": "true",
+                    "helpTip": "The chunk size in bytes to split the file."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "chunkSize",
+                    "displayName": "Chunk Size (# of bytes)",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The chunk size in bytes to split the file."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "lineCount",
+                    "displayName": "Line Count",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The number of lines per file."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "xpathExpression",
+                    "displayName": "XPATH Expression",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The XPATH expression used to split file."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
