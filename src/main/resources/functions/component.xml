@@ -59,5 +59,9 @@
             <file>checkExist.xml</file>
             <description>Check if a file or directory exists.</description>
         </component>
+        <component name="exploreZipFile" >
+            <file>exploreZipFile.xml</file>
+            <description>List Items In ZIP File Without Extracting.</description>
+        </component>
     </subComponents>
 </component>

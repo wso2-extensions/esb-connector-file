@@ -72,4 +72,5 @@ public final class FileConnectorConstants {
 
     public static final String YES = "yes";
     public static final String OVERWRITE = "Overwrite";
+    public static final String FILE = "file";
 }
