@@ -63,5 +63,9 @@
             <file>exploreZipFile.xml</file>
             <description>List Items In ZIP File Without Extracting.</description>
         </component>
+        <component name="compress" >
+            <file>compress.xml</file>
+            <description>Compress file or folder.</description>
+        </component>
     </subComponents>
 </component>
