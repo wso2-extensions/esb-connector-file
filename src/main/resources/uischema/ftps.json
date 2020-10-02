@@ -84,7 +84,7 @@
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "workingDirectory",
+                    "name": "workingDir",
                     "displayName": "Working Directory",
                     "inputType": "string",
                     "defaultValue": "",
