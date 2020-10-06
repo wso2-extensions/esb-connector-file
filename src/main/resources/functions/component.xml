@@ -67,5 +67,9 @@
             <file>compress.xml</file>
             <description>Compress file or folder.</description>
         </component>
+        <component name="read" >
+            <file>read.xml</file>
+            <description>Read a specific file or a file in a folder.</description>
+        </component>
     </subComponents>
 </component>

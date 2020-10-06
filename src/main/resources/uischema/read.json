@@ -1,0 +1,187 @@
+{
+  "connectorName": "file",
+  "operationName": "read",
+  "title": "Read a file or files in a directory",
+  "help": "<h1>Read Files</h1><b>Read a File.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "elements": [
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "path",
+                    "displayName": "File/Directory Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Path to the file or folder to read."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "filePattern",
+                    "displayName": "File Pattern",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "File pattern to match when choosing files to read in a folder. Not applicable when reading a file."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "contentProperty",
+                    "displayName": "Content Property",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Message Context property to set content. If provided current message body in not changed."
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Read Mode",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "readMode",
+                    "displayName": "Read Mode",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Complete File", "Starting From Line", "Up To Line", "Between Lines", "Specific Line", "Metadata Only"],
+                    "defaultValue": "Complete File",
+                    "required": "true",
+                    "enableCondition": [{"enableStreaming":"false"}],
+                    "helpTip": "Read mode to use. "
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "startLineNum",
+                    "displayName": "Start Line Number",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "0",
+                    "required": "true",
+                    "enableCondition":  ["OR",{"readMode":"Starting From Line"}, {"readMode":"Between Lines"}],
+                    "helpTip": "Read file starting from this line."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "endLineNum",
+                    "displayName": "End Line Number",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "0",
+                    "required": "true",
+                    "enableCondition":  ["OR",{"readMode":"Up To Line"}, {"readMode":"Between Lines"}],
+                    "helpTip": "Read file up to this line."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "lineNum",
+                    "displayName": "Specific Line Number",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "0",
+                    "required": "true",
+                    "enableCondition": [{"readMode":"Specific Line"}],
+                    "helpTip": "Specific line number to read"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Advance",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "contentType",
+                    "displayName": "Content Type",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "enableCondition":  ["OR",{"readMode":"Complete File"}, {"readMode":"Starting From Line"},{"readMode":"Up To Line"},{"readMode":"Between Lines"},{"readMode":"Specific Line"}],
+                    "helpTip": "MIME type of the message generated. If not provided it will try to interpret."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "encoding",
+                    "displayName": "Encoding",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "enableCondition":  ["OR",{"readMode":"Complete File"}, {"readMode":"Starting From Line"},{"readMode":"Up To Line"},{"readMode":"Between Lines"},{"readMode":"Specific Line"}],
+                    "helpTip": "Encoding of the message generated."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "enableStreaming",
+                    "displayName": "Enable Streaming",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "true",
+                    "enableCondition":  ["OR",{"readMode":"Complete File"}, {"readMode":"Starting From Line"},{"readMode":"Up To Line"},{"readMode":"Between Lines"},{"readMode":"Specific Line"}],
+                    "helpTip": "Read the file in streaming manner."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "enableLock",
+                    "displayName": "Enable Locking",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "true",
+                    "helpTip": "Whether to lock the file when reading"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

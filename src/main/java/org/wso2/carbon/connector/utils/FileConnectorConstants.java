@@ -74,4 +74,16 @@ public final class FileConnectorConstants {
     public static final String YES = "yes";
     public static final String OVERWRITE = "Overwrite";
     public static final String FILE = "file";
+
+    //file read - property constants
+    public static final String FILE_LAST_MODIFIED_TIME = "FILE_LAST_MODIFIED_TIME";
+    public static final String FILE_SIZE = "FILE_SIZE";
+    public static final String FILE_IS_DIR = "FILE_IS_DIR";
+    public static final String FILE_PATH = "FILE_PATH";
+    public static final String FILE_URL = "FILE_URL";
+    public static final String FILE_NAME = "FILE_NAME";
+    public static final String FILE_NAME_WITHOUT_EXTENSION = "FILE_NAME_WITHOUT_EXTENSION";
+
+
+    public static final CharSequence NEW_LINE = "\n";
 }
