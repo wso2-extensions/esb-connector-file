@@ -73,7 +73,7 @@ public class FileConnectorUtils {
     }
 
 
-    private static OMElement generateOperationResult(MessageContext msgContext, FileOperationResult result) {
+    public static OMElement generateOperationResult(MessageContext msgContext, FileOperationResult result) {
         //Create a new payload body and add to context
 
         String resultElementName = result.getOperation() + "Result";

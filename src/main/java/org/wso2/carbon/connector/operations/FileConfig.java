@@ -46,7 +46,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
 
     @Override
     public void destroy() {
-        //TODO: check
+        //TODO: check. Seems we need to fix connector core
         ConnectionHandler.getConnectionHandler().
                 shutdownConnections(FileConnectorConstants.CONNECTOR_NAME);
     }

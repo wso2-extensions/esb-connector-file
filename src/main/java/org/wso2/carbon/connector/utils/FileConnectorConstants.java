@@ -86,4 +86,7 @@ public final class FileConnectorConstants {
 
 
     public static final CharSequence NEW_LINE = "\n";
+    public static final String DEFAULT_ENCODING = "UTF8";
+    public static final String CONTENT_TYPE_BINARY = "application/binary";
+    public static final String MESSAGE_TYPE = "messageType";
 }

@@ -1,0 +1,161 @@
+{
+  "connectorName": "file",
+  "operationName": "write",
+  "title": "create file and writes the content",
+  "help": "<h1>Write Files</h1><b>Create File And Writes The Content.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "elements": [
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "filePath",
+                    "displayName": "File Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Path of the file to be written."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "createParentDirectories",
+                    "displayName": "Create Parent Directories",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "true",
+                    "required": "false",
+                    "helpTip": "Whether or not to create parent directories if they don’t exist."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "contentOrExpression",
+                    "displayName": "Content/Expression",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Static content or expression to receive content. If not given what is message body will get written."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "fileWriteResultProperty",
+                    "displayName": "File Write Result Property",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Message property to include file write operation result. If not provided result will be added to message body replacing existing message."
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Write Mode",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "writeMode",
+                    "displayName": "Write Mode",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Overwrite", "Append", "Create New"],
+                    "defaultValue": "Overwrite",
+                    "required": "true",
+                    "helpTip": "Write mode to use - overwrite, append or create new."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "appendPosition",
+                    "displayName": "Position",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "0",
+                    "required": "false",
+                    "enableCondition":  [{"writeMode":"Append"}],
+                    "helpTip": "Position to append the content. Only used when WriteMode is APPEND."
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Advance",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "compress",
+                    "displayName": "Compress",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "false",
+                    "enableCondition":  ["OR",{"writeMode":"Create New"}, {"writeMode":"Overwrite"}],
+                    "helpTip": "Whether to compress as a zip and write. Available only when WriteMode is Create New or OverWrite."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "enableStreaming",
+                    "displayName": "Enable Streaming",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "true",
+                    "enableCondition":  ["OR",{"readMode":"Complete File"}, {"readMode":"Starting From Line"},{"readMode":"Up To Line"},{"readMode":"Between Lines"},{"readMode":"Specific Line"}],
+                    "helpTip": "Read the file in streaming manner."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "enableLock",
+                    "displayName": "Enable Locking",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "true",
+                    "helpTip": "Whether to lock the file when reading"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

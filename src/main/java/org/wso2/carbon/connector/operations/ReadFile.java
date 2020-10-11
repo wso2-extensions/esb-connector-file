@@ -460,6 +460,7 @@ public class ReadFile extends AbstractConnector {
 
     /**
      * Set InputStream to the file to Synapse.
+     * We will not close it as it will be read by another operation.
      *
      * @param file                File to read
      * @param contentPropertyName Property name to set content
