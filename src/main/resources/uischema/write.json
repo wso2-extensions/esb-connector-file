@@ -46,23 +46,24 @@
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "createParentDirectories",
-                    "displayName": "Create Parent Directories",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "true",
+                    "name": "contentOrExpression",
+                    "displayName": "Content/Expression",
+                    "inputType": "textAreaOrExpression",
+                    "defaultValue": "",
                     "required": "false",
-                    "helpTip": "Whether or not to create parent directories if they don’t exist."
+                    "helpTip": "Static content or expression to receive content. If not given what is message body will get written."
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "contentOrExpression",
-                    "displayName": "Content/Expression",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Static content or expression to receive content. If not given what is message body will get written."
+                    "name": "mimeType",
+                    "displayName": "MIME Type",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Automatic","text/plain", "application/xml", "application/binary", "application/json", "text/xml"],
+                    "defaultValue": "Automatic",
+                    "required": "true",
+                    "helpTip": "MIME Type of the message. When formatting message for writing this will be used."
                   }
                 },
                 {
@@ -131,13 +132,23 @@
                 {
                   "type": "attribute",
                   "value": {
+                    "name": "appendNewLine",
+                    "displayName": "Append New Line",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "false",
+                    "helpTip": "Whether to append a new line character the the end of written content."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
                     "name": "enableStreaming",
                     "displayName": "Enable Streaming",
                     "inputType": "booleanOrExpression",
                     "defaultValue": "false",
                     "required": "true",
-                    "enableCondition":  ["OR",{"readMode":"Complete File"}, {"readMode":"Starting From Line"},{"readMode":"Up To Line"},{"readMode":"Between Lines"},{"readMode":"Specific Line"}],
-                    "helpTip": "Read the file in streaming manner."
+                    "helpTip": "Write to the file in streaming manner."
                   }
                 },
                 {
@@ -148,7 +159,7 @@
                     "inputType": "booleanOrExpression",
                     "defaultValue": "false",
                     "required": "true",
-                    "helpTip": "Whether to lock the file when reading"
+                    "helpTip": "Whether to lock the file when writing"
                   }
                 }
               ]

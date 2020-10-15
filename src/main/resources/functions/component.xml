@@ -71,7 +71,7 @@
             <file>read.xml</file>
             <description>Read a specific file or a file in a folder.</description>
         </component>
-        <component name="read" >
+        <component name="write" >
             <file>write.xml</file>
             <description>Create a file or write content to a file.</description>
         </component>

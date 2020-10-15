@@ -20,7 +20,6 @@ package org.wso2.carbon.connector.operations;
 
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMOutputFormat;
-import org.apache.axis2.AxisFault;
 import org.apache.axis2.format.BinaryFormatter;
 import org.apache.axis2.format.PlainTextFormatter;
 import org.apache.axis2.transport.MessageFormatter;
@@ -53,12 +52,14 @@ import org.wso2.carbon.connector.utils.FileConnectorUtils;
 import org.wso2.carbon.relay.ExpandingMessageFormatter;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
@@ -88,6 +89,12 @@ public class WriteFile extends AbstractConnector {
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
                     .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+
+            String fileNameWithExtension = targetFilePath.substring(targetFilePath.lastIndexOf(File.separator));
+
+            //if compress is enabled we need to resolve a zip file
+            targetFilePath = getModifiedFilePathForCompress(targetFilePath, messageContext);
+
             targetFilePath = fileSystemHandler.getBaseDirectoryPath() + targetFilePath;
 
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
@@ -107,7 +114,7 @@ public class WriteFile extends AbstractConnector {
 
             int byteCountWritten;
             try {
-                byteCountWritten = (int) writeToFile(targetFile, messageContext);
+                byteCountWritten = (int) writeToFile(targetFile, fileNameWithExtension, messageContext);
                 targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
             } finally {
                 //TODO:finally, release the lock if acquired
@@ -176,8 +183,44 @@ public class WriteFile extends AbstractConnector {
     }
 
 
-    private long writeToFile(FileObject targetFile, MessageContext msgCtx) throws IOException,
-            ConnectorOperationException, IllegalPathException, InvalidConfigurationException {
+    /**
+     * Modify passed targetFilePath as per conditions if file compress is enabled.
+     * Otherwise return same targetFilePath as passed.
+     *
+     * @param targetFilePath
+     * @param msgCtx
+     * @return
+     * @throws InvalidConfigurationException
+     */
+    private String getModifiedFilePathForCompress(String targetFilePath, MessageContext msgCtx)
+            throws InvalidConfigurationException {
+
+        boolean compress = Boolean.parseBoolean((String) ConnectorUtils.
+                lookupTemplateParamater(msgCtx, "compress"));
+        String fileWriteModeAsStr = (String) ConnectorUtils.
+                lookupTemplateParamater(msgCtx, "writeMode");
+        FileWriteMode writeMode;
+        if (StringUtils.isNotEmpty(fileWriteModeAsStr)) {
+            writeMode = FileWriteMode.fromString(fileWriteModeAsStr);
+        } else {
+            throw new InvalidConfigurationException("Mandatory parameter 'writeMode' is not provided");
+        }
+
+        String fileNameWithExtension = targetFilePath.substring(targetFilePath.lastIndexOf(File.separator));
+
+        if ((!Objects.equals(writeMode, FileWriteMode.APPEND)) && compress) {
+            String fileName = fileNameWithExtension.split("\\.")[0];
+            String parentFolder = targetFilePath.substring(0, targetFilePath.lastIndexOf(File.separator));
+            targetFilePath = parentFolder + fileName + FileConnectorConstants.ZIP_FILE_EXTENSION;
+        }
+
+        return targetFilePath;
+
+    }
+
+    private long writeToFile(FileObject targetFile, String fileNameWithExtension, MessageContext msgCtx)
+            throws IOException, ConnectorOperationException, IllegalPathException,
+            InvalidConfigurationException {
 
         long writtenBytesCount = 0;
         FileWriteMode writeMode;
@@ -195,18 +238,31 @@ public class WriteFile extends AbstractConnector {
                 lookupTemplateParamater(msgCtx, "contentOrExpression");
         String encoding = (String) ConnectorUtils.
                 lookupTemplateParamater(msgCtx, "encoding");
+        if (StringUtils.isEmpty(encoding)) {
+            encoding = FileConnectorConstants.DEFAULT_ENCODING;
+        }
         String mimeType = (String) ConnectorUtils.
                 lookupTemplateParamater(msgCtx, "mimeType");
         boolean compress = Boolean.parseBoolean((String) ConnectorUtils.
                 lookupTemplateParamater(msgCtx, "compress"));
+        boolean appendNewLine = Boolean.parseBoolean((String) ConnectorUtils.
+                lookupTemplateParamater(msgCtx, "appendNewLine"));
         boolean enableStreaming = Boolean.parseBoolean((String) ConnectorUtils.
                 lookupTemplateParamater(msgCtx, "enableStreaming"));
-        int contentAppendPosition = Integer.parseInt((String) ConnectorUtils.
-                lookupTemplateParamater(msgCtx, "appendPosition"));
+        int contentAppendPosition = Integer.MAX_VALUE;
+        String contentPositionAsStr = (String) ConnectorUtils.
+                lookupTemplateParamater(msgCtx, "appendPosition");
+        if (StringUtils.isNotEmpty(contentPositionAsStr)) {
+            contentAppendPosition = Integer.parseInt(contentPositionAsStr);
+        }
+
 
         boolean contentPropertyIsPresent = false;
         if (StringUtils.isNotEmpty(contentToWrite)) {
             contentPropertyIsPresent = true;
+            if (appendNewLine) {
+                contentToWrite = contentToWrite + FileConnectorConstants.NEW_LINE;
+            }
         }
 
 
@@ -218,19 +274,19 @@ public class WriteFile extends AbstractConnector {
                 } else {
                     targetFile.createFile();
                     if (contentPropertyIsPresent) {
-                        writtenBytesCount = performContentWrite(targetFile, contentToWrite, encoding, mimeType, compress);
+                        writtenBytesCount = performContentWrite(targetFile, fileNameWithExtension, contentToWrite, encoding, mimeType, compress);
                     } else {
-                        writtenBytesCount = performBodyWrite(targetFile, msgCtx, false, mimeType, enableStreaming, compress);
-                    }
+                        writtenBytesCount = performBodyWrite(targetFile, fileNameWithExtension, msgCtx, false, mimeType, enableStreaming, compress, appendNewLine);
 
+                    }
                 }
                 break;
             case OVERWRITE:
                 targetFile.createFile();
                 if (contentPropertyIsPresent) {
-                    writtenBytesCount = performContentWrite(targetFile, contentToWrite, encoding, mimeType, compress);
+                    writtenBytesCount = performContentWrite(targetFile, fileNameWithExtension, contentToWrite, encoding, mimeType, compress);
                 } else {
-                    writtenBytesCount = performBodyWrite(targetFile, msgCtx, false, mimeType, enableStreaming, compress);
+                    writtenBytesCount = performBodyWrite(targetFile, fileNameWithExtension, msgCtx, false, mimeType, enableStreaming, compress, appendNewLine);
                 }
                 break;
             case APPEND:
@@ -243,7 +299,7 @@ public class WriteFile extends AbstractConnector {
                     if (contentPropertyIsPresent) {
                         writtenBytesCount = performContentAppend(targetFile, contentToWrite, encoding, contentAppendPosition);
                     } else {
-                        writtenBytesCount = performBodyWrite(targetFile, msgCtx, true, mimeType, enableStreaming, compress);
+                        writtenBytesCount = performBodyWrite(targetFile, fileNameWithExtension, msgCtx, true, mimeType, enableStreaming, compress, appendNewLine);
                     }
                 }
                 break;
@@ -255,16 +311,19 @@ public class WriteFile extends AbstractConnector {
         return writtenBytesCount;
     }
 
-    private long performContentWrite(FileObject targetFile, String contentToWrite,
+    private long performContentWrite(FileObject targetFile, String fileNameWithExtension, String contentToWrite,
                                      String encoding, String mimeType, boolean compress) throws IOException {
         CountingOutputStream out = null;
         try {
             if (compress) {
-                out = new CountingOutputStream(new ZipOutputStream(targetFile.getContent().getOutputStream()));
+                ZipEntry zipEntry = new ZipEntry(fileNameWithExtension);
+                ZipOutputStream zipOutputStream = new ZipOutputStream(targetFile.getContent().getOutputStream());
+                zipOutputStream.putNextEntry(zipEntry);
+                out = new CountingOutputStream(zipOutputStream);
             } else {
                 out = new CountingOutputStream(targetFile.getContent().getOutputStream());
             }
-            if (mimeType.equals(FileConnectorConstants.CONTENT_TYPE_BINARY)) {
+            if (Objects.equals(mimeType, FileConnectorConstants.CONTENT_TYPE_BINARY)) {
                 // Write binary content decoded from a base64 string
                 byte[] decoded = Base64.getDecoder().decode(contentToWrite);
                 out.write(decoded);
@@ -274,7 +333,7 @@ public class WriteFile extends AbstractConnector {
             } else {
                 IOUtils.write(contentToWrite, out, FileConnectorConstants.DEFAULT_ENCODING);
             }
-            return out.resetByteCount();
+            return out.getByteCount();
         } finally {
             try {
                 if (out != null) {
@@ -283,6 +342,24 @@ public class WriteFile extends AbstractConnector {
             } catch (IOException e) {
                 log.error("FileConnector:write - Error while closing OutputStream: "
                         + targetFile.getName().getBaseName(), e);
+            }
+        }
+    }
+
+    private long appendNewLine(FileObject targetFile) throws IOException {
+        CountingOutputStream outputStream = null;
+        try {
+            outputStream = new CountingOutputStream(targetFile.getContent().getOutputStream(true));
+            IOUtils.write(FileConnectorConstants.NEW_LINE, outputStream);
+            return outputStream.getByteCount();
+        } finally {
+            try {
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+            } catch (IOException e) {
+                log.error("FileConnector:write - Error while closing output stream for file "
+                        + targetFile.getName().getBaseName() + " when appending new line");
             }
         }
     }
@@ -298,9 +375,11 @@ public class WriteFile extends AbstractConnector {
             if (position <= lines.size()) {
                 lines.add(position - 1, contentToAppend);
             } else {
-                log.warn("FileConnector:write - Position is greater than the existing line count of file"
-                        + targetFile.getName().getBaseName()
-                        + ". Hence appending the content at EOF");
+                if (position != Integer.MAX_VALUE) {
+                    log.warn("FileConnector:write - Append position is greater than the existing line count of file "
+                            + targetFile.getName().getBaseName()
+                            + ". Hence appending the content at EOF.");
+                }
                 lines.add(contentToAppend);
             }
 
@@ -331,14 +410,17 @@ public class WriteFile extends AbstractConnector {
         }
     }
 
-    private long performBodyWrite(FileObject targetFile, MessageContext messageContext,
-                                  boolean append, String mimeType, boolean streaming, boolean compress)
-            throws ConnectorOperationException, FileSystemException, AxisFault {
+    private long performBodyWrite(FileObject targetFile, String fileNameWithExtension, MessageContext messageContext,
+                                  boolean append, String mimeType, boolean streaming,
+                                  boolean compress, boolean appendNewLine)
+            throws ConnectorOperationException, IOException {
 
         org.apache.axis2.context.MessageContext axis2MessageContext = ((Axis2MessageContext) messageContext).
                 getAxis2MessageContext();
         //override message type set
-        if (StringUtils.isNotEmpty(mimeType)) {
+        if (StringUtils.isNotEmpty(mimeType) &&
+                !(mimeType.equals(FileConnectorConstants.CONTENT_TYPE_AUTOMATIC))) {
+
             axis2MessageContext.setProperty(FileConnectorConstants.MESSAGE_TYPE, mimeType);
         }
         MessageFormatter messageFormatter;
@@ -354,15 +436,19 @@ public class WriteFile extends AbstractConnector {
                     + "formatter to use when writing file" + targetFile.getName().getBaseName());
         } else {
             CountingOutputStream outputStream = null;
+            long writtenByesCount = 0;
             try {
                 if (compress) {
-                    outputStream = new CountingOutputStream(new ZipOutputStream(targetFile.getContent().
-                            getOutputStream(append)));
+                    ZipOutputStream zipOutputStream = new ZipOutputStream(targetFile.getContent().
+                            getOutputStream(append));
+                    ZipEntry zipEntry = new ZipEntry(fileNameWithExtension);
+                    zipOutputStream.putNextEntry(zipEntry);
+                    outputStream = new CountingOutputStream(zipOutputStream);
                 } else {
                     outputStream = new CountingOutputStream(targetFile.getContent().getOutputStream(append));
                 }
                 messageFormatter.writeTo(axis2MessageContext, format, outputStream, true);
-                return outputStream.getByteCount();
+                writtenByesCount = outputStream.getByteCount();
             } finally {
                 if (outputStream != null) {
                     try {
@@ -373,6 +459,10 @@ public class WriteFile extends AbstractConnector {
                     }
                 }
             }
+            if (!compress && appendNewLine) {
+                writtenByesCount = writtenByesCount + appendNewLine(targetFile);
+            }
+            return writtenByesCount;
         }
     }
 

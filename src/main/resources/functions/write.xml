@@ -18,7 +18,6 @@
 
 <template xmlns="http://ws.apache.org/ns/synapse" name="write">
     <parameter name="filePath" description="Path of the file to be written"/>
-    <parameter name="createParentDirectories" description="Whether or not to create parent directories if they don’t exist"/>
     <parameter name="contentOrExpression" description="Static content or expression to receive content"/>
     <parameter name="encoding" description="Encoding of the message generated"/>
     <parameter name="mimeType" description="MIME type of the message to write"/>
@@ -26,6 +25,7 @@
     <parameter name="writeMode" description="Write mode to use"/>
     <parameter name="appendPosition" description="Position to append the content"/>
     <parameter name="enableStreaming" description="Write the file in streaming manner"/>
+    <parameter name="appendNewLine" description="Whether to add a new line character at the end"/>
     <parameter name="enableLock" description="Whether to lock the file when reading"/>
     <parameter name="fileWriteResultProperty" description="Property to include file write result."/>
     <sequence>
