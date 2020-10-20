@@ -180,7 +180,7 @@ public class FileSystemHandler implements Connection {
                     .append(fsConfig.getRemoteServerConfig().getPort());
         }
         if(StringUtils.isNotEmpty(fsConfig.getWorkingDir())) {
-            sb.append(fsConfig.getWorkingDir());
+            sb.append(File.separator).append(fsConfig.getWorkingDir());
         }
         return sb.toString();
     }
