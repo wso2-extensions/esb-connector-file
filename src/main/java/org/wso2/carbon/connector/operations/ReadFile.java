@@ -41,7 +41,6 @@ import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
-import org.wso2.carbon.connector.core.util.PayloadUtils;
 import org.wso2.carbon.connector.exception.ConnectorOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
@@ -50,6 +49,7 @@ import org.wso2.carbon.connector.pojo.FileReadMode;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.FileConnectorConstants;
 import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.FileLock;
 import org.wso2.carbon.connector.utils.FileObjectDataSource;
 
 import javax.mail.internet.ContentType;
@@ -81,6 +81,7 @@ public class ReadFile extends AbstractConnector {
         FileObject fileObject = null;
         FileReadMode readMode = FileReadMode.COMPLETE_FILE;
         FileOperationResult result;
+        FileLock fileLock = null;
 
         try {
 
@@ -121,9 +122,13 @@ public class ReadFile extends AbstractConnector {
             boolean lockFile = Boolean.parseBoolean((String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, "enableLock"));
             if (lockFile) {
-                //TODO: seems API does not have anything default
+                fileLock = new FileLock(sourcePath);
+                boolean lockAcquired = fileLock.acquireLock(fsManager, fso, FileConnectorConstants.DEFAULT_LOCK_TIMEOUT);
+                if (!lockAcquired) {
+                    throw new ConnectorOperationException("Failed to acquire lock for file "
+                            + sourcePath + ". Another process maybe processing it. ");
+                }
             }
-
 
             String fileReadModeAsStr = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, "readMode");
@@ -176,8 +181,6 @@ public class ReadFile extends AbstractConnector {
 
             //TODO:MTOM Support?
 
-            //TODO:finally, release the lock if acquired
-
 
         } catch (InvalidConfigurationException e) {
 
@@ -221,6 +224,14 @@ public class ReadFile extends AbstractConnector {
                     log.error(FileConnectorConstants.CONNECTOR_NAME
                             + ":Error while closing folder object while reading files in "
                             + fileObject);
+                }
+            }
+            if (fileLock != null) {
+                try {
+                    fileLock.releaseLock();
+                } catch (FileSystemException e) {
+                    log.error("[FileConnector] Failed to release lock for file "
+                            + sourcePath + ". Is it acquired?");
                 }
             }
         }
@@ -388,14 +399,6 @@ public class ReadFile extends AbstractConnector {
                     } else if (startLine < 0) {
                         throw new InvalidConfigurationException("Parameter 'startLineNum' must be positive");
                     }
-//                    char tmpChar = 'a';
-//                    int count = 0;
-//                    while (tmpChar != -1 && count < startLine) {
-//                        tmpChar = (char) in.read();
-//                        if (tmpChar == '\n')
-//                            count++;
-//                    }
-//                    processedStream = in;
                     processedStream = processStream(in, startLine, 0);
                     break;
 

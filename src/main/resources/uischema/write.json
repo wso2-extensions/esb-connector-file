@@ -51,6 +51,7 @@
                     "inputType": "textAreaOrExpression",
                     "defaultValue": "",
                     "required": "false",
+                    "enableCondition":  ["NOT",{"enableStreaming":"true"}],
                     "helpTip": "Static content or expression to receive content. If not given what is message body will get written."
                   }
                 },
@@ -62,6 +63,7 @@
                     "inputType": "comboOrExpression",
                     "comboValues": ["Automatic","text/plain", "application/xml", "application/binary", "application/json", "text/xml"],
                     "defaultValue": "Automatic",
+                    "enableCondition":  ["NOT",{"enableStreaming":"true"}],
                     "required": "true",
                     "helpTip": "MIME Type of the message. When formatting message for writing this will be used."
                   }
@@ -73,6 +75,7 @@
                     "displayName": "File Write Result Property",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
+                    "enableCondition":  ["NOT",{"enableStreaming":"true"}],
                     "required": "false",
                     "helpTip": "Message property to include file write operation result. If not provided result will be added to message body replacing existing message."
                   }
@@ -137,6 +140,7 @@
                     "inputType": "booleanOrExpression",
                     "defaultValue": "false",
                     "required": "false",
+                    "enableCondition":  ["NOT",{"enableStreaming":"true"}],
                     "helpTip": "Whether to append a new line character the the end of written content."
                   }
                 },

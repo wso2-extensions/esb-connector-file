@@ -70,6 +70,7 @@ public final class FileConnectorConstants {
     public static final Object HTTP_STATUS_500 = "500";
     public static final int UNZIP_BUFFER_SIZE = 4096;
     public static final int ZIP_BUFFER_SIZE = 4096;
+    public static final long DEFAULT_LOCK_TIMEOUT = 30000;
 
     public static final String YES = "yes";
     public static final String OVERWRITE = "Overwrite";
@@ -91,6 +92,8 @@ public final class FileConnectorConstants {
     public static final String CONTENT_TYPE_TEXT = "text/plain";
     public static final String MESSAGE_TYPE = "messageType";
     public static final String ZIP_FILE_EXTENSION = ".zip";
+    public static final String LOCK_FILE_EXTENSION = ".lock";
 
     public static final String CONTENT_TYPE_AUTOMATIC = "Automatic";
+
 }

@@ -49,6 +49,7 @@ import org.wso2.carbon.connector.pojo.FileWriteMode;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.FileConnectorConstants;
 import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.FileLock;
 import org.wso2.carbon.relay.ExpandingMessageFormatter;
 
 import java.io.BufferedReader;
@@ -90,7 +91,7 @@ public class WriteFile extends AbstractConnector {
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
                     .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
 
-            String fileNameWithExtension = targetFilePath.substring(targetFilePath.lastIndexOf(File.separator));
+            String fileNameWithExtension = targetFilePath.substring(targetFilePath.lastIndexOf(File.separator) + 1);
 
             //if compress is enabled we need to resolve a zip file
             targetFilePath = getModifiedFilePathForCompress(targetFilePath, messageContext);
@@ -108,16 +109,26 @@ public class WriteFile extends AbstractConnector {
             //lock the file if enabled
             boolean enableLock = Boolean.parseBoolean((String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, "enableLock"));
+            FileLock fileLock = new FileLock(targetFilePath);
             if (enableLock) {
-                //TODO if locking is enabled, lock file
+                boolean lockAcquired = fileLock.acquireLock(fsManager, fso, FileConnectorConstants.DEFAULT_LOCK_TIMEOUT);
+                if(!lockAcquired) {
+                    throw new ConnectorOperationException("Failed to acquire lock for file "
+                            + targetFilePath + ". Another process maybe processing it. ");
+                }
             }
-
             int byteCountWritten;
             try {
                 byteCountWritten = (int) writeToFile(targetFile, fileNameWithExtension, messageContext);
                 targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
             } finally {
-                //TODO:finally, release the lock if acquired
+                if (enableLock) {
+                    boolean lockReleased = fileLock.releaseLock();
+                    if (!lockReleased) {
+                        log.error("Failed to release lock for file "
+                                + targetFilePath + ". Is it acquired?");
+                    }
+                }
             }
 
             result = new FileOperationResult(
@@ -254,6 +265,11 @@ public class WriteFile extends AbstractConnector {
                 lookupTemplateParamater(msgCtx, "appendPosition");
         if (StringUtils.isNotEmpty(contentPositionAsStr)) {
             contentAppendPosition = Integer.parseInt(contentPositionAsStr);
+        }
+
+        if(enableStreaming) {
+            contentAppendPosition = Integer.MAX_VALUE;
+            appendNewLine =false;
         }
 
 
