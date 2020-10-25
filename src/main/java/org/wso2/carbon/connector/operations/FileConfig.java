@@ -31,6 +31,7 @@ import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.carbon.connector.pojo.FTPConnectionConfig;
 import org.wso2.carbon.connector.pojo.FTPSConnectionConfig;
+import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.RemoteServerConfig;
 import org.wso2.carbon.connector.pojo.SFTPConnectionConfig;
 import org.wso2.carbon.connector.utils.Error;
@@ -54,6 +55,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
+        String operationName = "init";
         String connectorName = FileConnectorConstants.CONNECTOR_NAME;
         String connectionName = (String) ConnectorUtils.
                 lookupTemplateParamater(messageContext, FileConnectorConstants.CONNECTION_NAME);
@@ -67,10 +69,22 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
             }
         } catch (InvalidConfigurationException e) {
             FileConnectorUtils.setErrorPropertiesToMessage(messageContext, Error.INVALID_CONFIGURATION);
+            FileOperationResult result = new FileOperationResult(
+                    operationName,
+                    false,
+                    Error.INVALID_CONFIGURATION,
+                    e.getMessage());
+            FileConnectorUtils.setResultAsPayload(messageContext, result);
             handleException("[" + connectionName + "]Failed to initiate file connector configuration.", e, messageContext);
         } catch (FileServerConnectionException e) {
             //TODO: do we retry here?
             FileConnectorUtils.setErrorPropertiesToMessage(messageContext, Error.CONNECTION_ERROR);
+            FileOperationResult result = new FileOperationResult(
+                    operationName,
+                    false,
+                    Error.CONNECTION_ERROR,
+                    e.getMessage());
+            FileConnectorUtils.setResultAsPayload(messageContext, result);
             handleException("[" + connectionName + "]Failed to connect to configured file server.", e, messageContext);
         }
     }

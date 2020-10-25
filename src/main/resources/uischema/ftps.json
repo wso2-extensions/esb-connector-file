@@ -55,7 +55,7 @@
                     "displayName": "Username",
                     "inputType": "string",
                     "defaultValue": "",
-                    "required": "true",
+                    "required": "false",
                     "helpTip": "Username used to connect with the FTP server"
                   }
                 },
@@ -66,7 +66,7 @@
                     "displayName": "Password",
                     "inputType": "string",
                     "defaultValue": "",
-                    "required": "true",
+                    "required": "false",
                     "helpTip": "Password to connect with the FTP server"
                   }
                 },
@@ -118,7 +118,7 @@
                     "displayName": "KeyStore Path",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
-                    "required": "true",
+                    "required": "false",
                     "helpTip": "Path to keyStore"
                   }
                 },
@@ -129,7 +129,7 @@
                     "displayName": "KeyStore Password",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
-                    "required": "true",
+                    "required": "false",
                     "helpTip": "KeyStore password"
                   }
                 },

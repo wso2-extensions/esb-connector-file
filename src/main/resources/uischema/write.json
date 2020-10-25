@@ -123,6 +123,17 @@
                 {
                   "type": "attribute",
                   "value": {
+                    "name": "encoding",
+                    "displayName": "Encoding",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Content Encoding. Applied when a value for content/expression is present."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
                     "name": "compress",
                     "displayName": "Compress",
                     "inputType": "booleanOrExpression",

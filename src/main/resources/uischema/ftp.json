@@ -55,7 +55,7 @@
                     "displayName": "Username",
                     "inputType": "string",
                     "defaultValue": "",
-                    "required": "true",
+                    "required": "false",
                     "helpTip": "Username used to connect with the FTP server"
                   }
                 },
@@ -66,7 +66,7 @@
                     "displayName": "Password",
                     "inputType": "string",
                     "defaultValue": "",
-                    "required": "true",
+                    "required": "false",
                     "helpTip": "Password to connect with the FTP server"
                   }
                 },

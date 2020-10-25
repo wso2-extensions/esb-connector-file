@@ -85,24 +85,16 @@ public abstract class RemoteServerConfig {
         return username;
     }
 
-    public void setUsername(String username) throws InvalidConfigurationException {
-        if(StringUtils.isNotEmpty(username)) {
-            this.username = username;
-        } else {
-            throw new InvalidConfigurationException("Mandatory Parameter 'userName' is not provided");
-        }
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getPassword() {
         return password;
     }
 
-    public void setPassword(String password) throws InvalidConfigurationException {
-        if(StringUtils.isNotEmpty(password)) {
-            this.password = password;
-        } else {
-            throw new InvalidConfigurationException("Mandatory parameter 'password' is not provided ");
-        }
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public boolean isUserDirIsRoot() {

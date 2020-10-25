@@ -40,7 +40,7 @@ public class FTPConnectionConfig extends RemoteServerConfig {
 
     public FTPConnectionConfig() {
         super();
-        isPassive = true;
+        isPassive = true;   //TODO: should default = true?
         connectionTimeout = 100000;
         socketTimeout = 150000;
     }

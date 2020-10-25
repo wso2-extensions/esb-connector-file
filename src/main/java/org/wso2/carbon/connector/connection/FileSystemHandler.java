@@ -123,12 +123,27 @@ public class FileSystemHandler implements Connection {
                 ftpsConfigBuilder.setUserDirIsRoot(fso, ftpsConnectionConfig.isUserDirIsRoot());
 
                 //Set FTPS specific configs
-                ftpsConfigBuilder.setDataChannelProtectionLevel(fso, ftpsConnectionConfig.getFtpsProtectionLevel());
+                if (ftpsConnectionConfig.getFtpsProtectionLevel() != null) {
+                    ftpsConfigBuilder.setDataChannelProtectionLevel(fso, ftpsConnectionConfig.getFtpsProtectionLevel());
+                }
+
                 ftpsConfigBuilder.setFtpsMode(fso, ftpsConnectionConfig.getFtpsMode());
-                ftpsConfigBuilder.setKeyStore(fso, ftpsConnectionConfig.getKeyStore());
-                ftpsConfigBuilder.setKeyStorePW(fso, ftpsConnectionConfig.getKeyStorePassword());
-                ftpsConfigBuilder.setTrustStore(fso, ftpsConnectionConfig.getTrustStorePassword());
-                ftpsConfigBuilder.setTrustStorePW(fso, ftpsConnectionConfig.getTrustStorePassword());
+
+                if (StringUtils.isNotEmpty(ftpsConnectionConfig.getKeyStore())) {
+                    ftpsConfigBuilder.setKeyStore(fso, ftpsConnectionConfig.getKeyStore());
+                }
+
+                if (StringUtils.isNotEmpty(ftpsConnectionConfig.getKeyStorePassword())) {
+                    ftpsConfigBuilder.setKeyStorePW(fso, ftpsConnectionConfig.getKeyStorePassword());
+                }
+
+                if (StringUtils.isNotEmpty(ftpsConnectionConfig.getTrustStore())) {
+                    ftpsConfigBuilder.setTrustStore(fso, ftpsConnectionConfig.getTrustStore());
+                }
+
+                if (StringUtils.isNotEmpty(ftpsConnectionConfig.getTrustStorePassword())) {
+                    ftpsConfigBuilder.setTrustStorePW(fso, ftpsConnectionConfig.getTrustStorePassword());
+                }
 
                 baseDirectoryPath = FileConnectorConstants.FTPS_PROTOCOL_PREFIX
                         + setupBaseDirectoryPath(fsConfig);
@@ -148,13 +163,21 @@ public class FileSystemHandler implements Connection {
                     } else {
                         sftpConfigBuilder.setStrictHostKeyChecking(fso, "no");
                     }
+
                     String privateKeyFilePath = sftpConnectionConfig.getPrivateKeyFilePath();
                     if (StringUtils.isNotEmpty(privateKeyFilePath)) {
+                        IdentityInfo identityInfo;
                         File sftpIdentity = new File(privateKeyFilePath);
-                        IdentityInfo identityInfo = new IdentityInfo(sftpIdentity);
+                        String keyPassphrase = sftpConnectionConfig.getPrivateKeyPassword();
+                        if (StringUtils.isNotEmpty(keyPassphrase)) {
+                            identityInfo = new IdentityInfo(sftpIdentity, keyPassphrase.getBytes());
+                            sftpConfigBuilder.setIdentityPassPhrase(fso, keyPassphrase);
+                        } else {
+                            identityInfo = new IdentityInfo(sftpIdentity);
+                        }
                         sftpConfigBuilder.setIdentityInfo(fso, identityInfo);
                     }
-                    sftpConfigBuilder.setIdentityPassPhrase(fso, sftpConnectionConfig.getPrivateKeyPassword());
+
                 } catch (FileSystemException e) {
                     throw new FileServerConnectionException("[" + fsConfig.getConnectionName()
                             + "] Error while setting fso options", e);
@@ -170,16 +193,21 @@ public class FileSystemHandler implements Connection {
 
     private String setupBaseDirectoryPath(ConnectionConfiguration fsConfig) {
         StringBuilder sb = new StringBuilder();
-        if(fsConfig.getRemoteServerConfig() != null) {
-            sb.append(fsConfig.getRemoteServerConfig().getUsername())
-                    .append(":")
-                    .append(fsConfig.getRemoteServerConfig().getPassword())
-                    .append("@")
-                    .append(fsConfig.getRemoteServerConfig().getHost())
-                    .append(":")
-                    .append(fsConfig.getRemoteServerConfig().getPort());
+        if (fsConfig.getRemoteServerConfig() != null) {
+            String username = fsConfig.getRemoteServerConfig().getUsername();
+            String password = fsConfig.getRemoteServerConfig().getPassword();
+            String host = fsConfig.getRemoteServerConfig().getHost();
+            int port = fsConfig.getRemoteServerConfig().getPort();
+            if (StringUtils.isNotEmpty(username)) {
+                sb.append(username);
+                if (StringUtils.isNotEmpty(password)) {
+                    sb.append(":").append(password);
+                }
+                sb.append("@");
+            }
+            sb.append(host).append(":").append(port);
         }
-        if(StringUtils.isNotEmpty(fsConfig.getWorkingDir())) {
+        if (StringUtils.isNotEmpty(fsConfig.getWorkingDir())) {
             sb.append(File.separator).append(fsConfig.getWorkingDir());
         }
         return sb.toString();
