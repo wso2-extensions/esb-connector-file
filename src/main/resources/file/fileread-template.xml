@@ -28,6 +28,8 @@
     <parameter name="setUserDirIsRoot" description="Sets the whether to use the user directory as root."/>
     <parameter name="streaming" description="The streaming mode, This can be either true or false."/>
     <parameter name="numberOfLinesToSkip" description="The number of lines to skip reading from the file"/>
+    <parameter name="sftpIdentities" description="The location of the private key"/>
+    <parameter name="sftpIdentityPassphrase" description="The passphrase of the private key"/>
 
     <sequence>
         <property name="source" expression="$func:source"/>
@@ -40,6 +42,8 @@
         <property name="setUserDirIsRoot" expression="$func:setUserDirIsRoot"/>
         <property name="streaming" expression="$func:streaming"/>
         <property name="numberOfLinesToSkip" expression="$func:numberOfLinesToSkip"/>
+        <property name="sftpIdentities" expression="$func:sftpIdentities"/>
+        <property name="sftpIdentityPassphrase" expression="$func:sftpIdentityPassphrase"/>
         <class name="org.wso2.carbon.connector.FileRead"/>
     </sequence>
 </template>

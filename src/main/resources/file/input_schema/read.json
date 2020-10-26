@@ -45,6 +45,16 @@
       "id":"http:\/\/wso2jsonschema.org\/streaming",
       "type":"string",
       "nullable":"true"
+    },
+    "sftpIdentities":{
+      "id":"http:\/\/wso2jsonschema.org\/sftpIdentities",
+      "type":"string",
+      "nullable":"true"
+    },
+    "sftpIdentityPassphrase": {
+      "id": "http:\/\/wso2jsonschema.org\/sftpIdentityPassphrase",
+      "type": "string",
+      "nullable": "true"
     }
   }
 }

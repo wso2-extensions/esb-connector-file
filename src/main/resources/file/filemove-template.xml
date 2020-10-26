@@ -29,6 +29,8 @@
                description="Boolean type, indicating whether the parent directory will include or not."/>
     <parameter name="filePattern" description="The pattern of the files to be copied."/>
     <parameter name="includeSubDirectories" description="Boolean type, indicating whether the sub directories will be included or not."/>
+    <parameter name="sftpIdentities" description="The location of the private key"/>
+    <parameter name="sftpIdentityPassphrase" description="The passphrase of the private key"/>
     <sequence>
         <property name="source" expression="$func:source"/>
         <property name="destination" expression="$func:destination"/>
@@ -40,6 +42,8 @@
         <property name="includeParentDirectory" expression="$func:includeParentDirectory"/>
         <property name="filePattern" expression="$func:filePattern"/>
         <property name="includeSubDirectories" expression="$func:includeSubDirectories"/>
+        <property name="sftpIdentities" expression="$func:sftpIdentities"/>
+        <property name="sftpIdentityPassphrase" expression="$func:sftpIdentityPassphrase"/>
         <class name="org.wso2.carbon.connector.FileMove"/>
     </sequence>
 </template>
