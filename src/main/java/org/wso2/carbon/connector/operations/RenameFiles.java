@@ -18,10 +18,7 @@
 
 package org.wso2.carbon.connector.operations;
 
-import org.apache.axiom.om.OMElement;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.vfs2.FileFilter;
-import org.apache.commons.vfs2.FileFilterSelector;
+
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
@@ -37,14 +34,14 @@ import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.FileConnectorConstants;
 import org.wso2.carbon.connector.utils.FileConnectorUtils;
-import org.wso2.carbon.connector.utils.SimpleFileFiler;
 
 import java.io.File;
 
 /**
- * Implements rename operation
+ * Implements rename operation.
  */
 public class RenameFiles extends AbstractConnector {
+
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
         String operationName = "renameFile";
@@ -86,7 +83,7 @@ public class RenameFiles extends AbstractConnector {
                                 operationName,
                                 false,
                                 Error.FILE_ALREADY_EXISTS,
-                                "Destination file already exists and overwrite not allowed");
+                                "Destination file already exists and overwrite not allowed.");
                     } else {
                         fileToRename.moveTo(newFile);
                         result = new FileOperationResult(
@@ -103,7 +100,7 @@ public class RenameFiles extends AbstractConnector {
                             operationName,
                             false,
                             Error.OPERATION_ERROR,
-                            "Cannot renmae file " + fileOrFolderPath);
+                            "Cannot rename file " + fileOrFolderPath);
                 }
             } else {
                 result = new FileOperationResult(

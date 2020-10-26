@@ -282,6 +282,14 @@ public class ReadFile extends AbstractConnector {
         return fileToRead;
     }
 
+    /**
+     * Set properties of file being read into the messageContext.
+     *
+     * @param filePath   Path of the file being read
+     * @param file       File object being read
+     * @param msgContext MessageContext associated
+     * @throws FileSystemException If relevant information cannot be read from file
+     */
     private void setFileProperties(String filePath, FileObject file,
                                    MessageContext msgContext) throws FileSystemException {
 
@@ -360,6 +368,16 @@ public class ReadFile extends AbstractConnector {
     }
 
 
+    /**
+     * Read file and generate a InputStream.
+     *
+     * @param file       File to read
+     * @param readMode   Reading mode
+     * @param msgContext Message context to lookup read config
+     * @return InputStream to the file
+     * @throws InvalidConfigurationException In case of config error
+     * @throws ConnectorOperationException   In case of I/O error
+     */
     private InputStream readFile(FileObject file, FileReadMode readMode, MessageContext msgContext)
             throws InvalidConfigurationException, ConnectorOperationException {
 

@@ -416,14 +416,14 @@ public class SplitFile extends AbstractConnector {
      * @param manager         FileSystem Manager
      * @param options         File options.
      * @return Number of split files
-     * @throws ConnectorOperationException
+     * @throws ConnectorOperationException In case of I/O error
      */
     private int splitByXPathExpression(FileObject sourceFileObj, String destination, String xpathExpression,
                                        FileSystemManager manager, FileSystemOptions options) throws ConnectorOperationException {
 
         DocumentBuilderFactory documentFactory = getSecuredDocumentBuilder();
-        DocumentBuilder documentBuilder = null;
-        Document sourceXmlDocument = null;
+        DocumentBuilder documentBuilder;
+        Document sourceXmlDocument;
         try {
             documentBuilder = documentFactory.newDocumentBuilder();
             sourceXmlDocument = documentBuilder.parse(sourceFileObj.getContent().getInputStream());
@@ -434,7 +434,7 @@ public class SplitFile extends AbstractConnector {
         XPathFactory xPathFactory = XPathFactory.newInstance();
         XPath xpath = xPathFactory.newXPath();
         XPathExpression expression;
-        NodeList nodeList = null;
+        NodeList nodeList;
         try {
             expression = xpath.compile(xpathExpression);
             nodeList = (NodeList) expression.evaluate(sourceXmlDocument, XPathConstants.NODESET);
@@ -446,7 +446,6 @@ public class SplitFile extends AbstractConnector {
         FileObject outputFileObj = null;
         assert nodeList != null;
         for (int i = 0; i < nodeList.getLength(); ++i) {
-            assert documentBuilder != null;
             Document distinationXmlDocument = documentBuilder.newDocument();
 
             String parentNode = nodeList.item(i).getParentNode().getNodeName();

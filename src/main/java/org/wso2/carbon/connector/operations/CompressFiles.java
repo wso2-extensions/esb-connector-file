@@ -46,9 +46,11 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
- * Implements Compress Files operation
+ * Implements Compress Files operation.
  */
 public class CompressFiles extends AbstractConnector {
+
+    private static final String logIdentifier = "[FileConnector:compress] ";
 
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
@@ -206,22 +208,22 @@ public class CompressFiles extends AbstractConnector {
                         outputStream.close();
                     }
                 } catch (IOException e) {
-                    log.error("FileConnector:compress - "
-                            + "Error while closing ZipOutputStream for file " + targetZipFile.getURL(), e);
+                    log.error(logIdentifier + "Error while closing ZipOutputStream for file "
+                            + targetZipFile.getURL(), e);
                 }
                 try {
                     if (fileIn != null) {
                         fileIn.close();
                     }
                 } catch (IOException e) {
-                    log.error("FileConnector:compress - "
-                            + "Error while closing InputStream " + fileToCompress.getURL(), e);
+                    log.error(logIdentifier + "Error while closing InputStream "
+                            + fileToCompress.getURL(), e);
                 }
             }
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("FileConnector:compress - File archiving completed: " + targetZipFile.getURL());
+            log.debug(logIdentifier + "File archiving completed: " + targetZipFile.getURL());
         }
 
         return numberOfFilesAddedToZip;
@@ -279,7 +281,7 @@ public class CompressFiles extends AbstractConnector {
         try {
             fin = file.getContent().getInputStream();
             String name = file.getName().toString();
-            String entry = name.substring(fileObject.getName().toString().length() + 1, name.length());
+            String entry = name.substring(fileObject.getName().toString().length() + 1);
             ZipEntry zipEntry = new ZipEntry(entry);
             outputStream.putNextEntry(zipEntry);
             final byte[] bytes = new byte[FileConnectorConstants.ZIP_BUFFER_SIZE];

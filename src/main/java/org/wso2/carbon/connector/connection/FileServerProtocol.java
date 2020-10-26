@@ -35,7 +35,7 @@ public enum FileServerProtocol {
     /**
      * Creates an Email Protocol instance.
      *
-     * @param name the name of the protocol.
+     * @param name   the name of the protocol.
      * @param secure whether the protocol is secure or not.
      */
     FileServerProtocol(String name, boolean secure) {
@@ -44,11 +44,21 @@ public enum FileServerProtocol {
         this.secure = secure;
     }
 
+    /**
+     * Get protocol name.
+     *
+     * @return name
+     */
     public String getName() {
 
         return name;
     }
 
+    /**
+     * Check if protocol uses TLS/SSL level security.
+     *
+     * @return true if protocol is secured
+     */
     public boolean isSecure() {
 
         return secure;

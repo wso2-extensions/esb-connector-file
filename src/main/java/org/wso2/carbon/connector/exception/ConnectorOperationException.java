@@ -19,7 +19,8 @@
 package org.wso2.carbon.connector.exception;
 
 /**
- * Represents any exception thrown by the connector in general
+ * Represents any exception thrown by the connector in general.
+ * If you want to be specific, consider other exception types.
  */
 public class ConnectorOperationException extends Exception {
 

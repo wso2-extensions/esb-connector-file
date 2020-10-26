@@ -73,6 +73,13 @@ public class FileConnectorUtils {
     }
 
 
+    /**
+     * Generate OMElement out of result config.
+     *
+     * @param msgContext MessageContext to set relevant properties
+     * @param result     FileOperationResult config
+     * @return OMElement generated
+     */
     public static OMElement generateOperationResult(MessageContext msgContext, FileOperationResult result) {
         //Create a new payload body and add to context
 
@@ -83,13 +90,13 @@ public class FileConnectorUtils {
                 String.valueOf(result.isSuccessful()));
         resultElement.addChild(statusCodeElement);
 
-        if(result.getWrittenBytes() != 0) {
+        if (result.getWrittenBytes() != 0) {
             OMElement writtenBytesEle = createOMElement("writtenBytes",
                     String.valueOf(result.getWrittenBytes()));
             resultElement.addChild(writtenBytesEle);
         }
 
-        if(result.getError() != null) {
+        if (result.getError() != null) {
             setErrorPropertiesToMessage(msgContext, result.getError());
             //set error code and detail to the message
             OMElement errorEle = createOMElement("error", result.getError().getErrorCode());
@@ -99,7 +106,7 @@ public class FileConnectorUtils {
             errorEle.addChild(errorMessageEle);
             resultElement.addChild(errorCodeEle);
             //set error detail
-            if(StringUtils.isNotEmpty(result.getErrorMessage())) {
+            if (StringUtils.isNotEmpty(result.getErrorMessage())) {
                 OMElement errorDetailEle = createOMElement("detail", result.getErrorMessage());
                 resultElement.addChild(errorDetailEle);
             }
@@ -108,6 +115,13 @@ public class FileConnectorUtils {
         return resultElement;
     }
 
+    /**
+     * Create an OMElement.
+     *
+     * @param elementName Name of the element
+     * @param value       Value to be added
+     * @return OMElement or null if error
+     */
     public static OMElement createOMElement(String elementName, String value) {
         OMElement resultElement = null;
         try {
@@ -126,16 +140,22 @@ public class FileConnectorUtils {
         return resultElement;
     }
 
+    /**
+     * Set Payload to message context as specified in provided result.
+     *
+     * @param msgContext MessageContext to set payload
+     * @param result     Operation result
+     */
     public static void setResultAsPayload(MessageContext msgContext, FileOperationResult result) {
 
-        OMElement resultElement = generateOperationResult(msgContext,result);
-        if(result.getResultEle() != null) {
+        OMElement resultElement = generateOperationResult(msgContext, result);
+        if (result.getResultEle() != null) {
             resultElement.addChild(result.getResultEle());
         }
         SOAPBody soapBody = msgContext.getEnvelope().getBody();
         //Detaching first element (soapBody.getFirstElement().detach()) will be done by following method anyway.
-        JsonUtil.removeJsonPayload(((Axis2MessageContext)msgContext).getAxis2MessageContext());
-        ((Axis2MessageContext)msgContext).getAxis2MessageContext().
+        JsonUtil.removeJsonPayload(((Axis2MessageContext) msgContext).getAxis2MessageContext());
+        ((Axis2MessageContext) msgContext).getAxis2MessageContext().
                 removeProperty(PassThroughConstants.NO_ENTITY_BODY);
         soapBody.addChild(resultElement);
     }

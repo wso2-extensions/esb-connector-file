@@ -21,7 +21,6 @@ package org.wso2.carbon.connector.operations;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSelector;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
@@ -42,7 +41,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * Implements move files operation
+ * Implements move files operation.
  */
 public class MoveFiles extends AbstractConnector {
 
@@ -196,7 +195,7 @@ public class MoveFiles extends AbstractConnector {
 
 
     /**
-     * Moves srcFile, and all its descendants, to destinationFile file.
+     * Moves srcFile, to destinationFile file.
      * If destination folder does not exist, it is created if
      * createNonExistingParents=true.  If this file destination
      * exist, and overWrite = true, it is deleted first,
@@ -226,6 +225,20 @@ public class MoveFiles extends AbstractConnector {
         }
     }
 
+    /**
+     * Moves src directory and all its descendants, , to destinationFile folder.
+     * If destination folder does not exist, it is created if
+     * createNonExistingParents=true. If it exists, operation scans only
+     * first level of children to determine move can be done without overwriting
+     * any file.
+     *
+     * @param srcFile                  Src directory to move
+     * @param createNonExistingParents True if to create directories along the path if not exist
+     * @param destinationFile          Destination folder
+     * @param overWrite                True if to overwrite any existing file when moving
+     * @return True if operation is performed fine
+     * @throws FileSystemException In case of I/O error
+     */
     private boolean moveFolder(FileObject srcFile, boolean createNonExistingParents,
                                FileObject destinationFile, boolean overWrite) throws FileSystemException {
 
@@ -242,7 +255,7 @@ public class MoveFiles extends AbstractConnector {
                 for (FileObject child : destinationFileChildren) {
                     destinationChildrenNames.add(child.getName().getBaseName());
                 }
-                //ToDO: takes some time to execute
+                //TODO: takes some time to execute
                 Collection commonFiles = CollectionUtils.intersection(sourceChildrenNames, destinationChildrenNames);
                 if (!commonFiles.isEmpty()) {
                     return false;

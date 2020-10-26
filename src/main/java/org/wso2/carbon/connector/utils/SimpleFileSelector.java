@@ -23,12 +23,17 @@ import org.apache.commons.vfs2.FileSelectInfo;
 import java.util.regex.Pattern;
 
 /**
- * Case insensitive Java regex based file selector
+ * Case insensitive Java regex based file selector.
  */
 public class SimpleFileSelector implements org.apache.commons.vfs2.FileSelector {
 
     private Pattern pattern;
 
+    /**
+     * Create case insensitive Java regex based file selector.
+     *
+     * @param patternStr Pattern as a Regex expression
+     */
     public SimpleFileSelector(String patternStr) {
         this.pattern = Pattern.compile(patternStr);
     }

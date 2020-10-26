@@ -40,7 +40,7 @@ import org.wso2.carbon.connector.utils.FileConnectorUtils;
 import java.io.IOException;
 
 /**
- * Implements Check File Exists operation
+ * Implements Check File Exists operation.
  */
 public class CheckFileExist extends AbstractConnector {
 
@@ -49,6 +49,7 @@ public class CheckFileExist extends AbstractConnector {
 
         String operationName = "checkExist";
         String errorMessage = "Error while performing file:checkExist for file/directory ";
+        String fileExistsEleName = "fileExists";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String filePath = null;
@@ -82,7 +83,7 @@ public class CheckFileExist extends AbstractConnector {
             }
 
             OMElement fileExistsEle = FileConnectorUtils.
-                    createOMElement("fileExists", operationResult);
+                    createOMElement(fileExistsEleName, operationResult);
             result = new FileOperationResult(operationName,
                     true,
                     fileExistsEle);

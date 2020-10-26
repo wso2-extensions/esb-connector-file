@@ -150,6 +150,16 @@ public class UnzipFile extends AbstractConnector {
         }
     }
 
+    /**
+     * Execute unzip, iterating over zip entries.
+     *
+     * @param zipFile             Zip file
+     * @param folderPathToExtract Directory path to unzip
+     * @param fsManager           File System Manager associated with the file connection
+     * @param fso                 File System Options associated with the file connection
+     * @return OMElement with zip file entries extracted
+     * @throws IOException In case of I/O error
+     */
     private OMElement executeUnzip(FileObject zipFile, String folderPathToExtract,
                                    FileSystemManager fsManager, FileSystemOptions fso) throws IOException {
         //execute unzip
@@ -178,7 +188,7 @@ public class UnzipFile extends AbstractConnector {
                         zipEntryTargetFile.createFolder();
                     }
                 } catch (IOException e) {
-                    log.error("Unable to process the zip file. ", e);
+                    log.error("Unable to extract the zip file. ", e);
                 } finally {
                     try {
                         zipIn.closeEntry();
@@ -195,7 +205,13 @@ public class UnzipFile extends AbstractConnector {
         }
     }
 
-    //TODO: check exception handling
+    /**
+     * Extract Zip entry and write to file.
+     *
+     * @param zipIn              ZipInputStream to zip entry
+     * @param zipEntryTargetFile FileObject pointing to extracted file related to zip entry
+     * @throws IOException In case of I/O error
+     */
     private void extractFile(ZipInputStream zipIn, FileObject zipEntryTargetFile) throws IOException {
         BufferedOutputStream bos = null;
         OutputStream fOut = null;
@@ -215,17 +231,17 @@ public class UnzipFile extends AbstractConnector {
                 try {
                     bos.close();
                 } catch (IOException e) {
-                    log.error("FileConnector:Unzip Error while closing the BufferedOutputStream to target file: " + e.getMessage(), e);
-                } finally {
-                    try {
-                        fOut.close();
-                    } catch (IOException e) {
-                        log.error("Error while closing the OutputStream to target file: " + e.getMessage(), e);
-                    }
+                    log.error("FileConnector:Unzip Error while closing the BufferedOutputStream to target file: "
+                            + e.getMessage(), e);
                 }
             }
             if(fOut != null) {
-                fOut.close();
+                try {
+                    fOut.close();
+                } catch (IOException e) {
+                    log.error("Error while closing the OutputStream to target file: "
+                            + e.getMessage(), e);
+                }
             }
             zipEntryTargetFile.close();
         }

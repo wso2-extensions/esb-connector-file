@@ -38,6 +38,11 @@ import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.FileConnectorConstants;
 import org.wso2.carbon.connector.utils.FileConnectorUtils;
 
+/**
+ * Initializes the file connection based on provided configs
+ * at config/init.xml. Required input validations also
+ * done here.
+ */
 public class FileConfig extends AbstractConnector implements ManagedLifecycle {
 
     @Override
@@ -89,6 +94,14 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
         }
     }
 
+    /**
+     * Create a configuration object from connector
+     * init parameters provided.
+     *
+     * @param msgContext MessageContext to lookup values of parameters
+     * @return Created config object
+     * @throws InvalidConfigurationException If any input validation failed
+     */
     private ConnectionConfiguration getConnectionConfigFromContext(MessageContext msgContext)
             throws InvalidConfigurationException {
 
@@ -161,6 +174,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
         String userDirIsRoot = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, FileConnectorConstants.USERDIR_IS_ROOT);
 
+        remoteServerConfig.setProtocol(protocol);
         remoteServerConfig.setHost(host);
         remoteServerConfig.setPort(port);
         remoteServerConfig.setUsername(userName);

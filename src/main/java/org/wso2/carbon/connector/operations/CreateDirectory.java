@@ -35,7 +35,7 @@ import org.wso2.carbon.connector.utils.FileConnectorConstants;
 import org.wso2.carbon.connector.utils.FileConnectorUtils;
 
 /**
- * Implements Create Directory operation
+ * Implements Create Directory operation.
  */
 public class CreateDirectory extends AbstractConnector {
 

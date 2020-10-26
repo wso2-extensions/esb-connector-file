@@ -22,9 +22,12 @@ import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 
 /**
- * Configurations common to any remote file server
+ * Configurations common to any remote file server.
  */
 public abstract class RemoteServerConfig {
+
+    //Protocol associated with this connection
+    private String protocol;
 
     //Host name/IP of file server to connect
     private String host;
@@ -51,6 +54,14 @@ public abstract class RemoteServerConfig {
 
     public RemoteServerConfig() {
         this.userDirIsRoot = false;
+    }
+
+    public String getProtocol() {
+        return protocol;
+    }
+
+    public void setProtocol(String protocol) {
+        this.protocol = protocol;
     }
 
     public String getHost() {

@@ -22,7 +22,6 @@ import org.apache.axiom.om.OMElement;
 import org.apache.commons.vfs2.FileFilter;
 import org.apache.commons.vfs2.FileFilterSelector;
 import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSelectInfo;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
@@ -39,10 +38,10 @@ import org.wso2.carbon.connector.utils.FileConnectorConstants;
 import org.wso2.carbon.connector.utils.FileConnectorUtils;
 import org.wso2.carbon.connector.utils.SimpleFileFiler;
 
-import java.util.regex.Pattern;
 
 /**
- * Implements File listing capability in a directory
+ * Implements File listing capability
+ * in a directory.
  */
 public class ListFiles extends AbstractConnector {
 
@@ -149,13 +148,22 @@ public class ListFiles extends AbstractConnector {
         }
     }
 
+    /**
+     * List all files in the directory. If recursive = true,
+     * This method will recursively look into subdirectories.
+     *
+     * @param folder    Folder to scan
+     * @param pattern   Specific pattern of files to include in the listing
+     * @param recursive true, if to look into subdirectories
+     * @return OMElement with organized listing.
+     * @throws FileSystemException In case of reading the directory.
+     */
     private OMElement listFilesInFolder(FileObject folder, String pattern, boolean recursive) throws FileSystemException {
         String containingFolderName = folder.getName().getBaseName();
         OMElement folderEle = FileConnectorUtils.createOMElement(containingFolderName, null);
         FileObject[] filesOrFolders = getFilesAndFolders(folder, pattern);
         for (FileObject fileOrFolder : filesOrFolders) {
             if (fileOrFolder.isFile()) {
-                //TODO: we read without the extension?
                 OMElement fileEle = FileConnectorUtils.createOMElement(FileConnectorConstants.FILE_ELEMENT,
                         fileOrFolder.getName().getBaseName());
                 folderEle.addChild(fileEle);

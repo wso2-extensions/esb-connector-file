@@ -19,7 +19,7 @@
 package org.wso2.carbon.connector.exception;
 
 /**
- * Exception thrown upon configuration error
+ * Exception thrown upon configuration error.
  */
 public class InvalidConfigurationException extends Exception {
 

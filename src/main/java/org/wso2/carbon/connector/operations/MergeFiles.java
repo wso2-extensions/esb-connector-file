@@ -44,7 +44,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * Implements Merge Files operation
+ * Implements Merge Files operation.
  */
 public class MergeFiles extends AbstractConnector {
 
@@ -95,9 +95,9 @@ public class MergeFiles extends AbstractConnector {
             if (!targetFile.exists()) {
                 targetFile.createFile();
             } else {
-                if(writeMode.equals(FileConnectorConstants.OVERWRITE)) {
+                if (writeMode.equals(FileConnectorConstants.OVERWRITE)) {
                     boolean deleteDone = targetFile.delete();           //otherwise append is done automatically
-                    if(!deleteDone) {
+                    if (!deleteDone) {
                         throw new ConnectorOperationException("Error while overwriting existing file " + targetFilePath);
                     }
                     targetFile.createFile();
@@ -107,7 +107,7 @@ public class MergeFiles extends AbstractConnector {
 
             FileObject[] children = sourceDir.getChildren();
 
-            if(children != null && children.length != 0) {
+            if (children != null && children.length != 0) {
                 MergeFileResult mergeFileResult = mergeFiles(targetFile, filePattern, children);
                 numberOfMergedFiles = mergeFileResult.getNumberOfMergedFiles();
                 numberOfTotalBytesWritten = mergeFileResult.getNumberOfTotalWrittenBytes();
@@ -137,7 +137,7 @@ public class MergeFiles extends AbstractConnector {
             FileConnectorUtils.setResultAsPayload(messageContext, result);
             handleException(errorDetail, e, messageContext);
 
-        } catch (ConnectorOperationException e) {
+        } catch (ConnectorOperationException | IOException e) {     //FileSystemException also handled here
 
             String errorDetail = errorMessage + sourceDirectoryPath;
             result = new FileOperationResult(
@@ -148,8 +148,7 @@ public class MergeFiles extends AbstractConnector {
             FileConnectorUtils.setResultAsPayload(messageContext, result);
             handleException(errorDetail, e, messageContext);
 
-        }
-        catch (IllegalPathException e) {
+        } catch (IllegalPathException e) {
 
             String errorDetail = errorMessage + sourceDirectoryPath;
             result = new FileOperationResult(
@@ -157,18 +156,6 @@ public class MergeFiles extends AbstractConnector {
                     false,
                     Error.ILLEGAL_PATH,
                     e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
-
-        } catch (IOException e) {       //FileSystemException also handled here
-
-            String errorDetail = errorMessage + sourceDirectoryPath;
-            result = new FileOperationResult(
-                    operationName,
-                    false,
-                    Error.OPERATION_ERROR,
-                    e.getMessage());
-
             FileConnectorUtils.setResultAsPayload(messageContext, result);
             handleException(errorDetail, e, messageContext);
 
@@ -186,6 +173,15 @@ public class MergeFiles extends AbstractConnector {
         }
     }
 
+    /**
+     * Perform File merging.
+     *
+     * @param targetFile  Target file to create after merge
+     * @param filePattern Specific pattern of files to merge
+     * @param children    Files to merge
+     * @return Info object with result of the operation
+     * @throws IOException In case of file operation issue
+     */
     private MergeFileResult mergeFiles(FileObject targetFile, String filePattern, FileObject[] children) throws IOException {
 
         int numberOfMergedFiles = 0;

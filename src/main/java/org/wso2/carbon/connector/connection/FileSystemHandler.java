@@ -43,7 +43,7 @@ import java.io.File;
  * Object that handles all file operations
  * attached to the connection. This contains
  * FileSystemManager with FileSystemOptions
- * configured
+ * configured.
  */
 public class FileSystemHandler implements Connection {
 
@@ -60,6 +60,13 @@ public class FileSystemHandler implements Connection {
      */
     private String baseDirectoryPath;
 
+    /**
+     * Create a new FileSystemHandler object. This will contain a new FileSystemManager
+     * and File System Options.
+     *
+     * @param fsConfig Connection config object
+     * @throws FileServerConnectionException in case of an error setting FileSystemManager
+     */
     public FileSystemHandler(ConnectionConfiguration fsConfig) throws FileServerConnectionException {
         try {
 
@@ -79,8 +86,8 @@ public class FileSystemHandler implements Connection {
     //TODO: DO null checks for non mandatories? if we have defaults we do not have to
 
     /**
-     * Set connection configs to VFS API
-     * Be careful as FTP, FTPS, SFTP variables looks almost same
+     * Set connection configs to VFS API.
+     * Be careful as FTP, FTPS, SFTP variables looks almost same.
      *
      * @param fso      FileSystemOptions to set the configs
      * @param fsConfig Configuration DTO
@@ -191,6 +198,12 @@ public class FileSystemHandler implements Connection {
         }
     }
 
+    /**
+     * Construct VFS url based on configurations.
+     *
+     * @param fsConfig Input configs
+     * @return Constructed url
+     */
     private String setupBaseDirectoryPath(ConnectionConfiguration fsConfig) {
         StringBuilder sb = new StringBuilder();
         if (fsConfig.getRemoteServerConfig() != null) {

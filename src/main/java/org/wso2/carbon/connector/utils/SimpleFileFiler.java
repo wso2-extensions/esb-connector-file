@@ -24,12 +24,17 @@ import org.apache.commons.vfs2.FileSelectInfo;
 import java.util.regex.Pattern;
 
 /**
- * Case insensitive Java regex based file matcher
+ * Case insensitive Java regex based file matcher.
  */
 public class SimpleFileFiler implements FileFilter {
 
     private Pattern pattern;
 
+    /**
+     * Create a SimpleFileFiler to match file name.
+     *
+     * @param patternStr Regex pattern
+     */
     public SimpleFileFiler(String patternStr) {
         this.pattern = Pattern.compile(patternStr);
     }

@@ -112,7 +112,7 @@ public class WriteFile extends AbstractConnector {
             FileLock fileLock = new FileLock(targetFilePath);
             if (enableLock) {
                 boolean lockAcquired = fileLock.acquireLock(fsManager, fso, FileConnectorConstants.DEFAULT_LOCK_TIMEOUT);
-                if(!lockAcquired) {
+                if (!lockAcquired) {
                     throw new ConnectorOperationException("Failed to acquire lock for file "
                             + targetFilePath + ". Another process maybe processing it. ");
                 }
@@ -199,10 +199,10 @@ public class WriteFile extends AbstractConnector {
      * Modify passed targetFilePath as per conditions if file compress is enabled.
      * Otherwise return same targetFilePath as passed.
      *
-     * @param targetFilePath
-     * @param msgCtx
-     * @return
-     * @throws InvalidConfigurationException
+     * @param targetFilePath Path to consider and modify
+     * @param msgCtx         MessageContext to read operation configs
+     * @return Same or modified path as per configs
+     * @throws InvalidConfigurationException In case of config error
      */
     private String getModifiedFilePathForCompress(String targetFilePath, MessageContext msgCtx)
             throws InvalidConfigurationException {
@@ -230,6 +230,18 @@ public class WriteFile extends AbstractConnector {
 
     }
 
+    /**
+     * Perform file writing.
+     *
+     * @param targetFile            File to write to
+     * @param fileNameWithExtension File name with extension
+     * @param msgCtx                MessageContext to read configs from
+     * @return Written Bytes count
+     * @throws IOException                   In case of I/O error
+     * @throws ConnectorOperationException   In case of any application error
+     * @throws IllegalPathException          In case if invalid file path
+     * @throws InvalidConfigurationException In case of  configs validation failure
+     */
     private long writeToFile(FileObject targetFile, String fileNameWithExtension, MessageContext msgCtx)
             throws IOException, ConnectorOperationException, IllegalPathException,
             InvalidConfigurationException {
@@ -268,9 +280,9 @@ public class WriteFile extends AbstractConnector {
             contentAppendPosition = Integer.parseInt(contentPositionAsStr);
         }
 
-        if(enableStreaming) {
+        if (enableStreaming) {
             contentAppendPosition = Integer.MAX_VALUE;
-            appendNewLine =false;
+            appendNewLine = false;
         }
 
 
@@ -328,6 +340,18 @@ public class WriteFile extends AbstractConnector {
         return writtenBytesCount;
     }
 
+    /**
+     * Execute writing static of evaluated content.
+     *
+     * @param targetFile            File to write to
+     * @param fileNameWithExtension File name with extension
+     * @param contentToWrite        static content to write
+     * @param encoding              encoding to use
+     * @param mimeType              mime type of the message
+     * @param compress              true if need to compress and write
+     * @return Bytes written to file
+     * @throws IOException In case of I/O error
+     */
     private long performContentWrite(FileObject targetFile, String fileNameWithExtension, String contentToWrite,
                                      String encoding, String mimeType, boolean compress) throws IOException {
         CountingOutputStream out = null;
@@ -363,6 +387,13 @@ public class WriteFile extends AbstractConnector {
         }
     }
 
+    /**
+     * Append new line at the end of the file.
+     *
+     * @param targetFile File to append
+     * @return number of bytes written
+     * @throws IOException In case of I/O error
+     */
     private long appendNewLine(FileObject targetFile) throws IOException {
         CountingOutputStream outputStream = null;
         try {
@@ -382,6 +413,16 @@ public class WriteFile extends AbstractConnector {
     }
 
 
+    /**
+     * Append static content to a file.
+     *
+     * @param targetFile      File to append to
+     * @param contentToAppend Static content
+     * @param encoding        Encoding to use
+     * @param position        Position of the file to append
+     * @return Number of bytes written
+     * @throws IOException In case of I/O error
+     */
     private long performContentAppend(FileObject targetFile, String contentToAppend,
                                       String encoding, int position) throws IOException {
         BufferedReader reader = null;
@@ -427,6 +468,21 @@ public class WriteFile extends AbstractConnector {
         }
     }
 
+    /**
+     * Write message in MessageContext to a given file.
+     *
+     * @param targetFile            File to write to
+     * @param fileNameWithExtension File name with extension
+     * @param messageContext        MessageContext to extract message from
+     * @param append                True if to append content to file
+     * @param mimeType              MIME type of the message
+     * @param streaming             True if to extract stream and write to file
+     * @param compress              True if to compress and write the file
+     * @param appendNewLine         True if to append new line at the end
+     * @return
+     * @throws ConnectorOperationException In case of connector error
+     * @throws IOException                 In case of I/O error
+     */
     private long performBodyWrite(FileObject targetFile, String fileNameWithExtension, MessageContext messageContext,
                                   boolean append, String mimeType, boolean streaming,
                                   boolean compress, boolean appendNewLine)
@@ -485,9 +541,9 @@ public class WriteFile extends AbstractConnector {
 
 
     /**
-     * Get the correct formatter for message
+     * Get the correct formatter for message.
      *
-     * @param msgContext The message context that is generated for processing the file
+     * @param msgContext The message context associated
      */
     private MessageFormatter getMessageFormatter(org.apache.axis2.context.MessageContext msgContext) {
         OMElement firstChild = msgContext.getEnvelope().getBody().getFirstElement();

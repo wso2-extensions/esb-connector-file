@@ -19,7 +19,7 @@
 package org.wso2.carbon.connector.pojo;
 
 /**
- * Represents result of MergeFiles operation
+ * Represents result of MergeFiles operation.
  */
 public class MergeFileResult {
 

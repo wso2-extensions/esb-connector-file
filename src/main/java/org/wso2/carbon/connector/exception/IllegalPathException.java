@@ -20,7 +20,7 @@ package org.wso2.carbon.connector.exception;
 
 /**
  * Represents exception thrown when
- * file/folder paths are invalid
+ * file/folder paths are invalid.
  */
 public class IllegalPathException extends Exception {
 

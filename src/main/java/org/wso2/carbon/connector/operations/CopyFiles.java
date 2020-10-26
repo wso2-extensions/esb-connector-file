@@ -44,7 +44,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * Implements copy files operation
+ * Implements copy files operation.
  */
 public class CopyFiles extends AbstractConnector {
 
@@ -206,7 +206,7 @@ public class CopyFiles extends AbstractConnector {
 
 
     /**
-     * Copies srcFile, and all its descendants, to destinationFile file.
+     * Copies srcFile, to destinationFile file.
      * If destination file does not exist, it is created. Its parent folder is also
      * created, if necessary. If this file destination exist, and overWrite = true,
      * it is deleted first, otherwise it returns false.
@@ -230,34 +230,49 @@ public class CopyFiles extends AbstractConnector {
         }
     }
 
+    /**
+     * Copies src directory and all its descendants, , to destinationFile folder.
+     * If destination file does not exist, it is created. Its parent folder is also
+     * created, if necessary. If overWrite = false, operation checks first level of
+     * children and if there is a match returns false (operation unsuccessful).
+     * Otherwise it overwrites whole folder.
+     *
+     * @param srcFile         Source directory to copy
+     * @param selector        Select files to copy based on this
+     * @param destinationFile Destination directory
+     * @param overWrite       true if allow to overwrite
+     * @return True if copying is performed
+     * @throws FileSystemException If this file is read-only,
+     *                             or if the source file does
+     *                             not exist, or on error copying the file.
+     */
     private boolean copyFolder(FileObject srcFile, FileSelector selector,
                                FileObject destinationFile, boolean overWrite) throws FileSystemException {
 
-        if(destinationFile.exists()) {
-            if(!overWrite) {
-                //we check only one level
-                //TODO: if not to include parent
-                FileObject[] sourceFileChildren = srcFile.getChildren();
-                FileObject[] destinationFileChildren = destinationFile.getChildren();
-                ArrayList<String> sourceChildrenNames = new ArrayList<>(sourceFileChildren.length);
-                ArrayList<String> destinationChildrenNames = new ArrayList<>(destinationFileChildren.length);
-                for (FileObject child : sourceFileChildren) {
-                    sourceChildrenNames.add(child.getName().getBaseName());
-                }
-                for (FileObject child : destinationFileChildren) {
-                    destinationChildrenNames.add(child.getName().getBaseName());
-                }
-                //ToDO: takes some time to execute
-                Collection commonFiles = CollectionUtils.intersection(sourceChildrenNames, destinationChildrenNames);
-                if(!commonFiles.isEmpty()) {
-                    return false;
-                }
+        if (destinationFile.exists() && !overWrite) {
+
+            //we check only one level
+            //TODO: if not to include parent
+            FileObject[] sourceFileChildren = srcFile.getChildren();
+            FileObject[] destinationFileChildren = destinationFile.getChildren();
+            ArrayList<String> sourceChildrenNames = new ArrayList<>(sourceFileChildren.length);
+            ArrayList<String> destinationChildrenNames = new ArrayList<>(destinationFileChildren.length);
+            for (FileObject child : sourceFileChildren) {
+                sourceChildrenNames.add(child.getName().getBaseName());
             }
+            for (FileObject child : destinationFileChildren) {
+                destinationChildrenNames.add(child.getName().getBaseName());
+            }
+            //TODO: takes some time to execute
+            Collection commonFiles = CollectionUtils.intersection(sourceChildrenNames, destinationChildrenNames);
+            if (!commonFiles.isEmpty()) {
+                return false;
+            }
+
         }
-        
+
         destinationFile.copyFrom(srcFile, selector);
         return true;
     }
-
 
 }
