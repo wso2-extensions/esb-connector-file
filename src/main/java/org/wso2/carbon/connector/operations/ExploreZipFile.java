@@ -48,10 +48,13 @@ import java.util.zip.ZipInputStream;
  */
 public class ExploreZipFile extends AbstractConnector {
 
+    private static final String ZIP_FILE_PATH = "zipFilePath";
+    private static final String ZIP_FILE_CONTENT_ELE = "zipFileContent";
+    private static final String OPERATION_NAME = "exploreZipFile";
+    private static final String ERROR_MESSAGE = "Error while performing file:exploreZipFile for file ";
+
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-        String operationName = "exploreZipFile";
-        String errorMessage = "Error while performing file:exploreZipFile for file ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String filePath = null;
@@ -62,10 +65,10 @@ public class ExploreZipFile extends AbstractConnector {
 
             String connectionName = FileConnectorUtils.getConnectionName(messageContext);
             filePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "zipFilePath");
+                    lookupTemplateParamater(messageContext, ZIP_FILE_PATH);
 
             if (StringUtils.isEmpty(filePath)) {
-                throw new InvalidConfigurationException("Parameter 'zipFilePath' is not provided ");
+                throw new InvalidConfigurationException("Parameter '" + ZIP_FILE_PATH + "' is not provided ");
             }
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
@@ -81,7 +84,7 @@ public class ExploreZipFile extends AbstractConnector {
             }
 
             OMElement zipFileContentEle = FileConnectorUtils.
-                    createOMElement("zipFileContent", null);
+                    createOMElement(ZIP_FILE_CONTENT_ELE, null);
 
             // open the zip file
             InputStream input = zipFile.getContent().getInputStream();
@@ -101,7 +104,7 @@ public class ExploreZipFile extends AbstractConnector {
                 }
             }
 
-            result = new FileOperationResult(operationName,
+            result = new FileOperationResult(OPERATION_NAME,
                     true,
                     zipFileContentEle);
             FileConnectorUtils.setResultAsPayload(messageContext, result);
@@ -109,9 +112,9 @@ public class ExploreZipFile extends AbstractConnector {
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + filePath;
+            String errorDetail = ERROR_MESSAGE + filePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     e.getMessage());
@@ -120,9 +123,9 @@ public class ExploreZipFile extends AbstractConnector {
             handleException(errorDetail, e, messageContext);
 
         } catch (IllegalPathException e) {
-            String errorDetail = errorMessage + filePath;
+            String errorDetail = ERROR_MESSAGE + filePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.ILLEGAL_PATH,
                     e.getMessage());
@@ -131,9 +134,9 @@ public class ExploreZipFile extends AbstractConnector {
 
         } catch (IOException e) {       //FileSystemException also handled here
 
-            String errorDetail = errorMessage + filePath;
+            String errorDetail = ERROR_MESSAGE + filePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.OPERATION_ERROR,
                     e.getMessage());

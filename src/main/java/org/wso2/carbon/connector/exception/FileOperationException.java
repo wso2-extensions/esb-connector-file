@@ -18,19 +18,21 @@
 
 package org.wso2.carbon.connector.exception;
 
+import org.wso2.carbon.connector.core.ConnectException;
+
 /**
  * Represents any exception thrown by the connector in general.
  * If you want to be specific, consider other exception types.
  */
-public class ConnectorOperationException extends Exception {
+public class FileOperationException extends ConnectException {
 
-    public ConnectorOperationException(String message) {
+    public FileOperationException(String message) {
 
         super(message);
     }
 
-    public ConnectorOperationException(String message, Throwable cause) {
+    public FileOperationException(String message, Throwable cause) {
 
-        super(message, cause);
+        super(cause, message);
     }
 }

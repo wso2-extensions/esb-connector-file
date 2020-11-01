@@ -39,11 +39,11 @@ import org.wso2.carbon.connector.utils.FileConnectorUtils;
  */
 public class CreateDirectory extends AbstractConnector {
 
+    private static final String OPERATION_NAME = "createDirectory";
+    private static final String ERROR_MESSAGE = "Error while performing file:createDirectory for folder ";
+
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-
-        String operationName = "createDirectory";
-        String errorMessage = "Error while performing file:createDirectory for folder ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String folderPath = null;
@@ -62,16 +62,16 @@ public class CreateDirectory extends AbstractConnector {
             //create folder if it doesn't exist
             folderToCreate.createFolder();
 
-            FileOperationResult result = new FileOperationResult(operationName,
+            FileOperationResult result = new FileOperationResult(OPERATION_NAME,
                     true);
             FileConnectorUtils.setResultAsPayload(messageContext, result);
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + folderPath;
+            String errorDetail = ERROR_MESSAGE + folderPath;
 
             FileOperationResult result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     errorDetail);
@@ -81,10 +81,10 @@ public class CreateDirectory extends AbstractConnector {
 
         } catch (FileSystemException e) {
 
-            String errorDetail = errorMessage + folderPath;
+            String errorDetail = ERROR_MESSAGE + folderPath;
 
             FileOperationResult result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.OPERATION_ERROR,
                     errorDetail);

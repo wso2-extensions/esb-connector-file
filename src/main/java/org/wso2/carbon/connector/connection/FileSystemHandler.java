@@ -51,7 +51,6 @@ public class FileSystemHandler implements Connection {
 
     private FileSystemManager fsManager;
     private FileSystemOptions fsOptions;
-    private ConnectionConfiguration connectionConfig;
 
     /**
      * URL constructed adding file protocol,
@@ -71,8 +70,6 @@ public class FileSystemHandler implements Connection {
         try {
 
             this.fsManager = new StandardFileSystemManager();
-            //need this to get host,port etc when performing operations
-            this.connectionConfig = fsConfig;
             ((StandardFileSystemManager) fsManager).init();
             this.fsOptions = new FileSystemOptions();
             setupFSO(fsOptions, fsConfig);
@@ -83,10 +80,8 @@ public class FileSystemHandler implements Connection {
         }
     }
 
-    //TODO: DO null checks for non mandatories? if we have defaults we do not have to
-
     /**
-     * Set connection configs to VFS API.
+     * Sets connection configs to VFS API.
      * Be careful as FTP, FTPS, SFTP variables looks almost same.
      *
      * @param fso      FileSystemOptions to set the configs
@@ -95,6 +90,7 @@ public class FileSystemHandler implements Connection {
     private void setupFSO(FileSystemOptions fso, ConnectionConfiguration fsConfig)
             throws FileServerConnectionException {
 
+        //TODO: move to operations or try strategy pattern
         switch (fsConfig.getProtocol()) {
 
             case LOCAL:
@@ -162,7 +158,6 @@ public class FileSystemHandler implements Connection {
                 SftpFileSystemConfigBuilder sftpConfigBuilder = SftpFileSystemConfigBuilder.getInstance();
 
                 try {
-                    //TODO:this is deprecated in latest. any plan to migrate? Backward compatibility?
                     sftpConfigBuilder.setTimeout(fso, sftpConnectionConfig.getSessionTimeout());
 
                     if (sftpConnectionConfig.isStrictHostKeyChecking()) {
@@ -221,7 +216,8 @@ public class FileSystemHandler implements Connection {
             sb.append(host).append(":").append(port);
         }
         if (StringUtils.isNotEmpty(fsConfig.getWorkingDir())) {
-            sb.append(File.separator).append(fsConfig.getWorkingDir());
+            //TODO: ask for file separator from user. Or use a url parser?
+            sb.append(FileConnectorConstants.FILE_SEPARATOR).append(fsConfig.getWorkingDir());
         }
         return sb.toString();
     }

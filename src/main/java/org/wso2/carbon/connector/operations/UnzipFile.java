@@ -47,10 +47,13 @@ import java.util.zip.ZipInputStream;
  */
 public class UnzipFile extends AbstractConnector {
 
+    private static final String SOURCE_FILE_PATH_PARAM = "sourceFilePath";
+    private static final String TARGET_DIRECTORY_PARAM = "targetDirectory";
+    private static final String OPERATION_NAME = "unzipFile";
+    private static final String ERROR_MESSAGE = "Error while performing file:unzip for file ";
+
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-        String operationName = "unzipFile";
-        String errorMessage = "Error while performing file:unzip for file ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String filePath = null;
@@ -63,9 +66,9 @@ public class UnzipFile extends AbstractConnector {
 
             String connectionName = FileConnectorUtils.getConnectionName(messageContext);
             filePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "sourceFilePath");
+                    lookupTemplateParamater(messageContext, SOURCE_FILE_PATH_PARAM);
             folderPathToExtract = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "targetDirectory");
+                    lookupTemplateParamater(messageContext, TARGET_DIRECTORY_PARAM);
 
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
@@ -82,7 +85,7 @@ public class UnzipFile extends AbstractConnector {
 
             if (!zipFile.exists()) {
                 result = new FileOperationResult(
-                        operationName,
+                        OPERATION_NAME,
                         false,
                         Error.ILLEGAL_PATH,
                         "File not found: " + filePath);
@@ -92,7 +95,7 @@ public class UnzipFile extends AbstractConnector {
 
             if (!zipFile.isFile()) {
                 result = new FileOperationResult(
-                        operationName,
+                        OPERATION_NAME,
                         false,
                         Error.ILLEGAL_PATH,
                         "File is not a zip file: " + filePath);
@@ -106,16 +109,16 @@ public class UnzipFile extends AbstractConnector {
 
             OMElement zipFileContentEle = executeUnzip(zipFile, folderPathToExtract, fsManager, fso);
 
-            result = new FileOperationResult(operationName, true, zipFileContentEle);
+            result = new FileOperationResult(OPERATION_NAME, true, zipFileContentEle);
 
             FileConnectorUtils.setResultAsPayload(messageContext, result);
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + filePath;
+            String errorDetail = ERROR_MESSAGE + filePath;
 
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     errorDetail);
@@ -125,10 +128,10 @@ public class UnzipFile extends AbstractConnector {
 
         } catch (IOException e) {       //FileSystemException also handled here
 
-            String errorDetail = errorMessage + filePath;
+            String errorDetail = ERROR_MESSAGE + filePath;
 
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.OPERATION_ERROR,
                     errorDetail);
@@ -171,7 +174,7 @@ public class UnzipFile extends AbstractConnector {
             ZipEntry entry = zipIn.getNextEntry();
             //iterate over the entries
             while (entry != null) {
-                String zipEntryPath = folderPathToExtract + File.separator + entry.getName();
+                String zipEntryPath = folderPathToExtract + FileConnectorConstants.FILE_SEPARATOR + entry.getName();
                 //TODO: check if we need to use a different manager to resolve file here (support fix)
                 FileObject zipEntryTargetFile = fsManager.resolveFile(zipEntryPath, fso);
                 try {
@@ -235,7 +238,7 @@ public class UnzipFile extends AbstractConnector {
                             + e.getMessage(), e);
                 }
             }
-            if(fOut != null) {
+            if (fOut != null) {
                 try {
                     fOut.close();
                 } catch (IOException e) {

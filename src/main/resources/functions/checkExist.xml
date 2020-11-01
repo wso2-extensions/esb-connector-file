@@ -18,6 +18,8 @@
 
 <template xmlns="http://ws.apache.org/ns/synapse" name="checkExist">
     <parameter name="path" description="Path to the file or directory to check existence."/>
+    <parameter name="includeResultTo" description="Specify where to place operation result."/>
+    <parameter name="resultPropertyName" description="Name of property to add operation result."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.CheckFileExist" />
     </sequence>

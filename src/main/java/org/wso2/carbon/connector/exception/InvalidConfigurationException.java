@@ -18,13 +18,15 @@
 
 package org.wso2.carbon.connector.exception;
 
+import org.wso2.carbon.connector.core.ConnectException;
+
 /**
  * Exception thrown upon configuration error.
  */
-public class InvalidConfigurationException extends Exception {
+public class InvalidConfigurationException extends ConnectException {
 
     public InvalidConfigurationException(String message, Throwable cause) {
-        super(message, cause);
+        super(cause, message);
     }
 
     public InvalidConfigurationException(String message) {

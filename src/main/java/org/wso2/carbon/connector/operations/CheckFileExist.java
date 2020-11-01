@@ -44,12 +44,15 @@ import java.io.IOException;
  */
 public class CheckFileExist extends AbstractConnector {
 
+    private static final String PATH_PARAM = "path";
+    private static final String INCLUDE_RESULT_AT_PARAM = "includeResultTo";
+    private static final String RESULT_PROPERTY_NAME_PARAM = "resultPropertyName";
+    private static final String OPERATION_NAME = "checkExist";
+    private static final String ERROR_MESSAGE = "Error while performing file:checkExist for file/directory ";
+    private static final String FILE_EXISTS_ELE_NAME = "fileExists";
+
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-
-        String operationName = "checkExist";
-        String errorMessage = "Error while performing file:checkExist for file/directory ";
-        String fileExistsEleName = "fileExists";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String filePath = null;
@@ -60,10 +63,10 @@ public class CheckFileExist extends AbstractConnector {
 
             String connectionName = FileConnectorUtils.getConnectionName(messageContext);
             filePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "path");
+                    lookupTemplateParamater(messageContext, PATH_PARAM);
 
             if (StringUtils.isEmpty(filePath)) {
-                throw new InvalidConfigurationException("Parameter 'path' is not provided ");
+                throw new InvalidConfigurationException("Parameter '" + PATH_PARAM + "' is not provided ");
             }
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
@@ -83,18 +86,34 @@ public class CheckFileExist extends AbstractConnector {
             }
 
             OMElement fileExistsEle = FileConnectorUtils.
-                    createOMElement(fileExistsEleName, operationResult);
-            result = new FileOperationResult(operationName,
+                    createOMElement(FILE_EXISTS_ELE_NAME, operationResult);
+            result = new FileOperationResult(OPERATION_NAME,
                     true,
                     fileExistsEle);
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
+
+            String injectOperationResultAt = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, INCLUDE_RESULT_AT_PARAM);
+
+            if(injectOperationResultAt.equals(FileConnectorConstants.MESSAGE_BODY)) {
+                FileConnectorUtils.setResultAsPayload(messageContext, result);
+            } else if(injectOperationResultAt.equals(FileConnectorConstants.MESSAGE_PROPERTY)){
+                String resultPropertyName = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, RESULT_PROPERTY_NAME_PARAM);
+                if(StringUtils.isNotEmpty(resultPropertyName)) {
+                    messageContext.setProperty(resultPropertyName, operationResult);
+                } else {
+                    throw new InvalidConfigurationException("Property name to set operation result is required");
+                }
+            } else {
+                throw new InvalidConfigurationException("Parameter 'includeResultAt' is mandatory");
+            }
 
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + filePath;
+            String errorDetail = ERROR_MESSAGE + filePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     e.getMessage());
@@ -104,9 +123,9 @@ public class CheckFileExist extends AbstractConnector {
 
         } catch (IOException e) {       //FileSystemException also handled here
 
-            String errorDetail = errorMessage + filePath;
+            String errorDetail = ERROR_MESSAGE + filePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.OPERATION_ERROR,
                     e.getMessage());

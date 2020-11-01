@@ -45,6 +45,8 @@ import org.wso2.carbon.connector.utils.FileConnectorUtils;
  */
 public class FileConfig extends AbstractConnector implements ManagedLifecycle {
 
+    private static final String OPERATION_NAME = "init";
+
     @Override
     public void init(SynapseEnvironment synapseEnvironment) {
         //do nothing on deployment - configs unknown by that time
@@ -60,7 +62,6 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        String operationName = "init";
         String connectorName = FileConnectorConstants.CONNECTOR_NAME;
         String connectionName = (String) ConnectorUtils.
                 lookupTemplateParamater(messageContext, FileConnectorConstants.CONNECTION_NAME);
@@ -75,7 +76,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
         } catch (InvalidConfigurationException e) {
             FileConnectorUtils.setErrorPropertiesToMessage(messageContext, Error.INVALID_CONFIGURATION);
             FileOperationResult result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     e.getMessage());
@@ -85,7 +86,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
             //TODO: do we retry here?
             FileConnectorUtils.setErrorPropertiesToMessage(messageContext, Error.CONNECTION_ERROR);
             FileOperationResult result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.CONNECTION_ERROR,
                     e.getMessage());

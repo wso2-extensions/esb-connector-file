@@ -42,10 +42,13 @@ import java.io.File;
  */
 public class RenameFiles extends AbstractConnector {
 
+    private static final String OVERWRITE_PARAM = "overwrite";
+    private static final String RENAME_TO_PARAM = "renameTo";
+    private static final String OPERATION_NAME = "renameFile";
+    private static final String ERROR_MESSAGE = "Error while performing file:rename for file/folder ";
+
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-        String operationName = "renameFile";
-        String errorMessage = "Error while performing file:rename for file/folder ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String fileOrFolderPath = null;
@@ -59,9 +62,9 @@ public class RenameFiles extends AbstractConnector {
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
                     .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
             overwrite = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "overwrite"));
+                    lookupTemplateParamater(messageContext, OVERWRITE_PARAM));
             newName = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "renameTo");
+                    lookupTemplateParamater(messageContext, RENAME_TO_PARAM);
             fileOrFolderPath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, FileConnectorConstants.FILE_OR_DIRECTORY_PATH);
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
@@ -70,8 +73,8 @@ public class RenameFiles extends AbstractConnector {
             fileToRename = fsManager.resolveFile(fileOrFolderPath, fso);
 
             //path after rename
-            String newFilePath = fileOrFolderPath.substring(0, fileOrFolderPath.lastIndexOf(File.separator))
-                    + File.separator + newName;
+            String newFilePath = fileOrFolderPath.substring(0, fileOrFolderPath.lastIndexOf(FileConnectorConstants.FILE_SEPARATOR))
+                    + FileConnectorConstants.FILE_SEPARATOR + newName;
             FileObject newFile = fsManager.resolveFile(newFilePath, fso);
 
             if (fileToRename.exists()) {
@@ -80,31 +83,31 @@ public class RenameFiles extends AbstractConnector {
 
                     if (!overwrite && newFile.exists()) {
                         result = new FileOperationResult(
-                                operationName,
+                                OPERATION_NAME,
                                 false,
                                 Error.FILE_ALREADY_EXISTS,
                                 "Destination file already exists and overwrite not allowed.");
                     } else {
                         fileToRename.moveTo(newFile);
                         result = new FileOperationResult(
-                                operationName,
+                                OPERATION_NAME,
                                 true);
                     }
 
                 } else {
 
-                    log.error(errorMessage + ". File " + fileOrFolderPath
+                    log.error(ERROR_MESSAGE + ". File " + fileOrFolderPath
                             + " cannot be renamed to " + newName);
 
                     result = new FileOperationResult(
-                            operationName,
+                            OPERATION_NAME,
                             false,
                             Error.OPERATION_ERROR,
                             "Cannot rename file " + fileOrFolderPath);
                 }
             } else {
                 result = new FileOperationResult(
-                        operationName,
+                        OPERATION_NAME,
                         false,
                         Error.ILLEGAL_PATH,
                         "File or folder does not exist " + fileOrFolderPath);
@@ -114,10 +117,10 @@ public class RenameFiles extends AbstractConnector {
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + fileOrFolderPath;
+            String errorDetail = ERROR_MESSAGE + fileOrFolderPath;
 
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     errorDetail);
@@ -127,10 +130,10 @@ public class RenameFiles extends AbstractConnector {
 
         } catch (FileSystemException e) {
 
-            String errorDetail = errorMessage + fileOrFolderPath;
+            String errorDetail = ERROR_MESSAGE + fileOrFolderPath;
 
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.OPERATION_ERROR,
                     errorDetail);

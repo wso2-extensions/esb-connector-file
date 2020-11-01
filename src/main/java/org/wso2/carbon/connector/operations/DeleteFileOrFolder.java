@@ -44,10 +44,13 @@ import org.wso2.carbon.connector.utils.SimpleFileFiler;
  */
 public class DeleteFileOrFolder extends AbstractConnector {
 
+    private static final String MATCHING_PATTERN_PARAM = "matchingPattern";
+    private static final String NUM_OF_DELETED_FILES_ELE = "numOfDeletedFiles";
+    private static final String DELETE_FILE = "deleteFile";
+    private static final String ERROR_MESSAGE = "Error while performing file:delete for file/folder ";
+
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-        String operationName = "deleteFile";
-        String errorMessage = "Error while performing file:delete for file/folder ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String fileOrFolderPath = null;
@@ -61,7 +64,7 @@ public class DeleteFileOrFolder extends AbstractConnector {
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
                     .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
             fileMatchingPattern = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "matchingPattern");
+                    lookupTemplateParamater(messageContext, MATCHING_PATTERN_PARAM);
             fileOrFolderPath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, FileConnectorConstants.FILE_OR_DIRECTORY_PATH);
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
@@ -73,7 +76,7 @@ public class DeleteFileOrFolder extends AbstractConnector {
             if (fileObjectToDelete.isFile()) {
                 isOperationSuccessful = fileObjectToDelete.delete();
                 result = new FileOperationResult(
-                        operationName,
+                        DELETE_FILE,
                         isOperationSuccessful);
             }
 
@@ -94,10 +97,10 @@ public class DeleteFileOrFolder extends AbstractConnector {
                 }
                 isOperationSuccessful = true;
                 OMElement numOfDeletedFilesEle = FileConnectorUtils.
-                        createOMElement("numOfDeletedFiles",
+                        createOMElement(NUM_OF_DELETED_FILES_ELE,
                                 Integer.toString(numberOfDeletedFiles));
                 result = new FileOperationResult(
-                        operationName,
+                        DELETE_FILE,
                         isOperationSuccessful,
                         numOfDeletedFilesEle);
             }
@@ -106,10 +109,10 @@ public class DeleteFileOrFolder extends AbstractConnector {
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + fileOrFolderPath;
+            String errorDetail = ERROR_MESSAGE + fileOrFolderPath;
 
             result = new FileOperationResult(
-                    operationName,
+                    DELETE_FILE,
                     false,
                     Error.INVALID_CONFIGURATION,
                     errorDetail);
@@ -119,10 +122,10 @@ public class DeleteFileOrFolder extends AbstractConnector {
 
         } catch (FileSystemException e) {
 
-            String errorDetail = errorMessage + fileOrFolderPath;
+            String errorDetail = ERROR_MESSAGE + fileOrFolderPath;
 
             result = new FileOperationResult(
-                    operationName,
+                    DELETE_FILE,
                     false,
                     Error.OPERATION_ERROR,
                     errorDetail);

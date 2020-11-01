@@ -18,10 +18,12 @@
 
 package org.wso2.carbon.connector.exception;
 
+import org.wso2.carbon.connector.core.ConnectException;
+
 /**
  * Exception thrown upon a connection error to file server
  */
-public class FileServerConnectionException extends Exception {
+public class FileServerConnectionException extends ConnectException {
 
     public FileServerConnectionException(String message) {
 
@@ -30,6 +32,6 @@ public class FileServerConnectionException extends Exception {
 
     public FileServerConnectionException(String message, Throwable cause) {
 
-        super(message, cause);
+        super(cause, message);
     }
 }

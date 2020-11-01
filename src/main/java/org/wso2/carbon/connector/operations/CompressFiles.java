@@ -50,13 +50,16 @@ import java.util.zip.ZipOutputStream;
  */
 public class CompressFiles extends AbstractConnector {
 
-    private static final String logIdentifier = "[FileConnector:compress] ";
+    private static final String LOG_IDENTIFIER = "[FileConnector:compress] ";
+    private static final String SOURCE_DIRECTORY_PATH = "sourceDirectoryPath";
+    private static final String TARGET_FILE_PATH = "targetFilePath";
+    private static final String INCLUDE_SUB_DIRECTORIES = "includeSubDirectories";
+    private static final String NUMBER_OF_FILES_ADDED_ELEMENT = "NumberOfFilesAdded";
+    private static final String OPERATION_NAME = "compress";
+    private static final String ERROR_MESSAGE = "Error while performing file:compress for file/directory ";
 
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-
-        String operationName = "compress";
-        String errorMessage = "Error while performing file:compress for file/directory ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String sourceFilePath = null;
@@ -70,16 +73,16 @@ public class CompressFiles extends AbstractConnector {
 
             String connectionName = FileConnectorUtils.getConnectionName(messageContext);
             sourceFilePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "sourceDirectoryPath");
+                    lookupTemplateParamater(messageContext, SOURCE_DIRECTORY_PATH);
             targetZipFilePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "targetFilePath");
+                    lookupTemplateParamater(messageContext, TARGET_FILE_PATH);
 
             if (StringUtils.isEmpty(sourceFilePath) || StringUtils.isEmpty(targetZipFilePath)) {
                 throw new InvalidConfigurationException("Source or target file path is not provided ");
             }
 
             String includeSubDirectoriesAsStr = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "includeSubDirectories");
+                    lookupTemplateParamater(messageContext, INCLUDE_SUB_DIRECTORIES);
             if (StringUtils.isNotEmpty(includeSubDirectoriesAsStr)) {
                 includeSubDirectories = Boolean.parseBoolean(includeSubDirectoriesAsStr);
             }
@@ -104,9 +107,9 @@ public class CompressFiles extends AbstractConnector {
 
             int numberOfCompressedFiles = compressFile(fileToCompress, targetZipFile, includeSubDirectories);
             OMElement compressedFilesEle =
-                    FileConnectorUtils.createOMElement("NumberOfFilesAdded",
+                    FileConnectorUtils.createOMElement(NUMBER_OF_FILES_ADDED_ELEMENT,
                             Integer.toString(numberOfCompressedFiles));
-            result = new FileOperationResult(operationName,
+            result = new FileOperationResult(OPERATION_NAME,
                     true,
                     compressedFilesEle);
             FileConnectorUtils.setResultAsPayload(messageContext, result);
@@ -114,9 +117,9 @@ public class CompressFiles extends AbstractConnector {
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + sourceFilePath;
+            String errorDetail = ERROR_MESSAGE + sourceFilePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     e.getMessage());
@@ -126,9 +129,9 @@ public class CompressFiles extends AbstractConnector {
 
         } catch (IllegalPathException e) {
 
-            String errorDetail = errorMessage + sourceFilePath;
+            String errorDetail = ERROR_MESSAGE + sourceFilePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.ILLEGAL_PATH,
                     e.getMessage());
@@ -137,9 +140,9 @@ public class CompressFiles extends AbstractConnector {
 
         } catch (IOException e) {       //FileSystemException also handled here
 
-            String errorDetail = errorMessage + sourceFilePath;
+            String errorDetail = ERROR_MESSAGE + sourceFilePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.OPERATION_ERROR,
                     e.getMessage());
@@ -208,7 +211,7 @@ public class CompressFiles extends AbstractConnector {
                         outputStream.close();
                     }
                 } catch (IOException e) {
-                    log.error(logIdentifier + "Error while closing ZipOutputStream for file "
+                    log.error(LOG_IDENTIFIER + "Error while closing ZipOutputStream for file "
                             + targetZipFile.getURL(), e);
                 }
                 try {
@@ -216,14 +219,14 @@ public class CompressFiles extends AbstractConnector {
                         fileIn.close();
                     }
                 } catch (IOException e) {
-                    log.error(logIdentifier + "Error while closing InputStream "
+                    log.error(LOG_IDENTIFIER + "Error while closing InputStream "
                             + fileToCompress.getURL(), e);
                 }
             }
         }
 
         if (log.isDebugEnabled()) {
-            log.debug(logIdentifier + "File archiving completed: " + targetZipFile.getURL());
+            log.debug(LOG_IDENTIFIER + "File archiving completed: " + targetZipFile.getURL());
         }
 
         return numberOfFilesAddedToZip;

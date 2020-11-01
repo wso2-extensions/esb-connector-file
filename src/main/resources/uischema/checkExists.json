@@ -42,6 +42,30 @@
                     "required": "true",
                     "helpTip": "Path to zip file to extract"
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "includeResultTo",
+                    "displayName": "Add Result To",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Message Body","Message Property"],
+                    "defaultValue": "Message Body",
+                    "required": "true",
+                    "helpTip": "Specify where to place operation result. Setting to a property will not change current payload at message body."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "resultPropertyName",
+                    "displayName": "Property Name",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "enableCondition": [{"includeResultTo":"Message Property"}],
+                    "helpTip": "Name of property to add operation result"
+                  }
                 }
               ]
             }

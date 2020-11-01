@@ -27,7 +27,8 @@
     <parameter name="enableStreaming" description="Write the file in streaming manner"/>
     <parameter name="appendNewLine" description="Whether to add a new line character at the end"/>
     <parameter name="enableLock" description="Whether to lock the file when reading"/>
-    <parameter name="fileWriteResultProperty" description="Property to include file write result."/>
+    <parameter name="includeResultTo" description="Specify where to place operation result."/>
+    <parameter name="resultPropertyName" description="Name of property to add operation result."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.WriteFile" />
     </sequence>

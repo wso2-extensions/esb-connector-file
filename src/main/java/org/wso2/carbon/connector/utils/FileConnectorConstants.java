@@ -64,6 +64,8 @@ public final class FileConnectorConstants {
     public static final String FTP_PROTOCOL_PREFIX = "ftp://";
     public static final String FTPS_PROTOCOL_PREFIX = "ftps://";
     public static final String SFTP_PROTOCOL_PREFIX = "sftp://";
+    //FILE.Separator is not needed for VFS. Windows also support /
+    public static final String FILE_SEPARATOR = "/";
 
     public static final String FILE_ELEMENT = "file";
     public static final String STATUS_CODE = "HTTP_SC";
@@ -87,7 +89,8 @@ public final class FileConnectorConstants {
 
 
     public static final CharSequence NEW_LINE = "\n";
-    public static final String DEFAULT_ENCODING = "UTF8";
+    public static final String DEFAULT_ENCODING = "UTF-8";
+    public static final String SET_CHARACTER_ENCODING = "setCharacterEncoding";
     public static final String CONTENT_TYPE_BINARY = "application/binary";
     public static final String CONTENT_TYPE_TEXT = "text/plain";
     public static final String MESSAGE_TYPE = "messageType";
@@ -95,5 +98,9 @@ public final class FileConnectorConstants {
     public static final String LOCK_FILE_EXTENSION = ".lock";
 
     public static final String CONTENT_TYPE_AUTOMATIC = "Automatic";
+
+    public static final String MESSAGE_BODY = "Message Body";
+
+    public static final String MESSAGE_PROPERTY = "Message Property";
 
 }

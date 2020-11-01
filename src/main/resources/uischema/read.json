@@ -57,25 +57,6 @@
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "contentProperty",
-                    "displayName": "Content Property",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Message Context property to set content. If provided current message body in not changed."
-                  }
-                }
-              ]
-            }
-          },
-          {
-            "type": "attributeGroup",
-            "value": {
-              "groupName": "Read Mode",
-              "elements": [
-                {
-                  "type": "attribute",
-                  "value": {
                     "name": "readMode",
                     "displayName": "Read Mode",
                     "inputType": "comboOrExpression",
@@ -148,7 +129,7 @@
                     "name": "encoding",
                     "displayName": "Encoding",
                     "inputType": "stringOrExpression",
-                    "defaultValue": "",
+                    "defaultValue": "UTF-8",
                     "required": "false",
                     "enableCondition":  ["OR",{"readMode":"Complete File"}, {"readMode":"Starting From Line"},{"readMode":"Up To Line"},{"readMode":"Between Lines"},{"readMode":"Specific Line"}],
                     "helpTip": "Encoding of the message generated."
@@ -175,6 +156,38 @@
                     "defaultValue": "false",
                     "required": "true",
                     "helpTip": "Whether to lock the file when reading"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Operation Result",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "includeResultTo",
+                    "displayName": "Add Result To",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Message Body","Message Property"],
+                    "defaultValue": "Message Body",
+                    "required": "true",
+                    "helpTip": "Specify where to place operation result. Setting to a property will not change current payload at message body."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "resultPropertyName",
+                    "displayName": "Property Name",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "enableCondition": [{"includeResultTo":"Message Property"}],
+                    "helpTip": "Name of property to add operation result"
                   }
                 }
               ]

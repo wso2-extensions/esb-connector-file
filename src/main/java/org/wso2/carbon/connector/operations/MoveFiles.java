@@ -45,10 +45,17 @@ import java.util.Collection;
  */
 public class MoveFiles extends AbstractConnector {
 
+    private static final String SOURCE_PATH_PARAM = "sourcePath";
+    private static final String TARGET_PATH_PARAM = "targetPath";
+    private static final String CREATE_PARENT_DIRECTORIES_PARAM = "createParentDirectories";
+    private static final String INCLUDE_PARENT_PARAM = "includeParent";
+    private static final String OVERWRITE_PARAM = "overwrite";
+    private static final String RENAME_TO_PARAM = "renameTo";
+    private static final String OPERATION_NAME = "moveFiles";
+    private static final String ERROR_MESSAGE = "Error while performing file:move for file/folder ";
+
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-        String operationName = "moveFiles";
-        String errorMessage = "Error while performing file:move for file/folder ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String sourcePath = null;
@@ -70,17 +77,17 @@ public class MoveFiles extends AbstractConnector {
 
             //read inputs
             sourcePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "sourcePath");
+                    lookupTemplateParamater(messageContext, SOURCE_PATH_PARAM);
             targetPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "targetPath");
+                    lookupTemplateParamater(messageContext, TARGET_PATH_PARAM);
             createNonExistingParents = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "createParentDirectories"));
+                    lookupTemplateParamater(messageContext, CREATE_PARENT_DIRECTORIES_PARAM));
             includeParent = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "includeParent"));
+                    lookupTemplateParamater(messageContext, INCLUDE_PARENT_PARAM));
             overwrite = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "overwrite"));
+                    lookupTemplateParamater(messageContext, OVERWRITE_PARAM));
             renameTo = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "renameTo");
+                    lookupTemplateParamater(messageContext, RENAME_TO_PARAM);
 
             sourcePath = fileSystemHandler.getBaseDirectoryPath() + sourcePath;
             targetPath = fileSystemHandler.getBaseDirectoryPath() + targetPath;
@@ -96,9 +103,11 @@ public class MoveFiles extends AbstractConnector {
 
                     //check if we have given a new name
                     if (StringUtils.isNotEmpty(renameTo)) {
-                        targetFilePath = targetPath + File.separator + renameTo;
+                        targetFilePath = targetPath + FileConnectorConstants.FILE_SEPARATOR
+                                + renameTo;
                     } else {
-                        targetFilePath = targetPath + File.separator + sourceFile.getName().getBaseName();
+                        targetFilePath = targetPath + FileConnectorConstants.FILE_SEPARATOR
+                                + sourceFile.getName().getBaseName();
                     }
 
                     FileObject targetFile = fsManager.resolveFile(targetFilePath, fso);
@@ -106,11 +115,11 @@ public class MoveFiles extends AbstractConnector {
                     FileOperationResult result;
                     if (success) {
                         result = new FileOperationResult(
-                                operationName,
+                                OPERATION_NAME,
                                 true);
                     } else {
                         result = new FileOperationResult(
-                                operationName,
+                                OPERATION_NAME,
                                 false,
                                 Error.FILE_ALREADY_EXISTS,
                                 "Destination file already exists and overwrite not allowed");
@@ -121,10 +130,10 @@ public class MoveFiles extends AbstractConnector {
                     //in case of folder
                     if (includeParent) {
                         if (StringUtils.isNotEmpty(renameTo)) {
-                            targetPath = targetPath + File.separator + renameTo;
+                            targetPath = targetPath + FileConnectorConstants.FILE_SEPARATOR + renameTo;
                         } else {
                             String sourceParentFolderName = sourceFile.getName().getBaseName();
-                            targetPath = targetPath + File.separator + sourceParentFolderName;
+                            targetPath = targetPath + FileConnectorConstants.FILE_SEPARATOR + sourceParentFolderName;
                         }
                     }
 
@@ -134,11 +143,11 @@ public class MoveFiles extends AbstractConnector {
                     FileOperationResult result;
                     if (success) {
                         result = new FileOperationResult(
-                                operationName,
+                                OPERATION_NAME,
                                 true);
                     } else {
                         result = new FileOperationResult(
-                                operationName,
+                                OPERATION_NAME,
                                 false,
                                 Error.FILE_ALREADY_EXISTS,
                                 "Folder or one or more sub-directories already exists and overwrite not allowed");
@@ -147,9 +156,9 @@ public class MoveFiles extends AbstractConnector {
                 }
 
             } else {
-                String errorDetail = errorMessage + sourcePath + ". File/Folder does not exist.";
+                String errorDetail = ERROR_MESSAGE + sourcePath + ". File/Folder does not exist.";
                 FileOperationResult result = new FileOperationResult(
-                        operationName,
+                        OPERATION_NAME,
                         false,
                         Error.ILLEGAL_PATH,
                         errorDetail);
@@ -159,9 +168,9 @@ public class MoveFiles extends AbstractConnector {
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + sourcePath;
+            String errorDetail = ERROR_MESSAGE + sourcePath;
             FileOperationResult result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     errorDetail);
@@ -170,9 +179,9 @@ public class MoveFiles extends AbstractConnector {
 
         } catch (FileSystemException e) {
 
-            String errorDetail = errorMessage + sourcePath;
+            String errorDetail = ERROR_MESSAGE + sourcePath;
             FileOperationResult result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.OPERATION_ERROR,
                     errorDetail);

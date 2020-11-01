@@ -35,13 +35,15 @@ import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
+import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.transport.passthru.util.BinaryRelayBuilder;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
-import org.wso2.carbon.connector.exception.ConnectorOperationException;
+import org.wso2.carbon.connector.exception.FileLockException;
+import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
@@ -71,15 +73,29 @@ import java.util.stream.Stream;
  */
 public class ReadFile extends AbstractConnector {
 
+    private static final String PATH_PARAM = "path";
+    private static final String FILE_PATTERN_PARAM = "filePattern";
+    private static final String ENABLE_LOCK_PARAM = "enableLock";
+    private static final String READ_MODE_PARAM = "readMode";
+    private static final String INCLUDE_RESULT_TO = "includeResultTo";
+    private static final String RESULT_PROPERTY_NAME = "resultPropertyName";
+    private static final String CONTENT_TYPE_PARAM = "contentType";
+    private static final String ENCODING_PARAM = "encoding";
+    private static final String ENABLE_STREAMING_PARAM = "enableStreaming";
+    private static final String START_LINE_NUM_PARAM = "startLineNum";
+    private static final String END_LINE_NUM_PARAM = "endLineNum";
+    private static final String LINE_NUM_PARAM = "lineNum";
+    private static final String CHARSET_PARAM = "charset";
+    private static final String OPERATION_NAME = "read";
+    private static final String ERROR_MESSAGE = "Error while performing file:read for file/directory ";
+
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-        String operationName = "read";
-        String errorMessage = "Error while performing file:read for file/directory ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String sourcePath = null;
         FileObject fileObject = null;
-        FileReadMode readMode = FileReadMode.COMPLETE_FILE;
+        FileReadMode readMode;
         FileOperationResult result;
         FileLock fileLock = null;
 
@@ -87,10 +103,10 @@ public class ReadFile extends AbstractConnector {
 
             String connectionName = FileConnectorUtils.getConnectionName(messageContext);
             sourcePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "path");
+                    lookupTemplateParamater(messageContext, PATH_PARAM);
 
             if (StringUtils.isEmpty(sourcePath)) {
-                throw new InvalidConfigurationException("Parameter 'path' is not provided ");
+                throw new InvalidConfigurationException("Parameter '" + PATH_PARAM + "' is not provided ");
             }
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
@@ -109,10 +125,11 @@ public class ReadFile extends AbstractConnector {
 
             if (fileObject.isFolder()) {
                 String filePattern = (String) ConnectorUtils.
-                        lookupTemplateParamater(messageContext, "filePattern");
+                        lookupTemplateParamater(messageContext, FILE_PATTERN_PARAM);
                 //select file to read
                 fileObject = selectFileToRead(fileObject, filePattern);
-                workingDirRelativePAth = workingDirRelativePAth + File.separator + fileObject.getName().getBaseName();
+                workingDirRelativePAth = workingDirRelativePAth + FileConnectorConstants.FILE_SEPARATOR
+                        + fileObject.getName().getBaseName();
             }
 
             //set metadata as context properties
@@ -120,41 +137,48 @@ public class ReadFile extends AbstractConnector {
 
             //lock the file if enabled
             boolean lockFile = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "enableLock"));
+                    lookupTemplateParamater(messageContext, ENABLE_LOCK_PARAM));
             if (lockFile) {
                 fileLock = new FileLock(sourcePath);
                 boolean lockAcquired = fileLock.acquireLock(fsManager, fso, FileConnectorConstants.DEFAULT_LOCK_TIMEOUT);
                 if (!lockAcquired) {
-                    throw new ConnectorOperationException("Failed to acquire lock for file "
+                    throw new FileLockException("Failed to acquire lock for file "
                             + sourcePath + ". Another process maybe processing it. ");
                 }
             }
 
             String fileReadModeAsStr = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "readMode");
+                    lookupTemplateParamater(messageContext, READ_MODE_PARAM);
             if (StringUtils.isNotEmpty(fileReadModeAsStr)) {
                 readMode = FileReadMode.fromString(fileReadModeAsStr);
             } else {
-                throw new InvalidConfigurationException("Mandatory parameter 'readMode' is not provided");
+                throw new InvalidConfigurationException("Mandatory parameter '"
+                        + READ_MODE_PARAM + "' is not provided");
             }
 
             //if we need to read metadata only, no need to touch content
             if (Objects.equals(readMode, FileReadMode.METADATA_ONLY)) {
                 result = new FileOperationResult(
-                        operationName,
+                        OPERATION_NAME,
                         true);
                 FileConnectorUtils.setResultAsPayload(messageContext, result);
                 return;
             }
 
-            String contentPropertyName = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "contentProperty");
+            String injectOperationResultTo = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, INCLUDE_RESULT_TO);
+            String resultPropertyName = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, RESULT_PROPERTY_NAME);
+            if (injectOperationResultTo.equals(FileConnectorConstants.MESSAGE_PROPERTY)
+                    && StringUtils.isEmpty(resultPropertyName)) {
+                throw new InvalidConfigurationException("Parameter resultPropertyName is not provided");
+            }
             String contentType = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "contentType");
+                    lookupTemplateParamater(messageContext, CONTENT_TYPE_PARAM);
             String encoding = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "encoding");
+                    lookupTemplateParamater(messageContext, ENCODING_PARAM);
             boolean isStreaming = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "enableStreaming"));
+                    lookupTemplateParamater(messageContext, ENABLE_STREAMING_PARAM));
 
 
             if (StringUtils.isEmpty(contentType)) {
@@ -171,11 +195,11 @@ public class ReadFile extends AbstractConnector {
             //read and build file content
             if (isStreaming) {
                 //here underlying stream to the file content is not closed. We keep it open
-                setStreamToSynapse(fileObject, contentPropertyName, messageContext, contentType);
+                setStreamToSynapse(fileObject, resultPropertyName, messageContext, contentType);
             } else {
                 //this will close input stream automatically after building message
                 try (InputStream inputStream = readFile(fileObject, readMode, messageContext)) {
-                    buildSynapseMessage(inputStream, contentPropertyName, messageContext, contentType);
+                    buildSynapseMessage(inputStream, resultPropertyName, messageContext, contentType);
                 }
             }
 
@@ -184,9 +208,9 @@ public class ReadFile extends AbstractConnector {
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + sourcePath;
+            String errorDetail = ERROR_MESSAGE + sourcePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     e.getMessage());
@@ -196,21 +220,31 @@ public class ReadFile extends AbstractConnector {
 
         } catch (IllegalPathException e) {
 
-            String errorDetail = errorMessage + sourcePath;
+            String errorDetail = ERROR_MESSAGE + sourcePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.ILLEGAL_PATH,
                     e.getMessage());
             FileConnectorUtils.setResultAsPayload(messageContext, result);
             handleException(errorDetail, e, messageContext);
 
-        } catch (ConnectorOperationException | IOException e) { //FileSystemException also handled here
-            String errorDetail = errorMessage + sourcePath;
+        } catch (FileOperationException | IOException e) { //FileSystemException also handled here
+            String errorDetail = ERROR_MESSAGE + sourcePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.OPERATION_ERROR,
+                    e.getMessage());
+            FileConnectorUtils.setResultAsPayload(messageContext, result);
+            handleException(errorDetail, e, messageContext);
+
+        } catch (FileLockException e) {
+            String errorDetail = ERROR_MESSAGE + sourcePath;
+            result = new FileOperationResult(
+                    OPERATION_NAME,
+                    false,
+                    Error.FILE_LOCKING_ERROR,
                     e.getMessage());
             FileConnectorUtils.setResultAsPayload(messageContext, result);
             handleException(errorDetail, e, messageContext);
@@ -244,18 +278,18 @@ public class ReadFile extends AbstractConnector {
      * @param directory   directory to scan
      * @param filePattern file pattern to search files
      * @return File selected
-     * @throws FileSystemException         in case of file related issue
-     * @throws ConnectorOperationException if no file can be selected
+     * @throws FileSystemException    in case of file related issue
+     * @throws FileOperationException if no file can be selected
      */
     private FileObject selectFileToRead(FileObject directory, String filePattern)
-            throws FileSystemException, ConnectorOperationException {
+            throws FileSystemException, FileOperationException {
 
         FileObject fileToRead = null;
         FileObject[] children = directory.getChildren();
 
         if (children == null || children.length == 0) {
 
-            throw new ConnectorOperationException("There is no immediate files to read in the folder " + directory.getURL());
+            throw new FileOperationException("There is no immediate files to read in the folder " + directory.getURL());
 
         } else if (StringUtils.isNotEmpty(filePattern)) {
 
@@ -268,7 +302,7 @@ public class ReadFile extends AbstractConnector {
                 }
             }
             if (!bFound) {
-                throw new ConnectorOperationException("There is no immediate files to "
+                throw new FileOperationException("There is no immediate files to "
                         + "read that matches with given pattern in the folder "
                         + directory.getURL());
             }
@@ -303,7 +337,6 @@ public class ReadFile extends AbstractConnector {
         msgContext.setProperty(FileConnectorConstants.FILE_NAME_WITHOUT_EXTENSION, file.getName().
                 getBaseName().split("\\.")[0]);
         //The size of the file, in bytes
-        //TODO: check if this reads the content. If so, can be expensive.
         msgContext.setProperty(FileConnectorConstants.FILE_SIZE, file.getContent().getSize());
     }
 
@@ -330,12 +363,15 @@ public class ReadFile extends AbstractConnector {
     private void setCharsetEncoding(String charSetEnc, String contentType, MessageContext msgContext) {
         if (StringUtils.isEmpty(charSetEnc)) {
             try {
-                charSetEnc = new ContentType(contentType).getParameter("charset");
+                charSetEnc = new ContentType(contentType).getParameter(CHARSET_PARAM);
             } catch (ParseException ex) {
                 log.warn("FileConnector:read - Invalid encoding type.", ex);
             }
         }
-        msgContext.setProperty(Constants.Configuration.CHARACTER_SET_ENCODING, charSetEnc);
+        ((Axis2MessageContext) msgContext).getAxis2MessageContext().
+                setProperty(FileConnectorConstants.SET_CHARACTER_ENCODING, true);
+        ((Axis2MessageContext) msgContext).getAxis2MessageContext().
+                setProperty(Constants.Configuration.CHARACTER_SET_ENCODING, charSetEnc);
     }
 
     /**
@@ -346,10 +382,10 @@ public class ReadFile extends AbstractConnector {
      * @param startLine Line to start reading
      * @param endLine   Line to read up to
      * @return Processed stream
-     * @throws ConnectorOperationException in case of input error
+     * @throws FileOperationException in case of input error
      */
     private InputStream processStream(InputStream in, int startLine, int endLine)
-            throws ConnectorOperationException {
+            throws FileOperationException {
 
         Stream<String> tempStream;
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
@@ -361,7 +397,7 @@ public class ReadFile extends AbstractConnector {
         } else if (endLine > 0) {
             tempStream = reader.lines().limit(endLine);
         } else {
-            throw new ConnectorOperationException("File connector:read Error while processing stream ");
+            throw new FileOperationException("File connector:read Error while processing stream ");
         }
         return new ByteArrayInputStream(tempStream.collect(
                 Collectors.joining(FileConnectorConstants.NEW_LINE)).toString().getBytes());
@@ -376,10 +412,10 @@ public class ReadFile extends AbstractConnector {
      * @param msgContext Message context to lookup read config
      * @return InputStream to the file
      * @throws InvalidConfigurationException In case of config error
-     * @throws ConnectorOperationException   In case of I/O error
+     * @throws FileOperationException        In case of I/O error
      */
     private InputStream readFile(FileObject file, FileReadMode readMode, MessageContext msgContext)
-            throws InvalidConfigurationException, ConnectorOperationException {
+            throws InvalidConfigurationException, FileOperationException {
 
         int startLine = 0;
         int endLine = 0;
@@ -387,11 +423,11 @@ public class ReadFile extends AbstractConnector {
 
         //read input params
         String startLineAsStr = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, "startLineNum");
+                lookupTemplateParamater(msgContext, START_LINE_NUM_PARAM);
         String endLineAsStr = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, "endLineNum");
+                lookupTemplateParamater(msgContext, END_LINE_NUM_PARAM);
         String specificLineAsStr = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, "lineNum");
+                lookupTemplateParamater(msgContext, LINE_NUM_PARAM);
 
         if (StringUtils.isNotEmpty(startLineAsStr)) {
             startLine = Integer.parseInt(startLineAsStr);
@@ -413,9 +449,11 @@ public class ReadFile extends AbstractConnector {
                 case STARTING_FROM_LINE:
 
                     if (startLine == 0) {
-                        throw new InvalidConfigurationException("Parameter 'startLineNum' is required for selected read mode");
+                        throw new InvalidConfigurationException("Parameter '"
+                                + START_LINE_NUM_PARAM + "' is required for selected read mode");
                     } else if (startLine < 0) {
-                        throw new InvalidConfigurationException("Parameter 'startLineNum' must be positive");
+                        throw new InvalidConfigurationException("Parameter '"
+                                + START_LINE_NUM_PARAM + "' must be positive");
                     }
                     processedStream = processStream(in, startLine, 0);
                     break;
@@ -423,9 +461,11 @@ public class ReadFile extends AbstractConnector {
                 case UP_TO_LINE:
 
                     if (endLine == 0) {
-                        throw new InvalidConfigurationException("Parameter 'endLineNum' is required for selected read mode");
+                        throw new InvalidConfigurationException("Parameter '"
+                                + END_LINE_NUM_PARAM + "' is required for selected read mode");
                     } else if (endLine < 0) {
-                        throw new InvalidConfigurationException("Parameter 'endLineNum' must be positive");
+                        throw new InvalidConfigurationException("Parameter '"
+                                + END_LINE_NUM_PARAM + "' must be positive");
                     }
                     processedStream = processStream(in, 1, endLine);
                     break;
@@ -474,7 +514,7 @@ public class ReadFile extends AbstractConnector {
             return processedStream;
 
         } catch (IOException e) {
-            throw new ConnectorOperationException("File connector:read - Error while reading file ", e);
+            throw new FileOperationException("File connector:read - Error while reading file ", e);
         }
     }
 
@@ -487,10 +527,10 @@ public class ReadFile extends AbstractConnector {
      * @param contentPropertyName Property name to set content
      * @param msgCtx              MessageContext
      * @param contentType         MIME type of the message to build
-     * @throws ConnectorOperationException In case of synapse related or runtime issue
+     * @throws FileOperationException In case of synapse related or runtime issue
      */
     private void setStreamToSynapse(FileObject file, String contentPropertyName, MessageContext msgCtx,
-                                    String contentType) throws ConnectorOperationException {
+                                    String contentType) throws FileOperationException {
 
         try {
             ManagedDataSource dataSource = ManagedDataSourceFactory.create(new FileObjectDataSource(file, contentType));
@@ -508,12 +548,12 @@ public class ReadFile extends AbstractConnector {
             } else {
                 log.error("FileConnector:read - selected builder for streaming should be DataSourceMessageBuilder. "
                         + "Maybe it is not registered to the contentType of this message");
-                throw new ConnectorOperationException("Required builder for streaming not found");
+                throw new FileOperationException("Required builder for streaming not found");
             }
         } catch (AxisFault e) {
-            throw new ConnectorOperationException("Axis2 error while setting file content stream to synapse", e);
+            throw new FileOperationException("Axis2 error while setting file content stream to synapse", e);
         } catch (OMException e) {
-            throw new ConnectorOperationException("Error while setting file content stream to synapse", e);
+            throw new FileOperationException("Error while setting file content stream to synapse", e);
         }
     }
 
@@ -525,10 +565,10 @@ public class ReadFile extends AbstractConnector {
      * @param contentPropertyName Property name to set content
      * @param msgCtx              Message context
      * @param contentType         MIME type of the message
-     * @throws ConnectorOperationException In case of building the message
+     * @throws FileOperationException In case of building the message
      */
     private void buildSynapseMessage(InputStream inputStream, String contentPropertyName, MessageContext msgCtx,
-                                     String contentType) throws ConnectorOperationException {
+                                     String contentType) throws FileOperationException {
 
         try {
             org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
@@ -543,9 +583,9 @@ public class ReadFile extends AbstractConnector {
                 msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
             }
         } catch (AxisFault e) {
-            throw new ConnectorOperationException("Axis2 error while building message from Stream", e);
+            throw new FileOperationException("Axis2 error while building message from Stream", e);
         } catch (OMException e) {
-            throw new ConnectorOperationException("Error while building message from Stream", e);
+            throw new FileOperationException("Error while building message from Stream", e);
         }
     }
 
@@ -574,7 +614,7 @@ public class ReadFile extends AbstractConnector {
             if (builder == null) {
                 if (log.isDebugEnabled()) {
                     log.debug("No message builder found for type '" + type + "'. Falling back "
-                            + "to" + " RELAY builder.");
+                            + "to RELAY builder.");
                 }
                 builder = new BinaryRelayBuilder();
             }

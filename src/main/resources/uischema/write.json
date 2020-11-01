@@ -71,26 +71,6 @@
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "fileWriteResultProperty",
-                    "displayName": "File Write Result Property",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "enableCondition":  ["NOT",{"enableStreaming":"true"}],
-                    "required": "false",
-                    "helpTip": "Message property to include file write operation result. If not provided result will be added to message body replacing existing message."
-                  }
-                }
-              ]
-            }
-          },
-          {
-            "type": "attributeGroup",
-            "value": {
-              "groupName": "Write Mode",
-              "elements": [
-                {
-                  "type": "attribute",
-                  "value": {
                     "name": "writeMode",
                     "displayName": "Write Mode",
                     "inputType": "comboOrExpression",
@@ -126,7 +106,7 @@
                     "name": "encoding",
                     "displayName": "Encoding",
                     "inputType": "stringOrExpression",
-                    "defaultValue": "",
+                    "defaultValue": "UTF-8",
                     "required": "false",
                     "helpTip": "Content Encoding. Applied when a value for content/expression is present."
                   }
@@ -175,6 +155,38 @@
                     "defaultValue": "false",
                     "required": "true",
                     "helpTip": "Whether to lock the file when writing"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Operation Result",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "includeResultTo",
+                    "displayName": "Add Result To",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Message Body","Message Property"],
+                    "defaultValue": "Message Body",
+                    "required": "true",
+                    "helpTip": "Specify where to place operation result. Setting to a property will not change current payload at message body."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "resultPropertyName",
+                    "displayName": "Property Name",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "enableCondition": [{"includeResultTo":"Message Property"}],
+                    "helpTip": "Name of property to add operation result"
                   }
                 }
               ]

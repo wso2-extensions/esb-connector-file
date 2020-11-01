@@ -25,7 +25,8 @@
     <parameter name="lineNum" description="Specific line number to read"/>
     <parameter name="contentType" description="MIME type of the message generated"/>
     <parameter name="encoding" description="Encoding of the message generated"/>
-    <parameter name="contentProperty" description="Message Ctx property to set content. If provided current message body in not changed"/>
+    <parameter name="includeResultTo" description="Specify where to place operation result."/>
+    <parameter name="resultPropertyName" description="Name of property to add operation result."/>
     <parameter name="enableStreaming" description="Read the file in streaming manner. No message interpretation"/>
     <parameter name="enableLock" description="Whether to lock the file when reading"/>
     <sequence>

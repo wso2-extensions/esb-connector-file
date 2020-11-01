@@ -37,7 +37,7 @@ import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
-import org.wso2.carbon.connector.exception.ConnectorOperationException;
+import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
@@ -78,11 +78,19 @@ import java.io.OutputStreamWriter;
 public class SplitFile extends AbstractConnector {
 
     private static final int ENTITY_EXPANSION_LIMIT = 0;
+    private static final String SOURCE_FILE_PATH_PARAM = "sourceFilePath";
+    private static final String TARGET_DIRECTORY_PARAM = "targetDirectory";
+    private static final String SPLIT_MODE_PARAM = "splitMode";
+    private static final String CHUNK_SIZE_PARAM = "chunkSize";
+    private static final String LINE_COUNT_PARAM = "lineCount";
+    private static final String XPATH_EXPRESSION_PARAM = "xpathExpression";
+    private static final String NUMBER_OF_SPLITS_ELE_NAME = "numberOfSplits";
+    private static final String LOG_IDENTIFIER = "File Connector:splitFile";
+    private static final String OPERATION_NAME = "splitFile";
+    private static final String ERROR_MESSAGE = "Error while performing file:split for file ";
 
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-        String operationName = "splitFile";
-        String errorMessage = "Error while performing file:split for file ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String sourceFilePath = null;
@@ -97,17 +105,17 @@ public class SplitFile extends AbstractConnector {
 
             String connectionName = FileConnectorUtils.getConnectionName(messageContext);
             sourceFilePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "sourceFilePath");
+                    lookupTemplateParamater(messageContext, SOURCE_FILE_PATH_PARAM);
             targetDirectoryPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "targetDirectory");
+                    lookupTemplateParamater(messageContext, TARGET_DIRECTORY_PARAM);
 
             String splitModeAsStr = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "splitMode");
+                    lookupTemplateParamater(messageContext, SPLIT_MODE_PARAM);
 
             if(StringUtils.isNotEmpty(splitModeAsStr)) {
                 splitMode = FileSplitMode.fromString(splitModeAsStr);
             } else {
-                throw new InvalidConfigurationException("Parameter 'splitMode' is not provided");
+                throw new InvalidConfigurationException("Parameter '" + SPLIT_MODE_PARAM + "' is not provided");
             }
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
@@ -138,19 +146,19 @@ public class SplitFile extends AbstractConnector {
 
                 case CHUNK_SIZE:
                     String chunkSizeAsStr = (String) ConnectorUtils.
-                            lookupTemplateParamater(messageContext, "chunkSize");
+                            lookupTemplateParamater(messageContext, CHUNK_SIZE_PARAM);
                     if (StringUtils.isNotEmpty(chunkSizeAsStr)) {
                         splitFileCount = splitByChunkSize(fileToSplit,
                                 targetDirectoryPath,
                                 chunkSizeAsStr,
                                 fsManager, fso);
                     } else {
-                        throw new InvalidConfigurationException("Parameter 'chunkSize' is not provided");
+                        throw new InvalidConfigurationException("Parameter '" + CHUNK_SIZE_PARAM + "' is not provided");
                     }
                     break;
                 case LINE_COUNT:
                     String lineCountAsStr = (String) ConnectorUtils.
-                            lookupTemplateParamater(messageContext, "lineCount");
+                            lookupTemplateParamater(messageContext, LINE_COUNT_PARAM);
                     if (StringUtils.isNotEmpty(lineCountAsStr)) {
                         splitFileCount = splitByLines(fileToSplit,
                                 targetDirectoryPath,
@@ -158,12 +166,12 @@ public class SplitFile extends AbstractConnector {
                                 fsManager,
                                 fso);
                     } else {
-                        throw new InvalidConfigurationException("Parameter 'lineCount' is not provided");
+                        throw new InvalidConfigurationException("Parameter '" + LINE_COUNT_PARAM + "' is not provided");
                     }
                     break;
                 case XPATH_EXPRESSION:
                     String xpathExpression = (String) ConnectorUtils.
-                            lookupTemplateParamater(messageContext, "xpathExpression");
+                            lookupTemplateParamater(messageContext, XPATH_EXPRESSION_PARAM);
                     if (StringUtils.isNotEmpty(xpathExpression)) {
                         splitFileCount = splitByXPathExpression(fileToSplit,
                                 targetDirectoryPath,
@@ -171,7 +179,7 @@ public class SplitFile extends AbstractConnector {
                                 fsManager,
                                 fso);
                     } else {
-                        throw new InvalidConfigurationException("Parameter 'xpathExpression' is not provided");
+                        throw new InvalidConfigurationException("Parameter '" + XPATH_EXPRESSION_PARAM + "' is not provided");
                     }
                     break;
                 default:
@@ -180,17 +188,17 @@ public class SplitFile extends AbstractConnector {
             }
 
             OMElement splitFileCountEle = FileConnectorUtils.
-                    createOMElement("numberOfSplits", Integer.toString(splitFileCount));
-            result = new FileOperationResult(operationName,
+                    createOMElement(NUMBER_OF_SPLITS_ELE_NAME, Integer.toString(splitFileCount));
+            result = new FileOperationResult(OPERATION_NAME,
                     true,
                     splitFileCountEle);
             FileConnectorUtils.setResultAsPayload(messageContext, result);
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + sourceFilePath;
+            String errorDetail = ERROR_MESSAGE + sourceFilePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     e.getMessage());
@@ -200,20 +208,20 @@ public class SplitFile extends AbstractConnector {
 
         } catch (IllegalPathException e) {
 
-            String errorDetail = errorMessage + sourceFilePath;
+            String errorDetail = ERROR_MESSAGE + sourceFilePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.ILLEGAL_PATH,
                     e.getMessage());
             FileConnectorUtils.setResultAsPayload(messageContext, result);
             handleException(errorDetail, e, messageContext);
 
-        } catch (ConnectorOperationException | IOException e) {       //FileSystemException also handled here
+        } catch (FileOperationException | IOException e) {       //FileSystemException also handled here
 
-            String errorDetail = errorMessage + sourceFilePath;
+            String errorDetail = ERROR_MESSAGE + sourceFilePath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.OPERATION_ERROR,
                     e.getMessage());
@@ -300,8 +308,8 @@ public class SplitFile extends AbstractConnector {
                 try {
                     bufferedReader.close();
                 } catch (IOException e) {
-                    log.error("FileConnector:splitFile - Error "
-                            + "while closing the BufferedReader for file " + fileToSplit.getURL());
+                    log.error(LOG_IDENTIFIER + "Error " + "while closing the BufferedReader for file "
+                            + fileToSplit.getURL());
                 }
             }
         }
@@ -326,11 +334,12 @@ public class SplitFile extends AbstractConnector {
         String[] sourceFileNameParts = sourceFileName.split("\\.");
         String fileName = sourceFileNameParts[0];
         String extension = sourceFileNameParts[1];
-        String pathToFilePart = targetFolderPath + File.separator + fileName + partNum + "." + extension;
+        String pathToFilePart = targetFolderPath + FileConnectorConstants.FILE_SEPARATOR
+                + fileName + partNum + "." + extension;
         FileObject file = manager.resolveFile(pathToFilePart, fso);
         file.createFile();
         if (log.isDebugEnabled()) {
-            log.debug("FileConnector:spitFile - Created the file part "
+            log.debug(LOG_IDENTIFIER + "Created the file part "
                     + partNum + " for source file " + sourceFileName);
         }
         return file;
@@ -372,14 +381,14 @@ public class SplitFile extends AbstractConnector {
                         try {
                             bufferedOutputStream.close();
                         } catch (IOException e) {
-                            log.warn("FileConnector:splitFile - Error while closing the BufferedOutputStream: " + e.getMessage(), e);
+                            log.warn(LOG_IDENTIFIER + "Error while closing the BufferedOutputStream: " + e.getMessage(), e);
                         }
                     }
                     if (outputStream != null) {
                         try {
                             outputStream.close();
                         } catch (IOException e) {
-                            log.warn("FileConnector:splitFile - Error while closing the OutputStream: " + e.getMessage(), e);
+                            log.warn(LOG_IDENTIFIER + "Error while closing the OutputStream: " + e.getMessage(), e);
                         }
                     }
                     if (outputFileObj != null) {
@@ -388,7 +397,7 @@ public class SplitFile extends AbstractConnector {
                 }
                 partNum++;
                 if (log.isDebugEnabled()) {
-                    log.debug("FileConnector:splitFile - created the file part " + partNum);
+                    log.debug(LOG_IDENTIFIER + "created the file part " + partNum);
                 }
             }
 
@@ -399,8 +408,8 @@ public class SplitFile extends AbstractConnector {
                 try {
                     inputStream.close();
                 } catch (IOException e) {
-                    log.error("FileConnector:splitFile - error while"
-                            + " closing inputStream for file " + sourceFileObj.getURL());
+                    log.error(LOG_IDENTIFIER + "error while" + " closing inputStream for file "
+                            + sourceFileObj.getURL());
                 }
             }
         }
@@ -416,10 +425,10 @@ public class SplitFile extends AbstractConnector {
      * @param manager         FileSystem Manager
      * @param options         File options.
      * @return Number of split files
-     * @throws ConnectorOperationException In case of I/O error
+     * @throws FileOperationException In case of I/O error
      */
     private int splitByXPathExpression(FileObject sourceFileObj, String destination, String xpathExpression,
-                                       FileSystemManager manager, FileSystemOptions options) throws ConnectorOperationException {
+                                       FileSystemManager manager, FileSystemOptions options) throws FileOperationException {
 
         DocumentBuilderFactory documentFactory = getSecuredDocumentBuilder();
         DocumentBuilder documentBuilder;
@@ -428,7 +437,8 @@ public class SplitFile extends AbstractConnector {
             documentBuilder = documentFactory.newDocumentBuilder();
             sourceXmlDocument = documentBuilder.parse(sourceFileObj.getContent().getInputStream());
         } catch (ParserConfigurationException | SAXException | IOException e) {
-            throw new ConnectorOperationException("Failed to read source xml file " + sourceFileObj.getName().getBaseName(), e);
+            throw new FileOperationException("Failed to read source xml file "
+                    + sourceFileObj.getName().getBaseName(), e);
         }
 
         XPathFactory xPathFactory = XPathFactory.newInstance();
@@ -439,7 +449,8 @@ public class SplitFile extends AbstractConnector {
             expression = xpath.compile(xpathExpression);
             nodeList = (NodeList) expression.evaluate(sourceXmlDocument, XPathConstants.NODESET);
         } catch (XPathExpressionException e) {
-            throw new ConnectorOperationException("Error while evaluating xpath expression " + xpathExpression, e);
+            throw new FileOperationException("Error while evaluating xpath expression "
+                    + xpathExpression, e);
         }
 
         OutputStream outputStream = null;
@@ -467,8 +478,8 @@ public class SplitFile extends AbstractConnector {
                 transformer.setOutputProperty(OutputKeys.INDENT, FileConnectorConstants.YES);
                 source = new DOMSource(distinationXmlDocument);
 
-                outputFileObj = manager.resolveFile(destination + File.separator + parentNode + (i + 1) + ".xml"
-                        , options);
+                outputFileObj = manager.resolveFile(destination + FileConnectorConstants.FILE_SEPARATOR
+                                + parentNode + (i + 1) + ".xml", options);
                 if (!outputFileObj.exists()) {
                     outputFileObj.createFile();
                 }
@@ -480,9 +491,9 @@ public class SplitFile extends AbstractConnector {
                     log.debug("File connector:split - Created the xml file part " + (i + 1));
                 }
             } catch (TransformerException e) {
-                throw new ConnectorOperationException("Failed to transform " + source + " to " + result, e);
+                throw new FileOperationException("Failed to transform " + source + " to " + result, e);
             } catch (FileSystemException e) {
-                throw new ConnectorOperationException("Error while processing the output xml file ", e);
+                throw new FileOperationException("Error while processing the output xml file ", e);
             } finally {
                 if (outputStream != null) {
                     try {

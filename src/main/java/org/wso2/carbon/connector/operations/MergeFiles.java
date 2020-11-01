@@ -30,7 +30,7 @@ import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
-import org.wso2.carbon.connector.exception.ConnectorOperationException;
+import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
@@ -48,10 +48,18 @@ import java.io.OutputStream;
  */
 public class MergeFiles extends AbstractConnector {
 
+    private static final String SOURCE_DIRECTORY_PATH_PARAM = "sourceDirectoryPath";
+    private static final String TARGET_FILE_PATH_PARAM = "targetFilePath";
+    private static final String FILE_PATTERN_PARAM = "filePattern";
+    private static final String WRITE_MODE_PARAM = "writeMode";
+    private static final String DETAIL_ELE_NAME = "detail";
+    private static final String NUMBER_OF_MERGED_FILES_ELE_NAME = "numberOfMergedFiles";
+    private static final String TOTAL_WRITTEN_BYTES_ELE_NAME = "totalWrittenBytes";
+    private static final String OPERATION_NAME = "mergeFiles";
+    private static final String ERROR_MESSAGE = "Error while performing file:merge for directory ";
+
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-        String operationName = "mergeFiles";
-        String errorMessage = "Error while performing file:merge for directory ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String sourceDirectoryPath = null;
@@ -66,13 +74,13 @@ public class MergeFiles extends AbstractConnector {
 
             String connectionName = FileConnectorUtils.getConnectionName(messageContext);
             sourceDirectoryPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "sourceDirectoryPath");
+                    lookupTemplateParamater(messageContext, SOURCE_DIRECTORY_PATH_PARAM);
             targetFilePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "targetFilePath");
+                    lookupTemplateParamater(messageContext, TARGET_FILE_PATH_PARAM);
             String filePattern = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "filePattern");
+                    lookupTemplateParamater(messageContext, FILE_PATTERN_PARAM);
             String writeMode = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "writeMode");
+                    lookupTemplateParamater(messageContext, WRITE_MODE_PARAM);
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
                     .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
@@ -98,7 +106,7 @@ public class MergeFiles extends AbstractConnector {
                 if (writeMode.equals(FileConnectorConstants.OVERWRITE)) {
                     boolean deleteDone = targetFile.delete();           //otherwise append is done automatically
                     if (!deleteDone) {
-                        throw new ConnectorOperationException("Error while overwriting existing file " + targetFilePath);
+                        throw new FileOperationException("Error while overwriting existing file " + targetFilePath);
                     }
                     targetFile.createFile();
                 }
@@ -113,23 +121,23 @@ public class MergeFiles extends AbstractConnector {
                 numberOfTotalBytesWritten = mergeFileResult.getNumberOfTotalWrittenBytes();
             }
 
-            OMElement fileMergeDetailEle = FileConnectorUtils.createOMElement("detail", null);
+            OMElement fileMergeDetailEle = FileConnectorUtils.createOMElement(DETAIL_ELE_NAME, null);
             OMElement mergeFileCountEle = FileConnectorUtils.
-                    createOMElement("numberOfMergedFiles", Integer.toString(numberOfMergedFiles));
+                    createOMElement(NUMBER_OF_MERGED_FILES_ELE_NAME, Integer.toString(numberOfMergedFiles));
             OMElement totalWrittenBytesEle = FileConnectorUtils.
-                    createOMElement("totalWrittenBytes", Long.toString(numberOfTotalBytesWritten));
+                    createOMElement(TOTAL_WRITTEN_BYTES_ELE_NAME, Long.toString(numberOfTotalBytesWritten));
             fileMergeDetailEle.addChild(mergeFileCountEle);
             fileMergeDetailEle.addChild(totalWrittenBytesEle);
-            result = new FileOperationResult(operationName,
+            result = new FileOperationResult(OPERATION_NAME,
                     true,
                     fileMergeDetailEle);
             FileConnectorUtils.setResultAsPayload(messageContext, result);
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + sourceDirectoryPath;
+            String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     e.getMessage());
@@ -137,11 +145,11 @@ public class MergeFiles extends AbstractConnector {
             FileConnectorUtils.setResultAsPayload(messageContext, result);
             handleException(errorDetail, e, messageContext);
 
-        } catch (ConnectorOperationException | IOException e) {     //FileSystemException also handled here
+        } catch (FileOperationException | IOException e) {     //FileSystemException also handled here
 
-            String errorDetail = errorMessage + sourceDirectoryPath;
+            String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.OPERATION_ERROR,
                     e.getMessage());
@@ -150,9 +158,9 @@ public class MergeFiles extends AbstractConnector {
 
         } catch (IllegalPathException e) {
 
-            String errorDetail = errorMessage + sourceDirectoryPath;
+            String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
             result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.ILLEGAL_PATH,
                     e.getMessage());

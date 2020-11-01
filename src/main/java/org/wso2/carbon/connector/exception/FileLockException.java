@@ -21,17 +21,17 @@ package org.wso2.carbon.connector.exception;
 import org.wso2.carbon.connector.core.ConnectException;
 
 /**
- * Represents exception thrown when
- * file/folder paths are invalid.
+ * Represents exception thrown when unable to
+ * acquire file lock.
  */
-public class IllegalPathException extends ConnectException {
+public class FileLockException extends ConnectException {
 
-    public IllegalPathException(String message) {
+    public FileLockException(String message) {
 
         super(message);
     }
 
-    public IllegalPathException(String message, Throwable cause) {
+    public FileLockException(String message, Throwable cause) {
 
         super(cause, message);
     }

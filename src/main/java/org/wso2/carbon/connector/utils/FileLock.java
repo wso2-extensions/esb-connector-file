@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Once you are done, delete it. If you fail to create the file because
  * it already exists, that means that another process is working on it.
  * It might be useful to write information to the lockfile which is useful
- * in debugging, such as the servername and PID. You will also have to
+ * in debugging, such as the server name and PID. You will also have to
  * have some way of cleaning up abandoned lock files since that won't
  * occur automatically.
  */
@@ -50,7 +50,7 @@ public class FileLock {
     private String fullPath;
     private FileObject fileObject;
     private volatile AtomicBoolean acquired = new AtomicBoolean(false);
-    Timer expiryTimer = new java.util.Timer();
+    private Timer expiryTimer = new java.util.Timer();
 
     private static final Log log = LogFactory.getLog(FileLock.class);
 
@@ -131,9 +131,9 @@ public class FileLock {
 
     private String getLockFilePath(String fileToLock) {
         //with extension
-        nameOfFileToLock = fileToLock.substring(fileToLock.lastIndexOf(File.separator));
+        nameOfFileToLock = fileToLock.substring(fileToLock.lastIndexOf(FileConnectorConstants.FILE_SEPARATOR));
         String nameOfLockFile = nameOfFileToLock + FileConnectorConstants.LOCK_FILE_EXTENSION;
-        String parentFolderPath = fileToLock.substring(0, fileToLock.lastIndexOf(File.separator));
+        String parentFolderPath = fileToLock.substring(0, fileToLock.lastIndexOf(FileConnectorConstants.FILE_SEPARATOR));
         return parentFolderPath + nameOfLockFile;
     }
 

@@ -45,11 +45,13 @@ import org.wso2.carbon.connector.utils.SimpleFileFiler;
  */
 public class ListFiles extends AbstractConnector {
 
+    private static final String MATCHING_PATTERN = "matchingPattern";
+    private static final String RECURSIVE_PARAM = "recursive";
+    private static final String OPERATION_NAME = "listFiles";
+    private static final String ERROR_MESSAGE = "Error while performing file:listFiles for folder ";
+
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
-
-        String operationName = "listFiles";
-        String errorMessage = "Error while performing file:listFiles for folder ";
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String folderPath = null;
@@ -70,9 +72,9 @@ public class ListFiles extends AbstractConnector {
             folderPath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, FileConnectorConstants.DIRECTORY_PATH);
             fileMatchingPattern = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "matchingPattern");
+                    lookupTemplateParamater(messageContext, MATCHING_PATTERN);
             String recursiveStr = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, "recursive");
+                    lookupTemplateParamater(messageContext, RECURSIVE_PARAM);
             recursive = Boolean.parseBoolean(recursiveStr);
 
             folderPath = fileSystemHandler.getBaseDirectoryPath() + folderPath;
@@ -84,16 +86,16 @@ public class ListFiles extends AbstractConnector {
 
                     OMElement fileListEle = listFilesInFolder(folder, fileMatchingPattern, recursive);
                     FileOperationResult result = new FileOperationResult(
-                            operationName,
+                            OPERATION_NAME,
                             true,
                             fileListEle);
                     FileConnectorUtils.setResultAsPayload(messageContext, result);
 
                 } else {
 
-                    String errorDetail = errorMessage + folderPath + ". Folder expected.";
+                    String errorDetail = ERROR_MESSAGE + folderPath + ". Folder expected.";
                     FileOperationResult result = new FileOperationResult(
-                            operationName,
+                            OPERATION_NAME,
                             false,
                             Error.ILLEGAL_PATH,
                             errorDetail);
@@ -102,9 +104,9 @@ public class ListFiles extends AbstractConnector {
                 }
 
             } else {
-                String errorDetail = errorMessage + folderPath + ". Folder does not exist.";
+                String errorDetail = ERROR_MESSAGE + folderPath + ". Folder does not exist.";
                 FileOperationResult result = new FileOperationResult(
-                        operationName,
+                        OPERATION_NAME,
                         false,
                         Error.ILLEGAL_PATH,
                         errorDetail);
@@ -114,9 +116,9 @@ public class ListFiles extends AbstractConnector {
 
         } catch (InvalidConfigurationException e) {
 
-            String errorDetail = errorMessage + folderPath;
+            String errorDetail = ERROR_MESSAGE + folderPath;
             FileOperationResult result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.INVALID_CONFIGURATION,
                     errorDetail);
@@ -125,9 +127,9 @@ public class ListFiles extends AbstractConnector {
 
         } catch (FileSystemException e) {
 
-            String errorDetail = errorMessage + folderPath;
+            String errorDetail = ERROR_MESSAGE + folderPath;
             FileOperationResult result = new FileOperationResult(
-                    operationName,
+                    OPERATION_NAME,
                     false,
                     Error.OPERATION_ERROR,
                     errorDetail);
