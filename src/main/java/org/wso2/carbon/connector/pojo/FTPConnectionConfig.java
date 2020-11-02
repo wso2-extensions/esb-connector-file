@@ -40,7 +40,8 @@ public class FTPConnectionConfig extends RemoteServerConfig {
 
     public FTPConnectionConfig() {
         super();
-        isPassive = true;   //TODO: should default = true?
+        //https://winscp.net/eng/docs/ftp_modes : default = true as it is popular
+        isPassive = true;
         connectionTimeout = 100000;
         socketTimeout = 150000;
     }

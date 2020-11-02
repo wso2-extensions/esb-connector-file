@@ -259,7 +259,6 @@ public class CopyFiles extends AbstractConnector {
         if (destinationFile.exists() && !overWrite) {
 
             //we check only one level
-            //TODO: if not to include parent
             FileObject[] sourceFileChildren = srcFile.getChildren();
             FileObject[] destinationFileChildren = destinationFile.getChildren();
             ArrayList<String> sourceChildrenNames = new ArrayList<>(sourceFileChildren.length);

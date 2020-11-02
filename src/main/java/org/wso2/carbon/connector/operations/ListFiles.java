@@ -19,6 +19,7 @@
 package org.wso2.carbon.connector.operations;
 
 import org.apache.axiom.om.OMElement;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileFilter;
 import org.apache.commons.vfs2.FileFilterSelector;
 import org.apache.commons.vfs2.FileObject;
@@ -73,6 +74,9 @@ public class ListFiles extends AbstractConnector {
                     lookupTemplateParamater(messageContext, FileConnectorConstants.DIRECTORY_PATH);
             fileMatchingPattern = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, MATCHING_PATTERN);
+            if(StringUtils.isEmpty(fileMatchingPattern)) {
+                fileMatchingPattern = FileConnectorConstants.MATCH_ALL_REGEX;
+            }
             String recursiveStr = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, RECURSIVE_PARAM);
             recursive = Boolean.parseBoolean(recursiveStr);

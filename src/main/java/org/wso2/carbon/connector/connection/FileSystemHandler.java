@@ -18,26 +18,15 @@
 
 package org.wso2.carbon.connector.connection;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
-import org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder;
-import org.apache.commons.vfs2.provider.ftps.FtpsFileSystemConfigBuilder;
-import org.apache.commons.vfs2.provider.sftp.IdentityInfo;
-import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.carbon.connector.core.connection.Connection;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
-import org.wso2.carbon.connector.pojo.FTPConnectionConfig;
-import org.wso2.carbon.connector.pojo.FTPSConnectionConfig;
-import org.wso2.carbon.connector.pojo.SFTPConnectionConfig;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-
-import java.io.File;
 
 /**
  * Object that handles all file operations
@@ -90,136 +79,26 @@ public class FileSystemHandler implements Connection {
     private void setupFSO(FileSystemOptions fso, ConnectionConfiguration fsConfig)
             throws FileServerConnectionException {
 
-        //TODO: move to operations or try strategy pattern
+        ProtocolBasedFileSystemSetup fileSystemSetup;
+
         switch (fsConfig.getProtocol()) {
-
             case LOCAL:
-
-                baseDirectoryPath = FileConnectorConstants.LOCAL_FILE_PROTOCOL_PREFIX
-                        + setupBaseDirectoryPath(fsConfig);
-
+                fileSystemSetup = new LocalFileSystemSetup();
                 break;
-
             case FTP:
-
-                FTPConnectionConfig ftpConnectionConfig = (FTPConnectionConfig) fsConfig.getRemoteServerConfig();
-                FtpFileSystemConfigBuilder ftpConfigBuilder = FtpFileSystemConfigBuilder.getInstance();
-                ftpConfigBuilder.setPassiveMode(fso, ftpConnectionConfig.isPassive());
-                ftpConfigBuilder.setConnectTimeout(fso, ftpConnectionConfig.getConnectionTimeout());
-                ftpConfigBuilder.setSoTimeout(fso, ftpConnectionConfig.getSocketTimeout());
-                ftpConfigBuilder.setUserDirIsRoot(fso, ftpConnectionConfig.isUserDirIsRoot());
-
-                baseDirectoryPath = FileConnectorConstants.FTP_PROTOCOL_PREFIX
-                        + setupBaseDirectoryPath(fsConfig);
-
+                fileSystemSetup = new FTPFileSystemSetup();
                 break;
-
             case FTPS:
-
-                FTPSConnectionConfig ftpsConnectionConfig = (FTPSConnectionConfig) fsConfig.getRemoteServerConfig();
-                FtpsFileSystemConfigBuilder ftpsConfigBuilder = FtpsFileSystemConfigBuilder.getInstance();
-
-                //Set FTP configs
-                ftpsConfigBuilder.setPassiveMode(fso, ftpsConnectionConfig.isPassive());
-                ftpsConfigBuilder.setConnectTimeout(fso, ftpsConnectionConfig.getConnectionTimeout());
-                ftpsConfigBuilder.setSoTimeout(fso, ftpsConnectionConfig.getSocketTimeout());
-                ftpsConfigBuilder.setUserDirIsRoot(fso, ftpsConnectionConfig.isUserDirIsRoot());
-
-                //Set FTPS specific configs
-                if (ftpsConnectionConfig.getFtpsProtectionLevel() != null) {
-                    ftpsConfigBuilder.setDataChannelProtectionLevel(fso, ftpsConnectionConfig.getFtpsProtectionLevel());
-                }
-
-                ftpsConfigBuilder.setFtpsMode(fso, ftpsConnectionConfig.getFtpsMode());
-
-                if (StringUtils.isNotEmpty(ftpsConnectionConfig.getKeyStore())) {
-                    ftpsConfigBuilder.setKeyStore(fso, ftpsConnectionConfig.getKeyStore());
-                }
-
-                if (StringUtils.isNotEmpty(ftpsConnectionConfig.getKeyStorePassword())) {
-                    ftpsConfigBuilder.setKeyStorePW(fso, ftpsConnectionConfig.getKeyStorePassword());
-                }
-
-                if (StringUtils.isNotEmpty(ftpsConnectionConfig.getTrustStore())) {
-                    ftpsConfigBuilder.setTrustStore(fso, ftpsConnectionConfig.getTrustStore());
-                }
-
-                if (StringUtils.isNotEmpty(ftpsConnectionConfig.getTrustStorePassword())) {
-                    ftpsConfigBuilder.setTrustStorePW(fso, ftpsConnectionConfig.getTrustStorePassword());
-                }
-
-                baseDirectoryPath = FileConnectorConstants.FTPS_PROTOCOL_PREFIX
-                        + setupBaseDirectoryPath(fsConfig);
+                fileSystemSetup = new FTPSFileSystemSetup();
                 break;
-
             case SFTP:
-
-                SFTPConnectionConfig sftpConnectionConfig = (SFTPConnectionConfig) fsConfig.getRemoteServerConfig();
-                SftpFileSystemConfigBuilder sftpConfigBuilder = SftpFileSystemConfigBuilder.getInstance();
-
-                try {
-                    sftpConfigBuilder.setTimeout(fso, sftpConnectionConfig.getSessionTimeout());
-
-                    if (sftpConnectionConfig.isStrictHostKeyChecking()) {
-                        sftpConfigBuilder.setStrictHostKeyChecking(fso, "yes");
-                    } else {
-                        sftpConfigBuilder.setStrictHostKeyChecking(fso, "no");
-                    }
-
-                    String privateKeyFilePath = sftpConnectionConfig.getPrivateKeyFilePath();
-                    if (StringUtils.isNotEmpty(privateKeyFilePath)) {
-                        IdentityInfo identityInfo;
-                        File sftpIdentity = new File(privateKeyFilePath);
-                        String keyPassphrase = sftpConnectionConfig.getPrivateKeyPassword();
-                        if (StringUtils.isNotEmpty(keyPassphrase)) {
-                            identityInfo = new IdentityInfo(sftpIdentity, keyPassphrase.getBytes());
-                            sftpConfigBuilder.setIdentityPassPhrase(fso, keyPassphrase);
-                        } else {
-                            identityInfo = new IdentityInfo(sftpIdentity);
-                        }
-                        sftpConfigBuilder.setIdentityInfo(fso, identityInfo);
-                    }
-
-                } catch (FileSystemException e) {
-                    throw new FileServerConnectionException("[" + fsConfig.getConnectionName()
-                            + "] Error while setting fso options", e);
-                }
-
-                baseDirectoryPath = FileConnectorConstants.SFTP_PROTOCOL_PREFIX
-                        + setupBaseDirectoryPath(fsConfig);
+                fileSystemSetup = new SFTPFileSystemSetup();
                 break;
             default:
                 throw new IllegalStateException("Unexpected protocol value: " + fsConfig.getProtocol());
         }
-    }
 
-    /**
-     * Construct VFS url based on configurations.
-     *
-     * @param fsConfig Input configs
-     * @return Constructed url
-     */
-    private String setupBaseDirectoryPath(ConnectionConfiguration fsConfig) {
-        StringBuilder sb = new StringBuilder();
-        if (fsConfig.getRemoteServerConfig() != null) {
-            String username = fsConfig.getRemoteServerConfig().getUsername();
-            String password = fsConfig.getRemoteServerConfig().getPassword();
-            String host = fsConfig.getRemoteServerConfig().getHost();
-            int port = fsConfig.getRemoteServerConfig().getPort();
-            if (StringUtils.isNotEmpty(username)) {
-                sb.append(username);
-                if (StringUtils.isNotEmpty(password)) {
-                    sb.append(":").append(password);
-                }
-                sb.append("@");
-            }
-            sb.append(host).append(":").append(port);
-        }
-        if (StringUtils.isNotEmpty(fsConfig.getWorkingDir())) {
-            //TODO: ask for file separator from user. Or use a url parser?
-            sb.append(FileConnectorConstants.FILE_SEPARATOR).append(fsConfig.getWorkingDir());
-        }
-        return sb.toString();
+        baseDirectoryPath = fileSystemSetup.setupFileSystemHandler(fso, fsConfig);
     }
 
     /**

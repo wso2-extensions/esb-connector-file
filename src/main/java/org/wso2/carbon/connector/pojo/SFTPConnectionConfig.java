@@ -35,12 +35,11 @@ public class SFTPConnectionConfig extends RemoteServerConfig {
     /**
      * Host key checking to use
      * Possible values yes, no, ask
-     * TODO: check what this is used for, decide default value
+     * https://winscp.net/eng/docs/ssh_verifying_the_host_key
      */
     private boolean strictHostKeyChecking;
 
     //the identity files (your private key files).
-    //TODO:can we default to wso2key?
     private String privateKeyFilePath;
 
     //Passphrase of the private key

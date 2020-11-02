@@ -175,13 +175,12 @@ public class UnzipFile extends AbstractConnector {
             //iterate over the entries
             while (entry != null) {
                 String zipEntryPath = folderPathToExtract + FileConnectorConstants.FILE_SEPARATOR + entry.getName();
-                //TODO: check if we need to use a different manager to resolve file here (support fix)
                 FileObject zipEntryTargetFile = fsManager.resolveFile(zipEntryPath, fso);
                 try {
                     if (!entry.isDirectory()) {
                         // if the entry is a file, extracts it
                         extractFile(zipIn, zipEntryTargetFile);
-                        //TODO:is there a better character?
+                        //"/" is not allowed when constructing XML
                         String entryName = entry.getName().replace("/", "--");
                         OMElement zipEntryEle = FileConnectorUtils.
                                 createOMElement(entryName, "extracted");

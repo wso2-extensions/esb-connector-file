@@ -47,11 +47,6 @@ public abstract class RemoteServerConfig {
      */
     private boolean userDirIsRoot;
 
-    //TODO: what abt these params?
-    //int responseTimeout;
-    //int reconnectAttemptInterval;
-    //int maxConnectionRetryCount;
-
     public RemoteServerConfig() {
         this.userDirIsRoot = false;
     }

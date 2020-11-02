@@ -103,4 +103,5 @@ public final class FileConnectorConstants {
 
     public static final String MESSAGE_PROPERTY = "Message Property";
 
+    public static final String MATCH_ALL_REGEX = ".*";
 }

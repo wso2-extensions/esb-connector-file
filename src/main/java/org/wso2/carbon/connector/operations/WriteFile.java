@@ -201,7 +201,6 @@ public class WriteFile extends AbstractConnector {
                     false,
                     Error.OPERATION_ERROR,
                     e.getMessage());
-            //TODO: we loose original message here. Should we delegate create new payload to fault seq
             FileConnectorUtils.setResultAsPayload(messageContext, result);
             handleException(errorDetail, e, messageContext);
 

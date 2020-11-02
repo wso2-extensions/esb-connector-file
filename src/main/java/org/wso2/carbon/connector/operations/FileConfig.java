@@ -83,7 +83,6 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
             FileConnectorUtils.setResultAsPayload(messageContext, result);
             handleException("[" + connectionName + "]Failed to initiate file connector configuration.", e, messageContext);
         } catch (FileServerConnectionException e) {
-            //TODO: do we retry here?
             FileConnectorUtils.setErrorPropertiesToMessage(messageContext, Error.CONNECTION_ERROR);
             FileOperationResult result = new FileOperationResult(
                     OPERATION_NAME,
