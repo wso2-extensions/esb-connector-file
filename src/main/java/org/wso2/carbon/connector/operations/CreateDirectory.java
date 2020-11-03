@@ -31,8 +31,8 @@ import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 
 /**
  * Implements Create Directory operation.
@@ -50,11 +50,11 @@ public class CreateDirectory extends AbstractConnector {
         FileObject folderToCreate = null;
         try {
 
-            String connectionName = FileConnectorUtils.getConnectionName(messageContext);
+            String connectionName = Utils.getConnectionName(messageContext);
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
-                    .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+                    .getConnection(Const.CONNECTOR_NAME, connectionName);
             folderPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, FileConnectorConstants.DIRECTORY_PATH);
+                    lookupTemplateParamater(messageContext, Const.DIRECTORY_PATH);
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
             FileSystemOptions fso = fileSystemHandler.getFsOptions();
             folderPath = fileSystemHandler.getBaseDirectoryPath() + folderPath;
@@ -64,33 +64,17 @@ public class CreateDirectory extends AbstractConnector {
 
             FileOperationResult result = new FileOperationResult(OPERATION_NAME,
                     true);
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
+            Utils.setResultAsPayload(messageContext, result);
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + folderPath;
-
-            FileOperationResult result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    errorDetail);
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
         } catch (FileSystemException e) {
 
             String errorDetail = ERROR_MESSAGE + folderPath;
-
-            FileOperationResult result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.OPERATION_ERROR,
-                    errorDetail);
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
         } finally {
 
@@ -98,11 +82,24 @@ public class CreateDirectory extends AbstractConnector {
                 try {
                     folderToCreate.close();
                 } catch (FileSystemException e) {
-                    log.error(FileConnectorConstants.CONNECTOR_NAME
+                    log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object while creating directory "
                             + folderToCreate);
                 }
             }
         }
+    }
+
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
     }
 }

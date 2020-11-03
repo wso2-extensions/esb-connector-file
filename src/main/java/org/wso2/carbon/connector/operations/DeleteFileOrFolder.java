@@ -35,8 +35,8 @@ import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.SimpleFileFiler;
 
 /**
@@ -46,7 +46,7 @@ public class DeleteFileOrFolder extends AbstractConnector {
 
     private static final String MATCHING_PATTERN_PARAM = "matchingPattern";
     private static final String NUM_OF_DELETED_FILES_ELE = "numOfDeletedFiles";
-    private static final String DELETE_FILE = "deleteFile";
+    private static final String OPERATION_NAME = "deleteFile";
     private static final String ERROR_MESSAGE = "Error while performing file:delete for file/folder ";
 
     @Override
@@ -56,17 +56,17 @@ public class DeleteFileOrFolder extends AbstractConnector {
         String fileOrFolderPath = null;
         FileObject fileObjectToDelete = null;
         String fileMatchingPattern;
-        boolean isOperationSuccessful = false;
+        boolean isOperationSuccessful;
         FileOperationResult result = null;
         try {
 
-            String connectionName = FileConnectorUtils.getConnectionName(messageContext);
+            String connectionName = Utils.getConnectionName(messageContext);
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
-                    .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+                    .getConnection(Const.CONNECTOR_NAME, connectionName);
             fileMatchingPattern = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, MATCHING_PATTERN_PARAM);
             fileOrFolderPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, FileConnectorConstants.FILE_OR_DIRECTORY_PATH);
+                    lookupTemplateParamater(messageContext, Const.FILE_OR_DIRECTORY_PATH);
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
             FileSystemOptions fso = fileSystemHandler.getFsOptions();
             fileOrFolderPath = fileSystemHandler.getBaseDirectoryPath() + fileOrFolderPath;
@@ -76,7 +76,7 @@ public class DeleteFileOrFolder extends AbstractConnector {
             if (fileObjectToDelete.isFile()) {
                 isOperationSuccessful = fileObjectToDelete.delete();
                 result = new FileOperationResult(
-                        DELETE_FILE,
+                        OPERATION_NAME,
                         isOperationSuccessful);
             }
 
@@ -96,42 +96,26 @@ public class DeleteFileOrFolder extends AbstractConnector {
                     numberOfDeletedFiles = fileObjectToDelete.deleteAll();
                 }
                 isOperationSuccessful = true;
-                OMElement numOfDeletedFilesEle = FileConnectorUtils.
+                OMElement numOfDeletedFilesEle = Utils.
                         createOMElement(NUM_OF_DELETED_FILES_ELE,
                                 Integer.toString(numberOfDeletedFiles));
                 result = new FileOperationResult(
-                        DELETE_FILE,
+                        OPERATION_NAME,
                         isOperationSuccessful,
                         numOfDeletedFilesEle);
             }
 
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
+            Utils.setResultAsPayload(messageContext, result);
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + fileOrFolderPath;
-
-            result = new FileOperationResult(
-                    DELETE_FILE,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    errorDetail);
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
         } catch (FileSystemException e) {
 
             String errorDetail = ERROR_MESSAGE + fileOrFolderPath;
-
-            result = new FileOperationResult(
-                    DELETE_FILE,
-                    false,
-                    Error.OPERATION_ERROR,
-                    errorDetail);
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
         } finally {
 
@@ -139,11 +123,24 @@ public class DeleteFileOrFolder extends AbstractConnector {
                 try {
                     fileObjectToDelete.close();
                 } catch (FileSystemException e) {
-                    log.error(FileConnectorConstants.CONNECTOR_NAME
+                    log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object while creating directory "
                             + fileObjectToDelete);
                 }
             }
         }
+    }
+
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
     }
 }

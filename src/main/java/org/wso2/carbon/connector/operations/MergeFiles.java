@@ -36,8 +36,8 @@ import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.MergeFileResult;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -72,7 +72,7 @@ public class MergeFiles extends AbstractConnector {
 
         try {
 
-            String connectionName = FileConnectorUtils.getConnectionName(messageContext);
+            String connectionName = Utils.getConnectionName(messageContext);
             sourceDirectoryPath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SOURCE_DIRECTORY_PATH_PARAM);
             targetFilePath = (String) ConnectorUtils.
@@ -83,7 +83,7 @@ public class MergeFiles extends AbstractConnector {
                     lookupTemplateParamater(messageContext, WRITE_MODE_PARAM);
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
-                    .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+                    .getConnection(Const.CONNECTOR_NAME, connectionName);
             sourceDirectoryPath = fileSystemHandler.getBaseDirectoryPath() + sourceDirectoryPath;
             targetFilePath = fileSystemHandler.getBaseDirectoryPath() + targetFilePath;
 
@@ -103,7 +103,7 @@ public class MergeFiles extends AbstractConnector {
             if (!targetFile.exists()) {
                 targetFile.createFile();
             } else {
-                if (writeMode.equals(FileConnectorConstants.OVERWRITE)) {
+                if (writeMode.equals(Const.OVERWRITE)) {
                     boolean deleteDone = targetFile.delete();           //otherwise append is done automatically
                     if (!deleteDone) {
                         throw new FileOperationException("Error while overwriting existing file " + targetFilePath);
@@ -121,51 +121,32 @@ public class MergeFiles extends AbstractConnector {
                 numberOfTotalBytesWritten = mergeFileResult.getNumberOfTotalWrittenBytes();
             }
 
-            OMElement fileMergeDetailEle = FileConnectorUtils.createOMElement(DETAIL_ELE_NAME, null);
-            OMElement mergeFileCountEle = FileConnectorUtils.
+            OMElement fileMergeDetailEle = Utils.createOMElement(DETAIL_ELE_NAME, null);
+            OMElement mergeFileCountEle = Utils.
                     createOMElement(NUMBER_OF_MERGED_FILES_ELE_NAME, Integer.toString(numberOfMergedFiles));
-            OMElement totalWrittenBytesEle = FileConnectorUtils.
+            OMElement totalWrittenBytesEle = Utils.
                     createOMElement(TOTAL_WRITTEN_BYTES_ELE_NAME, Long.toString(numberOfTotalBytesWritten));
             fileMergeDetailEle.addChild(mergeFileCountEle);
             fileMergeDetailEle.addChild(totalWrittenBytesEle);
             result = new FileOperationResult(OPERATION_NAME,
                     true,
                     fileMergeDetailEle);
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
+            Utils.setResultAsPayload(messageContext, result);
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    e.getMessage());
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
         } catch (FileOperationException | IOException e) {     //FileSystemException also handled here
 
             String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.OPERATION_ERROR,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
         } catch (IllegalPathException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.ILLEGAL_PATH,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
 
         } finally {
 
@@ -173,7 +154,7 @@ public class MergeFiles extends AbstractConnector {
                 try {
                     sourceDir.close();
                 } catch (FileSystemException e) {
-                    log.error(FileConnectorConstants.CONNECTOR_NAME
+                    log.error(Const.CONNECTOR_NAME
                             + ":Error while closing folder object while merging files in "
                             + sourceDir);
                 }
@@ -247,6 +228,19 @@ public class MergeFiles extends AbstractConnector {
                 }
             }
         }
+    }
+
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
     }
 
 }

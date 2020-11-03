@@ -22,7 +22,7 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.carbon.connector.pojo.FTPConnectionConfig;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
+import org.wso2.carbon.connector.utils.Const;
 
 /**
  * Sets up FTP based file system.
@@ -39,6 +39,6 @@ public class FTPFileSystemSetup implements ProtocolBasedFileSystemSetup {
         ftpConfigBuilder.setSoTimeout(fso, ftpConnectionConfig.getSocketTimeout());
         ftpConfigBuilder.setUserDirIsRoot(fso, ftpConnectionConfig.isUserDirIsRoot());
 
-        return FileConnectorConstants.FTP_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);
+        return Const.FTP_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);
     }
 }

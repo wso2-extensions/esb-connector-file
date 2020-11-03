@@ -41,9 +41,9 @@ import javax.xml.stream.XMLStreamException;
 /**
  * Util methods related to file connector operations
  */
-public class FileConnectorUtils {
+public class Utils {
 
-    private static final Log log = LogFactory.getLog(FileConnectorUtils.class);
+    private static final Log log = LogFactory.getLog(Utils.class);
 
     /**
      * Sets the error code and error detail in message
@@ -53,11 +53,11 @@ public class FileConnectorUtils {
      */
     public static void setErrorPropertiesToMessage(MessageContext messageContext, Error error) {
 
-        messageContext.setProperty(FileConnectorConstants.PROPERTY_ERROR_CODE, error.getErrorCode());
-        messageContext.setProperty(FileConnectorConstants.PROPERTY_ERROR_MESSAGE, error.getErrorDetail());
+        messageContext.setProperty(Const.PROPERTY_ERROR_CODE, error.getErrorCode());
+        messageContext.setProperty(Const.PROPERTY_ERROR_MESSAGE, error.getErrorDetail());
         Axis2MessageContext axis2smc = (Axis2MessageContext) messageContext;
         org.apache.axis2.context.MessageContext axis2MessageCtx = axis2smc.getAxis2MessageContext();
-        axis2MessageCtx.setProperty(FileConnectorConstants.STATUS_CODE, FileConnectorConstants.HTTP_STATUS_500);
+        axis2MessageCtx.setProperty(Const.STATUS_CODE, Const.HTTP_STATUS_500);
     }
 
     /**
@@ -69,7 +69,7 @@ public class FileConnectorUtils {
      */
     public static String getConnectionName(MessageContext messageContext) throws InvalidConfigurationException {
 
-        String connectionName = (String) messageContext.getProperty(FileConnectorConstants.CONNECTION_NAME);
+        String connectionName = (String) messageContext.getProperty(Const.CONNECTION_NAME);
         if (connectionName == null) {
             throw new InvalidConfigurationException("Connection name is not set.");
         }
@@ -206,7 +206,7 @@ public class FileConnectorUtils {
     public static FileSystemHandler getFileSystemHandler(String connectionName) throws ConnectException {
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         return (FileSystemHandler) handler
-                .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+                .getConnection(Const.CONNECTOR_NAME, connectionName);
     }
 
     /**
@@ -221,7 +221,7 @@ public class FileConnectorUtils {
     public static void setError(String operationName, MessageContext msgCtx, Exception e,
                                 Error error, String errorDetail) {
         FileOperationResult result = new FileOperationResult(operationName, false, error, e.getMessage());
-        FileConnectorUtils.setResultAsPayload(msgCtx, result);
+        Utils.setResultAsPayload(msgCtx, result);
     }
 
     /**

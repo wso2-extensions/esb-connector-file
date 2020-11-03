@@ -43,8 +43,8 @@ import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.FileSplitMode;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 import org.xml.sax.SAXException;
 
 import javax.xml.XMLConstants;
@@ -65,7 +65,6 @@ import javax.xml.xpath.XPathFactory;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -103,7 +102,7 @@ public class SplitFile extends AbstractConnector {
 
         try {
 
-            String connectionName = FileConnectorUtils.getConnectionName(messageContext);
+            String connectionName = Utils.getConnectionName(messageContext);
             sourceFilePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SOURCE_FILE_PATH_PARAM);
             targetDirectoryPath = (String) ConnectorUtils.
@@ -114,12 +113,15 @@ public class SplitFile extends AbstractConnector {
 
             if(StringUtils.isNotEmpty(splitModeAsStr)) {
                 splitMode = FileSplitMode.fromString(splitModeAsStr);
+                if(splitMode == null) {
+                    throw new InvalidConfigurationException("Unknown '" + SPLIT_MODE_PARAM + "' is provided");
+                }
             } else {
                 throw new InvalidConfigurationException("Parameter '" + SPLIT_MODE_PARAM + "' is not provided");
             }
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
-                    .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+                    .getConnection(Const.CONNECTOR_NAME, connectionName);
             sourceFilePath = fileSystemHandler.getBaseDirectoryPath() + sourceFilePath;
             targetDirectoryPath = fileSystemHandler.getBaseDirectoryPath() + targetDirectoryPath;
 
@@ -187,47 +189,27 @@ public class SplitFile extends AbstractConnector {
                     break;
             }
 
-            OMElement splitFileCountEle = FileConnectorUtils.
+            OMElement splitFileCountEle = Utils.
                     createOMElement(NUMBER_OF_SPLITS_ELE_NAME, Integer.toString(splitFileCount));
             result = new FileOperationResult(OPERATION_NAME,
                     true,
                     splitFileCountEle);
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
+            Utils.setResultAsPayload(messageContext, result);
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    e.getMessage());
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
         } catch (IllegalPathException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.ILLEGAL_PATH,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
 
         } catch (FileOperationException | IOException e) {       //FileSystemException also handled here
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.OPERATION_ERROR,
-                    e.getMessage());
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
         } finally {
 
@@ -235,7 +217,7 @@ public class SplitFile extends AbstractConnector {
                 try {
                     fileToSplit.close();
                 } catch (FileSystemException e) {
-                    log.error(FileConnectorConstants.CONNECTOR_NAME
+                    log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object while creating directory "
                             + fileToSplit);
                 }
@@ -334,7 +316,7 @@ public class SplitFile extends AbstractConnector {
         String[] sourceFileNameParts = sourceFileName.split("\\.");
         String fileName = sourceFileNameParts[0];
         String extension = sourceFileNameParts[1];
-        String pathToFilePart = targetFolderPath + FileConnectorConstants.FILE_SEPARATOR
+        String pathToFilePart = targetFolderPath + Const.FILE_SEPARATOR
                 + fileName + partNum + "." + extension;
         FileObject file = manager.resolveFile(pathToFilePart, fso);
         file.createFile();
@@ -475,10 +457,10 @@ public class SplitFile extends AbstractConnector {
             StreamResult result = null;
             try {
                 transformer = transformerFactory.newTransformer();
-                transformer.setOutputProperty(OutputKeys.INDENT, FileConnectorConstants.YES);
+                transformer.setOutputProperty(OutputKeys.INDENT, Const.YES);
                 source = new DOMSource(distinationXmlDocument);
 
-                outputFileObj = manager.resolveFile(destination + FileConnectorConstants.FILE_SEPARATOR
+                outputFileObj = manager.resolveFile(destination + Const.FILE_SEPARATOR
                                 + parentNode + (i + 1) + ".xml", options);
                 if (!outputFileObj.exists()) {
                     outputFileObj.createFile();
@@ -544,6 +526,19 @@ public class SplitFile extends AbstractConnector {
         documentBuilderFactory.setAttribute(Constants.XERCES_PROPERTY_PREFIX +
                 Constants.SECURITY_MANAGER_PROPERTY, securityManager);
         return documentBuilderFactory;
+    }
+
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
     }
 
 

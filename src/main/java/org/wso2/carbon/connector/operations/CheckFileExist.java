@@ -34,8 +34,8 @@ import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 
 import java.io.IOException;
 
@@ -61,7 +61,7 @@ public class CheckFileExist extends AbstractConnector {
 
         try {
 
-            String connectionName = FileConnectorUtils.getConnectionName(messageContext);
+            String connectionName = Utils.getConnectionName(messageContext);
             filePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, PATH_PARAM);
 
@@ -70,7 +70,7 @@ public class CheckFileExist extends AbstractConnector {
             }
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
-                    .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+                    .getConnection(Const.CONNECTOR_NAME, connectionName);
             filePath = fileSystemHandler.getBaseDirectoryPath() + filePath;
 
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
@@ -85,7 +85,7 @@ public class CheckFileExist extends AbstractConnector {
                 operationResult = Boolean.toString(Boolean.FALSE);
             }
 
-            OMElement fileExistsEle = FileConnectorUtils.
+            OMElement fileExistsEle = Utils.
                     createOMElement(FILE_EXISTS_ELE_NAME, operationResult);
             result = new FileOperationResult(OPERATION_NAME,
                     true,
@@ -94,12 +94,12 @@ public class CheckFileExist extends AbstractConnector {
             String injectOperationResultAt = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, INCLUDE_RESULT_AT_PARAM);
 
-            if(injectOperationResultAt.equals(FileConnectorConstants.MESSAGE_BODY)) {
-                FileConnectorUtils.setResultAsPayload(messageContext, result);
-            } else if(injectOperationResultAt.equals(FileConnectorConstants.MESSAGE_PROPERTY)){
+            if (injectOperationResultAt.equals(Const.MESSAGE_BODY)) {
+                Utils.setResultAsPayload(messageContext, result);
+            } else if (injectOperationResultAt.equals(Const.MESSAGE_PROPERTY)) {
                 String resultPropertyName = (String) ConnectorUtils.
                         lookupTemplateParamater(messageContext, RESULT_PROPERTY_NAME_PARAM);
-                if(StringUtils.isNotEmpty(resultPropertyName)) {
+                if (StringUtils.isNotEmpty(resultPropertyName)) {
                     messageContext.setProperty(resultPropertyName, operationResult);
                 } else {
                     throw new InvalidConfigurationException("Property name to set operation result is required");
@@ -112,26 +112,12 @@ public class CheckFileExist extends AbstractConnector {
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + filePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    e.getMessage());
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
         } catch (IOException e) {       //FileSystemException also handled here
 
             String errorDetail = ERROR_MESSAGE + filePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.OPERATION_ERROR,
-                    e.getMessage());
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
         } finally {
 
@@ -139,12 +125,24 @@ public class CheckFileExist extends AbstractConnector {
                 try {
                     fileObject.close();
                 } catch (FileSystemException e) {
-                    log.error(FileConnectorConstants.CONNECTOR_NAME
+                    log.error(Const.CONNECTOR_NAME
                             + ":Error while closing folder object while merging files in "
                             + fileObject);
                 }
             }
         }
+    }
 
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
     }
 }

@@ -32,11 +32,13 @@ import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.carbon.connector.exception.FileOperationException;
+import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.SimpleFileFiler;
 
 
@@ -63,19 +65,19 @@ public class ListFiles extends AbstractConnector {
         try {
 
             //get connection
-            String connectionName = FileConnectorUtils.getConnectionName(messageContext);
+            String connectionName = Utils.getConnectionName(messageContext);
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
-                    .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+                    .getConnection(Const.CONNECTOR_NAME, connectionName);
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
             FileSystemOptions fso = fileSystemHandler.getFsOptions();
 
             //read inputs
             folderPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, FileConnectorConstants.DIRECTORY_PATH);
+                    lookupTemplateParamater(messageContext, Const.DIRECTORY_PATH);
             fileMatchingPattern = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, MATCHING_PATTERN);
-            if(StringUtils.isEmpty(fileMatchingPattern)) {
-                fileMatchingPattern = FileConnectorConstants.MATCH_ALL_REGEX;
+            if (StringUtils.isEmpty(fileMatchingPattern)) {
+                fileMatchingPattern = Const.MATCH_ALL_REGEX;
             }
             String recursiveStr = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, RECURSIVE_PARAM);
@@ -84,69 +86,48 @@ public class ListFiles extends AbstractConnector {
             folderPath = fileSystemHandler.getBaseDirectoryPath() + folderPath;
             folder = fsManager.resolveFile(folderPath, fso);
 
-            if(folder.exists()) {
+            if (folder.exists()) {
 
-                if(folder.isFolder()) {
+                if (folder.isFolder()) {
 
                     OMElement fileListEle = listFilesInFolder(folder, fileMatchingPattern, recursive);
                     FileOperationResult result = new FileOperationResult(
                             OPERATION_NAME,
                             true,
                             fileListEle);
-                    FileConnectorUtils.setResultAsPayload(messageContext, result);
+                    Utils.setResultAsPayload(messageContext, result);
 
                 } else {
-
-                    String errorDetail = ERROR_MESSAGE + folderPath + ". Folder expected.";
-                    FileOperationResult result = new FileOperationResult(
-                            OPERATION_NAME,
-                            false,
-                            Error.ILLEGAL_PATH,
-                            errorDetail);
-                    FileConnectorUtils.setResultAsPayload(messageContext, result);
-                    handleException(errorDetail, messageContext);
+                    throw new FileOperationException("Folder is expected.");
                 }
 
             } else {
-                String errorDetail = ERROR_MESSAGE + folderPath + ". Folder does not exist.";
-                FileOperationResult result = new FileOperationResult(
-                        OPERATION_NAME,
-                        false,
-                        Error.ILLEGAL_PATH,
-                        errorDetail);
-                FileConnectorUtils.setResultAsPayload(messageContext, result);
-                handleException(errorDetail, messageContext);
+                throw new IllegalPathException("Folder does not exist.");
             }
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + folderPath;
-            FileOperationResult result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    errorDetail);
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
         } catch (FileSystemException e) {
 
             String errorDetail = ERROR_MESSAGE + folderPath;
-            FileOperationResult result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.OPERATION_ERROR,
-                    errorDetail);
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
-        } finally {
+        } catch (IllegalPathException e) {
+
+            String errorDetail = ERROR_MESSAGE + folderPath;
+            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
+        }
+
+        finally {
 
             if (folder != null) {
                 try {
                     folder.close();
                 } catch (FileSystemException e) {
-                    log.error(FileConnectorConstants.CONNECTOR_NAME
+                    log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object while creating directory "
                             + folder);
                 }
@@ -166,11 +147,11 @@ public class ListFiles extends AbstractConnector {
      */
     private OMElement listFilesInFolder(FileObject folder, String pattern, boolean recursive) throws FileSystemException {
         String containingFolderName = folder.getName().getBaseName();
-        OMElement folderEle = FileConnectorUtils.createOMElement(containingFolderName, null);
+        OMElement folderEle = Utils.createOMElement(containingFolderName, null);
         FileObject[] filesOrFolders = getFilesAndFolders(folder, pattern);
         for (FileObject fileOrFolder : filesOrFolders) {
             if (fileOrFolder.isFile()) {
-                OMElement fileEle = FileConnectorUtils.createOMElement(FileConnectorConstants.FILE_ELEMENT,
+                OMElement fileEle = Utils.createOMElement(Const.FILE_ELEMENT,
                         fileOrFolder.getName().getBaseName());
                 folderEle.addChild(fileEle);
             } else {
@@ -192,5 +173,18 @@ public class ListFiles extends AbstractConnector {
         FileFilter fileFilter = new SimpleFileFiler(pattern);
         FileFilterSelector fileFilterSelector = new FileFilterSelector(fileFilter);
         return folder.findFiles(fileFilterSelector);
+    }
+
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
     }
 }

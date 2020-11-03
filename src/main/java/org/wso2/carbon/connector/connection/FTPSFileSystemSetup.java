@@ -23,7 +23,7 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.provider.ftps.FtpsFileSystemConfigBuilder;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.carbon.connector.pojo.FTPSConnectionConfig;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
+import org.wso2.carbon.connector.utils.Const;
 
 /**
  * Sets up FTPS based file system.
@@ -65,6 +65,6 @@ public class FTPSFileSystemSetup implements ProtocolBasedFileSystemSetup {
             ftpsConfigBuilder.setTrustStorePW(fso, ftpsConnectionConfig.getTrustStorePassword());
         }
 
-        return FileConnectorConstants.FTPS_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);
+        return Const.FTPS_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);
     }
 }

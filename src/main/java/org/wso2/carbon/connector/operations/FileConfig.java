@@ -31,12 +31,11 @@ import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.carbon.connector.pojo.FTPConnectionConfig;
 import org.wso2.carbon.connector.pojo.FTPSConnectionConfig;
-import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.RemoteServerConfig;
 import org.wso2.carbon.connector.pojo.SFTPConnectionConfig;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 
 /**
  * Initializes the file connection based on provided configs
@@ -56,41 +55,32 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
     public void destroy() {
         //TODO: check. Seems we need to fix connector core
         ConnectionHandler.getConnectionHandler().
-                shutdownConnections(FileConnectorConstants.CONNECTOR_NAME);
+                shutdownConnections(Const.CONNECTOR_NAME);
     }
 
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        String connectorName = FileConnectorConstants.CONNECTOR_NAME;
+        String connectorName = Const.CONNECTOR_NAME;
         String connectionName = (String) ConnectorUtils.
-                lookupTemplateParamater(messageContext, FileConnectorConstants.CONNECTION_NAME);
+                lookupTemplateParamater(messageContext, Const.CONNECTION_NAME);
         try {
             ConnectionConfiguration configuration = getConnectionConfigFromContext(messageContext);
 
             ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
             if (!handler.checkIfConnectionExists(connectorName, connectionName)) {
                 FileSystemHandler fileSystemHandler = new FileSystemHandler(configuration);
-                handler.createConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName, fileSystemHandler);
+                handler.createConnection(Const.CONNECTOR_NAME, connectionName, fileSystemHandler);
             }
         } catch (InvalidConfigurationException e) {
-            FileConnectorUtils.setErrorPropertiesToMessage(messageContext, Error.INVALID_CONFIGURATION);
-            FileOperationResult result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException("[" + connectionName + "]Failed to initiate file connector configuration.", e, messageContext);
+
+            String errorDetail = "[" + connectionName + "]Failed to initiate file connector configuration.";
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+
         } catch (FileServerConnectionException e) {
-            FileConnectorUtils.setErrorPropertiesToMessage(messageContext, Error.CONNECTION_ERROR);
-            FileOperationResult result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.CONNECTION_ERROR,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException("[" + connectionName + "]Failed to connect to configured file server.", e, messageContext);
+
+            String errorDetail = "[" + connectionName + "]Failed to connect to configured file server.";
+            handleError(messageContext, e, Error.CONNECTION_ERROR, errorDetail);
         }
     }
 
@@ -106,13 +96,13 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
             throws InvalidConfigurationException {
 
         String connectionName = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.CONNECTION_NAME);
+                lookupTemplateParamater(msgContext, Const.CONNECTION_NAME);
         String protocol = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.PROTOCOL);
+                lookupTemplateParamater(msgContext, Const.PROTOCOL);
         String workingDir = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.WORKING_DIR);
+                lookupTemplateParamater(msgContext, Const.WORKING_DIR);
         String maxFailureRetryCount = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.MAX_FAILURE_RETRY_COUNT);
+                lookupTemplateParamater(msgContext, Const.MAX_FAILURE_RETRY_COUNT);
 
         ConnectionConfiguration connectionConfig = new ConnectionConfiguration();
         connectionConfig.setConnectionName(connectionName);
@@ -162,17 +152,17 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
     private void setCommonRemoteServerConfigs(MessageContext msgContext, RemoteServerConfig remoteServerConfig)
             throws InvalidConfigurationException {
         String protocol = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.PROTOCOL);
+                lookupTemplateParamater(msgContext, Const.PROTOCOL);
         String host = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.HOST);
+                lookupTemplateParamater(msgContext, Const.HOST);
         String port = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.PORT);
+                lookupTemplateParamater(msgContext, Const.PORT);
         String userName = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.USERNAME);
+                lookupTemplateParamater(msgContext, Const.USERNAME);
         String password = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.PASSWORD);
+                lookupTemplateParamater(msgContext, Const.PASSWORD);
         String userDirIsRoot = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.USERDIR_IS_ROOT);
+                lookupTemplateParamater(msgContext, Const.USERDIR_IS_ROOT);
 
         remoteServerConfig.setProtocol(protocol);
         remoteServerConfig.setHost(host);
@@ -185,11 +175,11 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
     private void setFTPConnectionConfigsFromContext(MessageContext msgContext, FTPConnectionConfig config)
             throws InvalidConfigurationException {
         String isPassive = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.IS_PASSIVE);
+                lookupTemplateParamater(msgContext, Const.IS_PASSIVE);
         String connectionTimeout = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.CONNECTION_TIMEOUT);
+                lookupTemplateParamater(msgContext, Const.CONNECTION_TIMEOUT);
         String socketTimeout = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.SOCKET_TIMEOUT);
+                lookupTemplateParamater(msgContext, Const.SOCKET_TIMEOUT);
         config.setPassive(isPassive);
         config.setConnectionTimeout(connectionTimeout);
         config.setSocketTimeout(socketTimeout);
@@ -199,17 +189,17 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
     private void setFTPSConnectionConfigsFromContext(MessageContext msgContext, FTPSConnectionConfig config)
             throws InvalidConfigurationException {
         String keyStorePath = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.KEYSTORE_PATH);
+                lookupTemplateParamater(msgContext, Const.KEYSTORE_PATH);
         String keyStorePassword = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.KEYSTORE_PASSWORD);
+                lookupTemplateParamater(msgContext, Const.KEYSTORE_PASSWORD);
         String trustStorePath = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.TRUSTSTORE_PATH);
+                lookupTemplateParamater(msgContext, Const.TRUSTSTORE_PATH);
         String trustStorePassword = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.TRUSTSTORE_PASSWORD);
+                lookupTemplateParamater(msgContext, Const.TRUSTSTORE_PASSWORD);
         String implicitModeEnabled = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.IMPLICIT_MODE_ENABLED);
+                lookupTemplateParamater(msgContext, Const.IMPLICIT_MODE_ENABLED);
         String channelProtectionLevel = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.CHANNEL_PROTECTION_LEVEL);
+                lookupTemplateParamater(msgContext, Const.CHANNEL_PROTECTION_LEVEL);
 
         setFTPConnectionConfigsFromContext(msgContext, config);
         config.setKeyStore(keyStorePath);
@@ -224,20 +214,33 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
     private void setSFTPConnectionConfigsFromContext(MessageContext msgContext, SFTPConnectionConfig config)
             throws InvalidConfigurationException {
         String sftpConnectionTimeout = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.SFTP_CONNECTION_TIMEOUT);
+                lookupTemplateParamater(msgContext, Const.SFTP_CONNECTION_TIMEOUT);
         String sftpSessionTimeout = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.SFTP_SESSION_TIMEOUT);
+                lookupTemplateParamater(msgContext, Const.SFTP_SESSION_TIMEOUT);
         String strictHostKeyChecking = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.STRICT_HOST_KEY_CHECKING);
+                lookupTemplateParamater(msgContext, Const.STRICT_HOST_KEY_CHECKING);
         String privateKeyFilePath = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.PRIVATE_KEY_FILE_PATH);
+                lookupTemplateParamater(msgContext, Const.PRIVATE_KEY_FILE_PATH);
         String privateKeyPassword = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, FileConnectorConstants.PRIVATE_KEY_PASSWORD);
+                lookupTemplateParamater(msgContext, Const.PRIVATE_KEY_PASSWORD);
 
         config.setConnectionTimeout(sftpConnectionTimeout);
         config.setSessionTimeout(sftpSessionTimeout);
         config.setStrictHostKeyChecking(strictHostKeyChecking);
         config.setPrivateKeyFilePath(privateKeyFilePath);
         config.setPrivateKeyPassword(privateKeyPassword);
+    }
+
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
     }
 }

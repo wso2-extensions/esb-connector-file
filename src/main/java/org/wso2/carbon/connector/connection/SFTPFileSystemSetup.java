@@ -26,7 +26,7 @@ import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.carbon.connector.pojo.SFTPConnectionConfig;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
+import org.wso2.carbon.connector.utils.Const;
 
 import java.io.File;
 
@@ -70,7 +70,7 @@ public class SFTPFileSystemSetup implements ProtocolBasedFileSystemSetup {
                     + "] Error while setting fso options", e);
         }
 
-        return FileConnectorConstants.SFTP_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);
+        return Const.SFTP_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);
 
     }
 }

@@ -26,7 +26,6 @@ import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
@@ -131,15 +130,15 @@ public class FileLock {
 
     private String getLockFilePath(String fileToLock) {
         //with extension
-        nameOfFileToLock = fileToLock.substring(fileToLock.lastIndexOf(FileConnectorConstants.FILE_SEPARATOR));
-        String nameOfLockFile = nameOfFileToLock + FileConnectorConstants.LOCK_FILE_EXTENSION;
-        String parentFolderPath = fileToLock.substring(0, fileToLock.lastIndexOf(FileConnectorConstants.FILE_SEPARATOR));
+        nameOfFileToLock = fileToLock.substring(fileToLock.lastIndexOf(Const.FILE_SEPARATOR));
+        String nameOfLockFile = nameOfFileToLock + Const.LOCK_FILE_EXTENSION;
+        String parentFolderPath = fileToLock.substring(0, fileToLock.lastIndexOf(Const.FILE_SEPARATOR));
         return parentFolderPath + nameOfLockFile;
     }
 
     private String getLockFilePath(FileObject fileToLock) {
         nameOfFileToLock = fileToLock.getName().getBaseName();
-        String nameOfLockFile = nameOfFileToLock + FileConnectorConstants.LOCK_FILE_EXTENSION;
+        String nameOfLockFile = nameOfFileToLock + Const.LOCK_FILE_EXTENSION;
         String parentFolderPath = null;
         try {
             parentFolderPath = fileToLock.getParent().getURL().getPath();
@@ -179,9 +178,9 @@ public class FileLock {
             log.error("[FileConnector] Error while getting information to write to lock file.");
         }
         String lockFileContent = hostName +
-                FileConnectorConstants.NEW_LINE +
+                Const.NEW_LINE +
                 hostAddress +
-                FileConnectorConstants.NEW_LINE +
+                Const.NEW_LINE +
                 processId;
 
         try (OutputStream outputStream = lockFile.getContent().getOutputStream()) {

@@ -47,8 +47,8 @@ import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.FileReadMode;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.FileLock;
 import org.wso2.carbon.connector.utils.FileObjectDataSource;
 
@@ -96,10 +96,10 @@ public class ReadFile extends AbstractConnector {
 
         try {
 
-            String connectionName = FileConnectorUtils.getConnectionName(messageContext);
+            String connectionName = Utils.getConnectionName(messageContext);
             Config config = readAndValidateInputs(messageContext);
 
-            FileSystemHandler fileSystemHandler = FileConnectorUtils.getFileSystemHandler(connectionName);
+            FileSystemHandler fileSystemHandler = Utils.getFileSystemHandler(connectionName);
             String workingDirRelativePAth = config.path;
             sourcePath = fileSystemHandler.getBaseDirectoryPath() + config.path;
 
@@ -115,14 +115,14 @@ public class ReadFile extends AbstractConnector {
             if (fileObject.isFolder()) {
                 //select file to read
                 fileObject = selectFileToRead(fileObject, config.filePattern);
-                workingDirRelativePAth = workingDirRelativePAth + FileConnectorConstants.FILE_SEPARATOR
+                workingDirRelativePAth = workingDirRelativePAth + Const.FILE_SEPARATOR
                         + fileObject.getName().getBaseName();
             }
 
             //lock the file if enabled
             if (config.enableLock) {
                 fileLock = new FileLock(sourcePath);
-                boolean lockAcquired = fileLock.acquireLock(fsManager, fso, FileConnectorConstants.DEFAULT_LOCK_TIMEOUT);
+                boolean lockAcquired = fileLock.acquireLock(fsManager, fso, Const.DEFAULT_LOCK_TIMEOUT);
                 if (!lockAcquired) {
                     throw new FileLockException("Failed to acquire lock for file "
                             + sourcePath + ". Another process maybe processing it. ");
@@ -134,7 +134,7 @@ public class ReadFile extends AbstractConnector {
             //if we need to read metadata only, no need to touch content
             if (Objects.equals(config.readMode, FileReadMode.METADATA_ONLY)) {
                 result = new FileOperationResult(OPERATION_NAME, true);
-                FileConnectorUtils.setResultAsPayload(messageContext, result);
+                Utils.setResultAsPayload(messageContext, result);
                 return;
             }
 
@@ -172,7 +172,7 @@ public class ReadFile extends AbstractConnector {
                 try {
                     fileObject.close();
                 } catch (FileSystemException e) {
-                    log.error(FileConnectorConstants.CONNECTOR_NAME
+                    log.error(Const.CONNECTOR_NAME
                             + ":Error while closing folder object while reading files in "
                             + fileObject);
                 }
@@ -206,34 +206,34 @@ public class ReadFile extends AbstractConnector {
 
     private Config readAndValidateInputs(MessageContext msgCtx) throws InvalidConfigurationException {
         Config config = new Config();
-        config.path = FileConnectorUtils.
+        config.path = Utils.
                 lookUpStringParam(msgCtx, PATH_PARAM);
-        config.filePattern = FileConnectorUtils.
-                lookUpStringParam(msgCtx, FILE_PATTERN_PARAM, FileConnectorConstants.MATCH_ALL_REGEX);
-        config.enableLock = FileConnectorUtils.
+        config.filePattern = Utils.
+                lookUpStringParam(msgCtx, FILE_PATTERN_PARAM, Const.MATCH_ALL_REGEX);
+        config.enableLock = Utils.
                 lookUpBooleanParam(msgCtx, ENABLE_LOCK_PARAM, false);
-        config.readMode = FileReadMode.fromString(FileConnectorUtils.
+        config.readMode = FileReadMode.fromString(Utils.
                 lookUpStringParam(msgCtx, READ_MODE_PARAM, FileReadMode.COMPLETE_FILE.toString()));
-        config.includeResultTo = FileConnectorUtils.
-                lookUpStringParam(msgCtx, INCLUDE_RESULT_TO, FileConnectorConstants.MESSAGE_BODY);
-        config.resultPropertyName = FileConnectorUtils.
-                lookUpStringParam(msgCtx, RESULT_PROPERTY_NAME, FileConnectorConstants.EMPTY_STRING);
-        config.contentType = FileConnectorUtils.
-                lookUpStringParam(msgCtx, CONTENT_TYPE_PARAM, FileConnectorConstants.EMPTY_STRING);
-        config.encoding = FileConnectorUtils.
-                lookUpStringParam(msgCtx, ENCODING_PARAM, FileConnectorConstants.DEFAULT_ENCODING);
-        config.enableStreaming = FileConnectorUtils.
+        config.includeResultTo = Utils.
+                lookUpStringParam(msgCtx, INCLUDE_RESULT_TO, Const.MESSAGE_BODY);
+        config.resultPropertyName = Utils.
+                lookUpStringParam(msgCtx, RESULT_PROPERTY_NAME, Const.EMPTY_STRING);
+        config.contentType = Utils.
+                lookUpStringParam(msgCtx, CONTENT_TYPE_PARAM, Const.EMPTY_STRING);
+        config.encoding = Utils.
+                lookUpStringParam(msgCtx, ENCODING_PARAM, Const.DEFAULT_ENCODING);
+        config.enableStreaming = Utils.
                 lookUpBooleanParam(msgCtx, ENABLE_STREAMING_PARAM, false);
         config.startLineNum = Integer.
-                parseInt(FileConnectorUtils.lookUpStringParam(msgCtx, START_LINE_NUM_PARAM, "0"));
+                parseInt(Utils.lookUpStringParam(msgCtx, START_LINE_NUM_PARAM, "0"));
         config.endLineNum = Integer.
-                parseInt(FileConnectorUtils.lookUpStringParam(msgCtx, END_LINE_NUM_PARAM, "0"));
+                parseInt(Utils.lookUpStringParam(msgCtx, END_LINE_NUM_PARAM, "0"));
         config.lineNum = Integer.
-                parseInt(FileConnectorUtils.lookUpStringParam(msgCtx, LINE_NUM_PARAM, "0"));
-        config.charSet = FileConnectorUtils.
-                lookUpStringParam(msgCtx, CHARSET_PARAM, FileConnectorConstants.EMPTY_STRING);
+                parseInt(Utils.lookUpStringParam(msgCtx, LINE_NUM_PARAM, "0"));
+        config.charSet = Utils.
+                lookUpStringParam(msgCtx, CHARSET_PARAM, Const.EMPTY_STRING);
 
-        if (config.includeResultTo.equals(FileConnectorConstants.MESSAGE_PROPERTY)
+        if (config.includeResultTo.equals(Const.MESSAGE_PROPERTY)
                 && StringUtils.isEmpty(config.resultPropertyName)) {
             throw new InvalidConfigurationException("Parameter resultPropertyName is not provided");
         }
@@ -280,6 +280,10 @@ public class ReadFile extends AbstractConnector {
                     throw new InvalidConfigurationException("Parameter 'lineNum' should be positive");
                 }
                 break;
+            case COMPLETE_FILE:
+                break;
+            case METADATA_ONLY:
+                break;
             default:
                 throw new IllegalStateException("Unexpected value: " + config.readMode.toString());
         }
@@ -321,7 +325,7 @@ public class ReadFile extends AbstractConnector {
      * @param errorDetail Error detail
      */
     private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
-        FileConnectorUtils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
         handleException(errorDetail, e, msgCtx);
     }
 
@@ -382,15 +386,15 @@ public class ReadFile extends AbstractConnector {
 
         SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
         String lastModifiedTime = sdf.format(file.getContent().getLastModifiedTime());
-        msgContext.setProperty(FileConnectorConstants.FILE_LAST_MODIFIED_TIME, lastModifiedTime);
-        msgContext.setProperty(FileConnectorConstants.FILE_IS_DIR, file.isFolder());
-        msgContext.setProperty(FileConnectorConstants.FILE_PATH, filePath);
-        msgContext.setProperty(FileConnectorConstants.FILE_URL, file.getName().getFriendlyURI());
-        msgContext.setProperty(FileConnectorConstants.FILE_NAME, file.getName().getBaseName());
-        msgContext.setProperty(FileConnectorConstants.FILE_NAME_WITHOUT_EXTENSION, file.getName().
+        msgContext.setProperty(Const.FILE_LAST_MODIFIED_TIME, lastModifiedTime);
+        msgContext.setProperty(Const.FILE_IS_DIR, file.isFolder());
+        msgContext.setProperty(Const.FILE_PATH, filePath);
+        msgContext.setProperty(Const.FILE_URL, file.getName().getFriendlyURI());
+        msgContext.setProperty(Const.FILE_NAME, file.getName().getBaseName());
+        msgContext.setProperty(Const.FILE_NAME_WITHOUT_EXTENSION, file.getName().
                 getBaseName().split("\\.")[0]);
         //The size of the file, in bytes
-        msgContext.setProperty(FileConnectorConstants.FILE_SIZE, file.getContent().getSize());
+        msgContext.setProperty(Const.FILE_SIZE, file.getContent().getSize());
     }
 
     /**
@@ -422,7 +426,7 @@ public class ReadFile extends AbstractConnector {
             }
         }
         ((Axis2MessageContext) msgContext).getAxis2MessageContext().
-                setProperty(FileConnectorConstants.SET_CHARACTER_ENCODING, true);
+                setProperty(Const.SET_CHARACTER_ENCODING, true);
         ((Axis2MessageContext) msgContext).getAxis2MessageContext().
                 setProperty(Constants.Configuration.CHARACTER_SET_ENCODING, charSetEnc);
     }
@@ -453,7 +457,7 @@ public class ReadFile extends AbstractConnector {
             throw new FileOperationException("File connector:read Error while processing stream ");
         }
         return new ByteArrayInputStream(tempStream.collect(
-                Collectors.joining(FileConnectorConstants.NEW_LINE)).getBytes());
+                Collectors.joining(Const.NEW_LINE)).getBytes());
     }
 
 

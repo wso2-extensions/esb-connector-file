@@ -29,14 +29,14 @@ import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 
 import java.io.BufferedOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.zip.ZipEntry;
@@ -64,7 +64,7 @@ public class UnzipFile extends AbstractConnector {
 
         try {
 
-            String connectionName = FileConnectorUtils.getConnectionName(messageContext);
+            String connectionName = Utils.getConnectionName(messageContext);
             filePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SOURCE_FILE_PATH_PARAM);
             folderPathToExtract = (String) ConnectorUtils.
@@ -72,7 +72,7 @@ public class UnzipFile extends AbstractConnector {
 
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
-                    .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+                    .getConnection(Const.CONNECTOR_NAME, connectionName);
             filePath = fileSystemHandler.getBaseDirectoryPath() + filePath;
             folderPathToExtract = fileSystemHandler.getBaseDirectoryPath() + folderPathToExtract;
 
@@ -84,23 +84,11 @@ public class UnzipFile extends AbstractConnector {
             //execute validations
 
             if (!zipFile.exists()) {
-                result = new FileOperationResult(
-                        OPERATION_NAME,
-                        false,
-                        Error.ILLEGAL_PATH,
-                        "File not found: " + filePath);
-                FileConnectorUtils.setResultAsPayload(messageContext, result);
-                return;
+                throw new IllegalPathException("File not found: " + filePath);
             }
 
             if (!zipFile.isFile()) {
-                result = new FileOperationResult(
-                        OPERATION_NAME,
-                        false,
-                        Error.ILLEGAL_PATH,
-                        "File is not a zip file: " + filePath);
-                FileConnectorUtils.setResultAsPayload(messageContext, result);
-                return;
+                throw new IllegalPathException("File is not a zip file: " + filePath);
             }
 
             if (!targetFolder.exists()) {
@@ -111,33 +99,17 @@ public class UnzipFile extends AbstractConnector {
 
             result = new FileOperationResult(OPERATION_NAME, true, zipFileContentEle);
 
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
+            Utils.setResultAsPayload(messageContext, result);
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + filePath;
-
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    errorDetail);
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
         } catch (IOException e) {       //FileSystemException also handled here
 
             String errorDetail = ERROR_MESSAGE + filePath;
-
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.OPERATION_ERROR,
-                    errorDetail);
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
         } finally {
 
@@ -145,7 +117,7 @@ public class UnzipFile extends AbstractConnector {
                 try {
                     zipFile.close();
                 } catch (FileSystemException e) {
-                    log.error(FileConnectorConstants.CONNECTOR_NAME
+                    log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object while unzipping file. "
                             + zipFile);
                 }
@@ -167,14 +139,14 @@ public class UnzipFile extends AbstractConnector {
                                    FileSystemManager fsManager, FileSystemOptions fso) throws IOException {
         //execute unzip
         ZipInputStream zipIn = null;
-        OMElement zipFileContentEle = FileConnectorUtils.
+        OMElement zipFileContentEle = Utils.
                 createOMElement("zipFileContent", null);
         try {
             zipIn = new ZipInputStream(zipFile.getContent().getInputStream());
             ZipEntry entry = zipIn.getNextEntry();
             //iterate over the entries
             while (entry != null) {
-                String zipEntryPath = folderPathToExtract + FileConnectorConstants.FILE_SEPARATOR + entry.getName();
+                String zipEntryPath = folderPathToExtract + Const.FILE_SEPARATOR + entry.getName();
                 FileObject zipEntryTargetFile = fsManager.resolveFile(zipEntryPath, fso);
                 try {
                     if (!entry.isDirectory()) {
@@ -182,7 +154,7 @@ public class UnzipFile extends AbstractConnector {
                         extractFile(zipIn, zipEntryTargetFile);
                         //"/" is not allowed when constructing XML
                         String entryName = entry.getName().replace("/", "--");
-                        OMElement zipEntryEle = FileConnectorUtils.
+                        OMElement zipEntryEle = Utils.
                                 createOMElement(entryName, "extracted");
                         zipFileContentEle.addChild(zipEntryEle);
                     } else {
@@ -221,7 +193,7 @@ public class UnzipFile extends AbstractConnector {
             //open the zip file
             fOut = zipEntryTargetFile.getContent().getOutputStream();
             bos = new BufferedOutputStream(fOut);
-            byte[] bytesIn = new byte[FileConnectorConstants.UNZIP_BUFFER_SIZE];
+            byte[] bytesIn = new byte[Const.UNZIP_BUFFER_SIZE];
             int read;
             while ((read = zipIn.read(bytesIn)) != -1) {
                 bos.write(bytesIn, 0, read);
@@ -247,5 +219,18 @@ public class UnzipFile extends AbstractConnector {
             }
             zipEntryTargetFile.close();
         }
+    }
+
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
     }
 }

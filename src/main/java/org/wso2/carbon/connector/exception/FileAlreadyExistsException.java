@@ -16,21 +16,23 @@
  * under the License.
  */
 
-package org.wso2.carbon.connector.connection;
+package org.wso2.carbon.connector.exception;
 
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
-import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.core.ConnectException;
 
 /**
- * Sets up local file system.
+ * Represents connector exception when
+ * thrown when a file already exists
  */
-public class LocalFileSystemSetup implements ProtocolBasedFileSystemSetup {
+public class FileAlreadyExistsException extends ConnectException {
 
-    @Override
-    public String setupFileSystemHandler(FileSystemOptions fso, ConnectionConfiguration fsConfig) {
+    public FileAlreadyExistsException(String message) {
 
-        return Const.LOCAL_FILE_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);
+        super(message);
+    }
 
+    public FileAlreadyExistsException(String message, Throwable cause) {
+
+        super(cause, message);
     }
 }

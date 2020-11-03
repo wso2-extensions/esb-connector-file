@@ -21,7 +21,7 @@ package org.wso2.carbon.connector.utils;
 /**
  * Contains constants used in File Connector
  */
-public final class FileConnectorConstants {
+public final class Const {
 
     public static final String CONNECTOR_NAME = "file";
 

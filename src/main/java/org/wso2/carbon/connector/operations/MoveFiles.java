@@ -30,13 +30,14 @@ import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.carbon.connector.exception.FileAlreadyExistsException;
+import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -69,9 +70,9 @@ public class MoveFiles extends AbstractConnector {
         try {
 
             //get connection
-            String connectionName = FileConnectorUtils.getConnectionName(messageContext);
+            String connectionName = Utils.getConnectionName(messageContext);
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
-                    .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+                    .getConnection(Const.CONNECTOR_NAME, connectionName);
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
             FileSystemOptions fso = fileSystemHandler.getFsOptions();
 
@@ -103,10 +104,10 @@ public class MoveFiles extends AbstractConnector {
 
                     //check if we have given a new name
                     if (StringUtils.isNotEmpty(renameTo)) {
-                        targetFilePath = targetPath + FileConnectorConstants.FILE_SEPARATOR
+                        targetFilePath = targetPath + Const.FILE_SEPARATOR
                                 + renameTo;
                     } else {
-                        targetFilePath = targetPath + FileConnectorConstants.FILE_SEPARATOR
+                        targetFilePath = targetPath + Const.FILE_SEPARATOR
                                 + sourceFile.getName().getBaseName();
                     }
 
@@ -117,23 +118,19 @@ public class MoveFiles extends AbstractConnector {
                         result = new FileOperationResult(
                                 OPERATION_NAME,
                                 true);
+                        Utils.setResultAsPayload(messageContext, result);
                     } else {
-                        result = new FileOperationResult(
-                                OPERATION_NAME,
-                                false,
-                                Error.FILE_ALREADY_EXISTS,
-                                "Destination file already exists and overwrite not allowed");
+                        throw new FileAlreadyExistsException("Destination file already exists and overwrite not allowed");
                     }
-                    FileConnectorUtils.setResultAsPayload(messageContext, result);
 
                 } else {
                     //in case of folder
                     if (includeParent) {
                         if (StringUtils.isNotEmpty(renameTo)) {
-                            targetPath = targetPath + FileConnectorConstants.FILE_SEPARATOR + renameTo;
+                            targetPath = targetPath + Const.FILE_SEPARATOR + renameTo;
                         } else {
                             String sourceParentFolderName = sourceFile.getName().getBaseName();
-                            targetPath = targetPath + FileConnectorConstants.FILE_SEPARATOR + sourceParentFolderName;
+                            targetPath = targetPath + Const.FILE_SEPARATOR + sourceParentFolderName;
                         }
                     }
 
@@ -145,48 +142,31 @@ public class MoveFiles extends AbstractConnector {
                         result = new FileOperationResult(
                                 OPERATION_NAME,
                                 true);
+                        Utils.setResultAsPayload(messageContext, result);
                     } else {
-                        result = new FileOperationResult(
-                                OPERATION_NAME,
-                                false,
-                                Error.FILE_ALREADY_EXISTS,
-                                "Folder or one or more sub-directories already exists and overwrite not allowed");
+                        throw new FileAlreadyExistsException("Folder or one or more sub-directories "
+                                + "already exists and overwrite not allowed");
                     }
-                    FileConnectorUtils.setResultAsPayload(messageContext, result);
                 }
 
             } else {
-                String errorDetail = ERROR_MESSAGE + sourcePath + ". File/Folder does not exist.";
-                FileOperationResult result = new FileOperationResult(
-                        OPERATION_NAME,
-                        false,
-                        Error.ILLEGAL_PATH,
-                        errorDetail);
-                FileConnectorUtils.setResultAsPayload(messageContext, result);
-                handleException(errorDetail, messageContext);
+                throw new FileOperationException("File/Folder does not exist.");
             }
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + sourcePath;
-            FileOperationResult result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    errorDetail);
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
         } catch (FileSystemException e) {
 
             String errorDetail = ERROR_MESSAGE + sourcePath;
-            FileOperationResult result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.OPERATION_ERROR,
-                    errorDetail);
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
+
+        } catch (FileAlreadyExistsException e) {
+
+            String errorDetail = ERROR_MESSAGE + sourcePath;
+            handleError(messageContext, e, Error.FILE_ALREADY_EXISTS, errorDetail);
 
         } finally {
 
@@ -194,7 +174,7 @@ public class MoveFiles extends AbstractConnector {
                 try {
                     sourceFile.close();
                 } catch (FileSystemException e) {
-                    log.error(FileConnectorConstants.CONNECTOR_NAME
+                    log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object"
                             + sourcePath);
                 }
@@ -280,6 +260,19 @@ public class MoveFiles extends AbstractConnector {
 
         srcFile.moveTo(destinationFile);
         return true;
+    }
+
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
     }
 
 }

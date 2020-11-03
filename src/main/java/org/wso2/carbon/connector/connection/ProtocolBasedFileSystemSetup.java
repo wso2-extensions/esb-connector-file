@@ -22,7 +22,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
+import org.wso2.carbon.connector.utils.Const;
 
 /**
  * Protocol specific file system setup strategy.
@@ -55,7 +55,7 @@ public interface ProtocolBasedFileSystemSetup {
                sb.append(host).append(":").append(port);
           }
           if (StringUtils.isNotEmpty(fsConfig.getWorkingDir())) {
-               sb.append(FileConnectorConstants.FILE_SEPARATOR).append(fsConfig.getWorkingDir());
+               sb.append(Const.FILE_SEPARATOR).append(fsConfig.getWorkingDir());
           }
           return sb.toString();
      }

@@ -35,8 +35,8 @@ import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FileConnectorConstants;
-import org.wso2.carbon.connector.utils.FileConnectorUtils;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -71,7 +71,7 @@ public class CompressFiles extends AbstractConnector {
 
         try {
 
-            String connectionName = FileConnectorUtils.getConnectionName(messageContext);
+            String connectionName = Utils.getConnectionName(messageContext);
             sourceFilePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SOURCE_DIRECTORY_PATH);
             targetZipFilePath = (String) ConnectorUtils.
@@ -88,7 +88,7 @@ public class CompressFiles extends AbstractConnector {
             }
 
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
-                    .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+                    .getConnection(Const.CONNECTOR_NAME, connectionName);
             sourceFilePath = fileSystemHandler.getBaseDirectoryPath() + sourceFilePath;
             targetZipFilePath = fileSystemHandler.getBaseDirectoryPath() + targetZipFilePath;
 
@@ -107,48 +107,27 @@ public class CompressFiles extends AbstractConnector {
 
             int numberOfCompressedFiles = compressFile(fileToCompress, targetZipFile, includeSubDirectories);
             OMElement compressedFilesEle =
-                    FileConnectorUtils.createOMElement(NUMBER_OF_FILES_ADDED_ELEMENT,
+                    Utils.createOMElement(NUMBER_OF_FILES_ADDED_ELEMENT,
                             Integer.toString(numberOfCompressedFiles));
             result = new FileOperationResult(OPERATION_NAME,
                     true,
                     compressedFilesEle);
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-
+            Utils.setResultAsPayload(messageContext, result);
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    e.getMessage());
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
         } catch (IllegalPathException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.ILLEGAL_PATH,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
 
         } catch (IOException e) {       //FileSystemException also handled here
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.OPERATION_ERROR,
-                    e.getMessage());
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
         } finally {
 
@@ -156,7 +135,7 @@ public class CompressFiles extends AbstractConnector {
                 try {
                     fileToCompress.close();
                 } catch (FileSystemException e) {
-                    log.error(FileConnectorConstants.CONNECTOR_NAME
+                    log.error(Const.CONNECTOR_NAME
                             + ":Error while closing folder object while merging files in "
                             + fileToCompress);
                 }
@@ -197,7 +176,7 @@ public class CompressFiles extends AbstractConnector {
                 fileIn = fileToCompress.getContent().getInputStream();
                 ZipEntry zipEntry = new ZipEntry(fileToCompress.getName().getBaseName());
                 outputStream.putNextEntry(zipEntry);
-                final byte[] bytes = new byte[FileConnectorConstants.ZIP_BUFFER_SIZE];
+                final byte[] bytes = new byte[Const.ZIP_BUFFER_SIZE];
                 int length;
                 while ((length = fileIn.read(bytes)) != -1) {
                     outputStream.write(bytes, 0, length);
@@ -287,7 +266,7 @@ public class CompressFiles extends AbstractConnector {
             String entry = name.substring(fileObject.getName().toString().length() + 1);
             ZipEntry zipEntry = new ZipEntry(entry);
             outputStream.putNextEntry(zipEntry);
-            final byte[] bytes = new byte[FileConnectorConstants.ZIP_BUFFER_SIZE];
+            final byte[] bytes = new byte[Const.ZIP_BUFFER_SIZE];
             int length;
             while ((length = fin.read(bytes)) != -1) {
                 outputStream.write(bytes, 0, length);
@@ -311,5 +290,18 @@ public class CompressFiles extends AbstractConnector {
             }
 
         }
+    }
+
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
     }
 }
