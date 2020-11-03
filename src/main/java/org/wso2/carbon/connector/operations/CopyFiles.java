@@ -255,7 +255,7 @@ public class CopyFiles extends AbstractConnector {
             for (FileObject child : destinationFileChildren) {
                 destinationChildrenNames.add(child.getName().getBaseName());
             }
-            //TODO: takes some time to execute
+
             Collection commonFiles = CollectionUtils.intersection(sourceChildrenNames, destinationChildrenNames);
             if (!commonFiles.isEmpty()) {
                 return false;

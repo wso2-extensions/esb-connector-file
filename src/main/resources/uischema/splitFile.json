@@ -81,6 +81,7 @@
                     "displayName": "Chunk Size (# of bytes)",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
+                    "enableCondition": [{"splitMode":"Chunk Size"}],
                     "required": "false",
                     "helpTip": "The chunk size in bytes to split the file."
                   }
@@ -92,6 +93,7 @@
                     "displayName": "Line Count",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
+                    "enableCondition": [{"splitMode":"Line Count"}],
                     "required": "false",
                     "helpTip": "The number of lines per file."
                   }
@@ -103,6 +105,7 @@
                     "displayName": "XPATH Expression",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
+                    "enableCondition": [{"splitMode":"XPATH Expression"}],
                     "required": "false",
                     "helpTip": "The XPATH expression used to split file."
                   }

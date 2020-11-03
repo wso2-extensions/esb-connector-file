@@ -67,6 +67,38 @@
                 }
               ]
             }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Advance",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sortingAttribute",
+                    "displayName": "File Sort Attribute",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Name", "Size", "LastModifiedTime"],
+                    "defaultValue": "Name",
+                    "required": "true",
+                    "helpTip": "Files will be listed as per attribute."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sortingOrder",
+                    "displayName": "Sort Order",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Ascending", "Descending"],
+                    "defaultValue": "Ascending",
+                    "required": "true",
+                    "helpTip": "Order you need to sort in ascending or descending order"
+                  }
+                }
+              ]
+            }
           }
         ]
       }

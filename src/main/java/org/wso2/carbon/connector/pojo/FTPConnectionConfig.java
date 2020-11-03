@@ -31,11 +31,9 @@ public class FTPConnectionConfig extends RemoteServerConfig {
     private boolean isPassive;
 
     //timeout for the initial control connection
-    //TODO:decide default
     private int connectionTimeout;
 
     //the socket timeout for the FTP client
-    //TODO:decide default
     private int socketTimeout;
 
     public FTPConnectionConfig() {

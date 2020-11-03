@@ -36,6 +36,7 @@ import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
+import org.wso2.carbon.connector.pojo.FileSorter;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
@@ -50,6 +51,11 @@ public class ListFiles extends AbstractConnector {
 
     private static final String MATCHING_PATTERN = "matchingPattern";
     private static final String RECURSIVE_PARAM = "recursive";
+    private static final String SORT_ATTRIB_PARAM = "sortingAttribute";
+    private static final String SORT_ORDER_PARAM = "sortingOrder";
+    private static final String DEFAULT_SORT_ATTRIB = "Name";
+    private static final String DEFAULT_SORT_ORDER = "Ascending";
+
     private static final String OPERATION_NAME = "listFiles";
     private static final String ERROR_MESSAGE = "Error while performing file:listFiles for folder ";
 
@@ -83,6 +89,9 @@ public class ListFiles extends AbstractConnector {
                     lookupTemplateParamater(messageContext, RECURSIVE_PARAM);
             recursive = Boolean.parseBoolean(recursiveStr);
 
+            String sortingAttribute = Utils.lookUpStringParam(messageContext, SORT_ATTRIB_PARAM, DEFAULT_SORT_ATTRIB);
+            String sortingOrder  = Utils.lookUpStringParam(messageContext, SORT_ORDER_PARAM, DEFAULT_SORT_ORDER);
+
             folderPath = fileSystemHandler.getBaseDirectoryPath() + folderPath;
             folder = fsManager.resolveFile(folderPath, fso);
 
@@ -90,7 +99,8 @@ public class ListFiles extends AbstractConnector {
 
                 if (folder.isFolder()) {
 
-                    OMElement fileListEle = listFilesInFolder(folder, fileMatchingPattern, recursive);
+                    OMElement fileListEle = listFilesInFolder(folder, fileMatchingPattern,
+                            recursive, sortingAttribute, sortingOrder);
                     FileOperationResult result = new FileOperationResult(
                             OPERATION_NAME,
                             true,
@@ -119,9 +129,7 @@ public class ListFiles extends AbstractConnector {
 
             String errorDetail = ERROR_MESSAGE + folderPath;
             handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
-        }
-
-        finally {
+        } finally {
 
             if (folder != null) {
                 try {
@@ -138,17 +146,23 @@ public class ListFiles extends AbstractConnector {
     /**
      * List all files in the directory. If recursive = true,
      * This method will recursively look into subdirectories.
+     * Lists files adhering to sort attribute and order specified.
      *
      * @param folder    Folder to scan
      * @param pattern   Specific pattern of files to include in the listing
      * @param recursive true, if to look into subdirectories
+     * @param sortingAttribute Attribute to use for file sorting
+     * @param sortOrder Sorting order to use
      * @return OMElement with organized listing.
      * @throws FileSystemException In case of reading the directory.
      */
-    private OMElement listFilesInFolder(FileObject folder, String pattern, boolean recursive) throws FileSystemException {
+    private OMElement listFilesInFolder(FileObject folder, String pattern, boolean recursive,
+                                        String sortingAttribute, String sortOrder) throws FileSystemException {
         String containingFolderName = folder.getName().getBaseName();
         OMElement folderEle = Utils.createOMElement(containingFolderName, null);
         FileObject[] filesOrFolders = getFilesAndFolders(folder, pattern);
+        FileSorter fileSorter = new FileSorter(sortingAttribute, sortOrder);
+        fileSorter.sort(filesOrFolders);
         for (FileObject fileOrFolder : filesOrFolders) {
             if (fileOrFolder.isFile()) {
                 OMElement fileEle = Utils.createOMElement(Const.FILE_ELEMENT,
@@ -156,7 +170,8 @@ public class ListFiles extends AbstractConnector {
                 folderEle.addChild(fileEle);
             } else {
                 if (recursive) {
-                    OMElement subFolderEle = listFilesInFolder(fileOrFolder, pattern, recursive);
+                    OMElement subFolderEle = listFilesInFolder(fileOrFolder, pattern, recursive,
+                            sortingAttribute, sortOrder);
                     folderEle.addChild(subFolderEle);
                 }
             }

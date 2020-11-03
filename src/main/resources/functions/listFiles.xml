@@ -20,6 +20,8 @@
     <parameter name="directoryPath" description="The path to the directory to list files"/>
     <parameter name="matchingPattern" description="Pattern to match when listing files"/>
     <parameter name="recursive" description="List files in sub-directories"/>
+    <parameter name="sortingAttribute" description="Sort files when listing" />
+    <parameter name="sortingOrder" description="File sorting order"/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.ListFiles" />
     </sequence>
