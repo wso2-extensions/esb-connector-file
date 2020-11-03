@@ -39,7 +39,6 @@ import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
@@ -54,7 +53,6 @@ import org.wso2.carbon.connector.utils.FileLock;
 import org.wso2.carbon.relay.ExpandingMessageFormatter;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Base64;
@@ -87,26 +85,17 @@ public class WriteFile extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String targetFilePath = null;
         FileObject targetFile = null;
         FileOperationResult result;
 
         try {
 
+            Config config = readAndValidateInputs(messageContext);
+            targetFilePath = config.targetFilePath;
+
             String connectionName = FileConnectorUtils.getConnectionName(messageContext);
-            targetFilePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, FILE_PATH_PARAM);
-
-            if (StringUtils.isEmpty(targetFilePath)) {
-                throw new InvalidConfigurationException("Parameter '" + FILE_PATH_PARAM + "' is not provided ");
-            }
-
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
-                    .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
-
-            String fileNameWithExtension = targetFilePath.
-                    substring(targetFilePath.lastIndexOf(FileConnectorConstants.FILE_SEPARATOR) + 1);
+            FileSystemHandler fileSystemHandler = FileConnectorUtils.getFileSystemHandler(connectionName);
 
             //if compress is enabled we need to resolve a zip file
             targetFilePath = getModifiedFilePathForCompress(targetFilePath, messageContext);
@@ -122,22 +111,21 @@ public class WriteFile extends AbstractConnector {
             }
 
             //lock the file if enabled
-            boolean enableLock = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, ENABLE_LOCK_PARAM));
             FileLock fileLock = new FileLock(targetFilePath);
-            if (enableLock) {
+            if (config.enableLocking) {
                 boolean lockAcquired = fileLock.acquireLock(fsManager, fso, FileConnectorConstants.DEFAULT_LOCK_TIMEOUT);
                 if (!lockAcquired) {
                     throw new FileLockException("Failed to acquire lock for file "
                             + targetFilePath + ". Another process maybe processing it. ");
                 }
             }
+
             int byteCountWritten;
             try {
-                byteCountWritten = (int) writeToFile(targetFile, fileNameWithExtension, messageContext);
+                byteCountWritten = (int) writeToFile(targetFile, messageContext, config);
                 targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
             } finally {
-                if (enableLock) {
+                if (config.enableLocking) {
                     boolean lockReleased = fileLock.releaseLock();
                     if (!lockReleased) {
                         log.error("Failed to release lock for file "
@@ -152,67 +140,31 @@ public class WriteFile extends AbstractConnector {
                     byteCountWritten);
 
 
-            String injectOperationResultTo = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, INCLUDE_RESULT_TO);
-
-            if (injectOperationResultTo.equals(FileConnectorConstants.MESSAGE_BODY)) {
+            if (config.includeResultTo.equals(FileConnectorConstants.MESSAGE_BODY)) {
                 FileConnectorUtils.setResultAsPayload(messageContext, result);
-            } else if (injectOperationResultTo.equals(FileConnectorConstants.MESSAGE_PROPERTY)) {
-                String resultPropertyName = (String) ConnectorUtils.
-                        lookupTemplateParamater(messageContext, RESULT_PROPERTY_NAME);
-                if (StringUtils.isNotEmpty(resultPropertyName)) {
-                    OMElement resultEle = FileConnectorUtils.generateOperationResult(messageContext, result);
-                    messageContext.setProperty(resultPropertyName, resultEle);
-                } else {
-                    throw new InvalidConfigurationException("Property name to set operation result is required");
-                }
-            } else {
-                throw new InvalidConfigurationException("Parameter '" + INCLUDE_RESULT_TO + "' is mandatory");
+            } else if (config.includeResultTo.equals(FileConnectorConstants.MESSAGE_PROPERTY)) {
+                OMElement resultEle = FileConnectorUtils.generateOperationResult(messageContext, result);
+                messageContext.setProperty(config.resultPropertyName, resultEle);
             }
-
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + targetFilePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    e.getMessage());
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
         } catch (IllegalPathException e) {
 
             String errorDetail = ERROR_MESSAGE + targetFilePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.ILLEGAL_PATH,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
 
         } catch (FileOperationException | IOException e) { //FileSystemException also handled here
+
             String errorDetail = ERROR_MESSAGE + targetFilePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.OPERATION_ERROR,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
         } catch (FileLockException e) {
             String errorDetail = ERROR_MESSAGE + targetFilePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.FILE_LOCKING_ERROR,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
         } finally {
 
             if (targetFile != null) {
@@ -225,6 +177,63 @@ public class WriteFile extends AbstractConnector {
                 }
             }
         }
+    }
+
+    private Config readAndValidateInputs(MessageContext msgCtx) throws InvalidConfigurationException {
+        Config config = new Config();
+        config.targetFilePath = FileConnectorUtils.lookUpStringParam(msgCtx, FILE_PATH_PARAM);
+        config.enableLocking = FileConnectorUtils.lookUpBooleanParam(msgCtx, ENABLE_LOCK_PARAM, false);
+        config.includeResultTo = FileConnectorUtils.lookUpStringParam(msgCtx, INCLUDE_RESULT_TO, FileConnectorConstants.MESSAGE_BODY);
+        String resultPropertyName = FileConnectorUtils.lookUpStringParam(msgCtx, RESULT_PROPERTY_NAME, FileConnectorConstants.EMPTY_STRING);
+        if (config.includeResultTo.equals(FileConnectorConstants.MESSAGE_PROPERTY) && StringUtils.isEmpty(resultPropertyName)) {
+            throw new InvalidConfigurationException("Parameter '" + RESULT_PROPERTY_NAME + "' is required.");
+        } else {
+            config.resultPropertyName = resultPropertyName;
+        }
+        config.compress = FileConnectorUtils.lookUpBooleanParam(msgCtx, COMPRESS_PARAM, false);
+        config.writeMode = FileWriteMode.fromString(FileConnectorUtils.lookUpStringParam(msgCtx, WRITE_MODE_PARAM, FileWriteMode.OVERWRITE.toString()));
+        config.contentToWrite = FileConnectorUtils.lookUpStringParam(msgCtx, CONTENT_OR_EXPRESSION_PARAM, FileConnectorConstants.EMPTY_STRING);
+        config.encoding = FileConnectorUtils.lookUpStringParam(msgCtx, ENCODING_PARAM, FileConnectorConstants.DEFAULT_ENCODING);
+        config.mimeType = FileConnectorUtils.lookUpStringParam(msgCtx, MIME_TYPE_PARAM, FileConnectorConstants.EMPTY_STRING);
+        config.appendNewLine = FileConnectorUtils.lookUpBooleanParam(msgCtx, APPEND_NEW_LINE_PARAM, false);
+        config.enableStreaming = FileConnectorUtils.lookUpBooleanParam(msgCtx, ENABLE_STREAMING_PARAM, false);
+        String appendPosition = FileConnectorUtils.lookUpStringParam(msgCtx, APPEND_POSITION_PARAM, String.valueOf(Integer.MAX_VALUE));
+        config.appendPosition = Integer.parseInt(appendPosition);
+
+        config.fileNameWithExtension = config.targetFilePath.
+                substring(config.targetFilePath.lastIndexOf(FileConnectorConstants.FILE_SEPARATOR) + 1);
+
+        return config;
+
+    }
+
+    private class Config {
+        String targetFilePath;
+        String fileNameWithExtension;
+        boolean enableLocking = false;
+        String includeResultTo;
+        String resultPropertyName;
+        boolean compress = false;
+        FileWriteMode writeMode = FileWriteMode.OVERWRITE;
+        String contentToWrite;
+        String encoding = FileConnectorConstants.DEFAULT_ENCODING;
+        String mimeType;
+        boolean appendNewLine = false;
+        boolean enableStreaming = false;
+        int appendPosition = Integer.MAX_VALUE;
+    }
+
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        FileConnectorUtils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
     }
 
 
@@ -266,108 +275,72 @@ public class WriteFile extends AbstractConnector {
     /**
      * Perform file writing.
      *
-     * @param targetFile            File to write to
-     * @param fileNameWithExtension File name with extension
-     * @param msgCtx                MessageContext to read configs from
+     * @param targetFile File to write to
+     * @param msgCtx     MessageContext to read configs from
      * @return Written Bytes count
-     * @throws IOException                   In case of I/O error
-     * @throws FileOperationException        In case of any application error
-     * @throws IllegalPathException          In case if invalid file path
-     * @throws InvalidConfigurationException In case of  configs validation failure
+     * @throws IOException            In case of I/O error
+     * @throws FileOperationException In case of any application error
+     * @throws IllegalPathException   In case if invalid file path
      */
-    private long writeToFile(FileObject targetFile, String fileNameWithExtension, MessageContext msgCtx)
-            throws IOException, FileOperationException, IllegalPathException,
-            InvalidConfigurationException {
+    private long writeToFile(FileObject targetFile, MessageContext msgCtx, Config config)
+            throws IOException, FileOperationException, IllegalPathException {
 
-        long writtenBytesCount = 0;
-        FileWriteMode writeMode;
-        String fileWriteModeAsStr = (String) ConnectorUtils.
-                lookupTemplateParamater(msgCtx, WRITE_MODE_PARAM);
-        if (StringUtils.isNotEmpty(fileWriteModeAsStr)) {
-            writeMode = FileWriteMode.fromString(fileWriteModeAsStr);
-        } else {
-            throw new InvalidConfigurationException("Mandatory parameter '" + WRITE_MODE_PARAM + "' is not provided");
-        }
+        long writtenBytesCount;
 
         //TODO: how to write an attachment to a file?
 
-        String contentToWrite = (String) ConnectorUtils.
-                lookupTemplateParamater(msgCtx, CONTENT_OR_EXPRESSION_PARAM);
-        String encoding = (String) ConnectorUtils.
-                lookupTemplateParamater(msgCtx, ENCODING_PARAM);
-        if (StringUtils.isEmpty(encoding)) {
-            encoding = FileConnectorConstants.DEFAULT_ENCODING;
-        }
-        String mimeType = (String) ConnectorUtils.
-                lookupTemplateParamater(msgCtx, MIME_TYPE_PARAM);
-        boolean compress = Boolean.parseBoolean((String) ConnectorUtils.
-                lookupTemplateParamater(msgCtx, COMPRESS_PARAM));
-        boolean appendNewLine = Boolean.parseBoolean((String) ConnectorUtils.
-                lookupTemplateParamater(msgCtx, APPEND_NEW_LINE_PARAM));
-        boolean enableStreaming = Boolean.parseBoolean((String) ConnectorUtils.
-                lookupTemplateParamater(msgCtx, ENABLE_STREAMING_PARAM));
-        int contentAppendPosition = Integer.MAX_VALUE;
-        String contentPositionAsStr = (String) ConnectorUtils.
-                lookupTemplateParamater(msgCtx, APPEND_POSITION_PARAM);
-        if (StringUtils.isNotEmpty(contentPositionAsStr)) {
-            contentAppendPosition = Integer.parseInt(contentPositionAsStr);
+        if (config.enableStreaming) {
+            config.appendPosition = Integer.MAX_VALUE;
+            config.appendNewLine = false;
         }
 
-        if (enableStreaming) {
-            contentAppendPosition = Integer.MAX_VALUE;
-            appendNewLine = false;
-        }
-
-
-        boolean contentPropertyIsPresent = false;
-        if (StringUtils.isNotEmpty(contentToWrite)) {
-            contentPropertyIsPresent = true;
-            if (appendNewLine) {
-                contentToWrite = contentToWrite + FileConnectorConstants.NEW_LINE;
+        boolean contentToWriteIsProvided = false;
+        if (StringUtils.isNotEmpty(config.contentToWrite)) {
+            contentToWriteIsProvided = true;
+            if (config.appendNewLine) {
+                config.contentToWrite = config.contentToWrite + FileConnectorConstants.NEW_LINE;
             }
         }
 
-
-        switch (writeMode) {
+        switch (config.writeMode) {
             case CREATE_NEW:
                 if (targetFile.exists()) {
                     throw new FileOperationException("Target file already exists. Path = "
                             + targetFile.getURL());
                 } else {
                     targetFile.createFile();
-                    if (contentPropertyIsPresent) {
-                        writtenBytesCount = performContentWrite(targetFile, fileNameWithExtension, contentToWrite, encoding, mimeType, compress);
+                    if (contentToWriteIsProvided) {
+                        writtenBytesCount = performContentWrite(targetFile, config);
                     } else {
-                        writtenBytesCount = performBodyWrite(targetFile, fileNameWithExtension, msgCtx, false, mimeType, enableStreaming, compress, appendNewLine);
-
+                        writtenBytesCount = performBodyWrite(targetFile, msgCtx, false, config);
                     }
                 }
                 break;
             case OVERWRITE:
                 targetFile.createFile();
-                if (contentPropertyIsPresent) {
-                    writtenBytesCount = performContentWrite(targetFile, fileNameWithExtension, contentToWrite, encoding, mimeType, compress);
+                if (contentToWriteIsProvided) {
+                    writtenBytesCount = performContentWrite(targetFile, config);
                 } else {
-                    writtenBytesCount = performBodyWrite(targetFile, fileNameWithExtension, msgCtx, false, mimeType, enableStreaming, compress, appendNewLine);
+                    writtenBytesCount = performBodyWrite(targetFile, msgCtx, false, config);
                 }
                 break;
             case APPEND:
-                if (contentAppendPosition <= 0) {
+                if (config.appendPosition <= 0) {
                     throw new FileOperationException("Invalid file append position. Expecting a positive value");
                 }
                 if (!targetFile.exists()) {
                     throw new IllegalPathException("File to append is not found: " + targetFile.getURL());
                 } else {
-                    if (contentPropertyIsPresent) {
-                        writtenBytesCount = performContentAppend(targetFile, contentToWrite, encoding, contentAppendPosition);
+                    if (contentToWriteIsProvided) {
+                        writtenBytesCount = performContentAppend(targetFile, config);
                     } else {
-                        writtenBytesCount = performBodyWrite(targetFile, fileNameWithExtension, msgCtx, true, mimeType, enableStreaming, compress, appendNewLine);
+                        writtenBytesCount = performBodyWrite(targetFile, msgCtx, true, config);
                     }
                 }
                 break;
 
             default:
-                throw new FileOperationException("Unexpected File Write Mode: " + writeMode);
+                throw new FileOperationException("Unexpected File Write Mode: " + config.writeMode);
         }
 
         return writtenBytesCount;
@@ -376,36 +349,31 @@ public class WriteFile extends AbstractConnector {
     /**
      * Execute writing static of evaluated content.
      *
-     * @param targetFile            File to write to
-     * @param fileNameWithExtension File name with extension
-     * @param contentToWrite        static content to write
-     * @param encoding              encoding to use
-     * @param mimeType              mime type of the message
-     * @param compress              true if need to compress and write
+     * @param targetFile File to write to
+     * @param config     Input configs
      * @return Bytes written to file
      * @throws IOException In case of I/O error
      */
-    private long performContentWrite(FileObject targetFile, String fileNameWithExtension, String contentToWrite,
-                                     String encoding, String mimeType, boolean compress) throws IOException {
+    private long performContentWrite(FileObject targetFile, Config config) throws IOException {
         CountingOutputStream out = null;
         try {
-            if (compress) {
-                ZipEntry zipEntry = new ZipEntry(fileNameWithExtension);
+            if (config.compress) {
+                ZipEntry zipEntry = new ZipEntry(config.fileNameWithExtension);
                 ZipOutputStream zipOutputStream = new ZipOutputStream(targetFile.getContent().getOutputStream());
                 zipOutputStream.putNextEntry(zipEntry);
                 out = new CountingOutputStream(zipOutputStream);
             } else {
                 out = new CountingOutputStream(targetFile.getContent().getOutputStream());
             }
-            if (Objects.equals(mimeType, FileConnectorConstants.CONTENT_TYPE_BINARY)) {
+            if (Objects.equals(config.mimeType, FileConnectorConstants.CONTENT_TYPE_BINARY)) {
                 // Write binary content decoded from a base64 string
-                byte[] decoded = Base64.getDecoder().decode(contentToWrite);
+                byte[] decoded = Base64.getDecoder().decode(config.contentToWrite);
                 out.write(decoded);
             }
-            if (StringUtils.isNotEmpty(encoding)) {
-                IOUtils.write(contentToWrite, out, encoding);
+            if (StringUtils.isNotEmpty(config.encoding)) {
+                IOUtils.write(config.contentToWrite, out, config.encoding);
             } else {
-                IOUtils.write(contentToWrite, out, FileConnectorConstants.DEFAULT_ENCODING);
+                IOUtils.write(config.contentToWrite, out, FileConnectorConstants.DEFAULT_ENCODING);
             }
             return out.getByteCount();
         } finally {
@@ -449,37 +417,30 @@ public class WriteFile extends AbstractConnector {
     /**
      * Append static content to a file.
      *
-     * @param targetFile      File to append to
-     * @param contentToAppend Static content
-     * @param encoding        Encoding to use
-     * @param position        Position of the file to append
+     * @param targetFile File to append to
+     * @param config     Input configs
      * @return Number of bytes written
      * @throws IOException In case of I/O error
      */
-    private long performContentAppend(FileObject targetFile, String contentToAppend,
-                                      String encoding, int position) throws IOException {
+    private long performContentAppend(FileObject targetFile, Config config) throws IOException {
         BufferedReader reader = null;
         CountingOutputStream out = null;
         try {
             reader = new BufferedReader(new InputStreamReader(targetFile.getContent().getInputStream()));
             List<String> lines = reader.lines().collect(Collectors.toList());
-            if (position <= lines.size()) {
-                lines.add(position - 1, contentToAppend);
+            if (config.appendPosition <= lines.size()) {
+                lines.add(config.appendPosition - 1, config.contentToWrite);
             } else {
-                if (position != Integer.MAX_VALUE) {
+                if (config.appendPosition != Integer.MAX_VALUE) {
                     log.warn("FileConnector:write - Append position is greater than the existing line count of file "
                             + targetFile.getName().getBaseName()
                             + ". Hence appending the content at EOF.");
                 }
-                lines.add(contentToAppend);
+                lines.add(config.contentToWrite);
             }
 
             out = new CountingOutputStream(targetFile.getContent().getOutputStream());
-            if (StringUtils.isEmpty(encoding)) {
-                IOUtils.writeLines(lines, null, out, FileConnectorConstants.DEFAULT_ENCODING);
-            } else {
-                IOUtils.writeLines(lines, null, out, encoding);
-            }
+            IOUtils.writeLines(lines, null, out, config.encoding);
             return out.getByteCount();
         } finally {
             try {
@@ -504,33 +465,27 @@ public class WriteFile extends AbstractConnector {
     /**
      * Write message in MessageContext to a given file.
      *
-     * @param targetFile            File to write to
-     * @param fileNameWithExtension File name with extension
-     * @param messageContext        MessageContext to extract message from
-     * @param append                True if to append content to file
-     * @param mimeType              MIME type of the message
-     * @param streaming             True if to extract stream and write to file
-     * @param compress              True if to compress and write the file
-     * @param appendNewLine         True if to append new line at the end
-     * @return
+     * @param targetFile     File to write to
+     * @param messageContext MessageContext to extract message from
+     * @param append         True if to append content to file
+     * @param config         Input config
+     * @return Number of bytes written
      * @throws FileOperationException In case of connector error
      * @throws IOException            In case of I/O error
      */
-    private long performBodyWrite(FileObject targetFile, String fileNameWithExtension, MessageContext messageContext,
-                                  boolean append, String mimeType, boolean streaming,
-                                  boolean compress, boolean appendNewLine)
-            throws FileOperationException, IOException {
+    private long performBodyWrite(FileObject targetFile, MessageContext messageContext,
+                                  boolean append, Config config) throws FileOperationException, IOException {
 
         org.apache.axis2.context.MessageContext axis2MessageContext = ((Axis2MessageContext) messageContext).
                 getAxis2MessageContext();
         //override message type set
-        if (StringUtils.isNotEmpty(mimeType) &&
-                !(mimeType.equals(FileConnectorConstants.CONTENT_TYPE_AUTOMATIC))) {
+        if (StringUtils.isNotEmpty(config.mimeType) &&
+                !(config.mimeType.equals(FileConnectorConstants.CONTENT_TYPE_AUTOMATIC))) {
 
-            axis2MessageContext.setProperty(FileConnectorConstants.MESSAGE_TYPE, mimeType);
+            axis2MessageContext.setProperty(FileConnectorConstants.MESSAGE_TYPE, config.mimeType);
         }
         MessageFormatter messageFormatter;
-        if (streaming) {
+        if (config.enableStreaming) {
             //this will get data handler and access input stream set
             messageFormatter = new ExpandingMessageFormatter();
         } else {
@@ -544,10 +499,10 @@ public class WriteFile extends AbstractConnector {
             CountingOutputStream outputStream = null;
             long writtenByesCount = 0;
             try {
-                if (compress) {
+                if (config.compress) {
                     ZipOutputStream zipOutputStream = new ZipOutputStream(targetFile.getContent().
                             getOutputStream(append));
-                    ZipEntry zipEntry = new ZipEntry(fileNameWithExtension);
+                    ZipEntry zipEntry = new ZipEntry(config.fileNameWithExtension);
                     zipOutputStream.putNextEntry(zipEntry);
                     outputStream = new CountingOutputStream(zipOutputStream);
                 } else {
@@ -565,7 +520,7 @@ public class WriteFile extends AbstractConnector {
                     }
                 }
             }
-            if (!compress && appendNewLine) {
+            if (!config.compress && config.appendNewLine) {
                 writtenByesCount = writtenByesCount + appendNewLine(targetFile);
             }
             return writtenByesCount;

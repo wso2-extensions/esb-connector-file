@@ -29,6 +29,10 @@ import org.apache.synapse.MessageContext;
 import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.transport.passthru.PassThroughConstants;
+import org.wso2.carbon.connector.connection.FileSystemHandler;
+import org.wso2.carbon.connector.core.ConnectException;
+import org.wso2.carbon.connector.core.connection.ConnectionHandler;
+import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 
@@ -138,6 +142,86 @@ public class FileConnectorUtils {
             log.error("FileConnector:unzip: Error while generating OMElement from element name" + elementName, e);
         }
         return resultElement;
+    }
+
+    /**
+     * Looks up mandatory parameter. Value should be a String.
+     *
+     * @param msgCtx    Message context
+     * @param paramName Name of the parameter to lookup
+     * @return Value of the parameter
+     * @throws InvalidConfigurationException In case mandatory parameter is not provided
+     */
+    public static String lookUpStringParam(MessageContext msgCtx, String paramName)
+            throws InvalidConfigurationException {
+        String value = (String) ConnectorUtils.lookupTemplateParamater(msgCtx, paramName);
+        if (StringUtils.isEmpty(value)) {
+            throw new InvalidConfigurationException("Parameter '" + paramName + "' is not provided ");
+        } else {
+            return value;
+        }
+    }
+
+    /**
+     * Looks up optional parameter. Value should be a String.
+     *
+     * @param msgCtx     Message Context
+     * @param paramName  Name of the parameter to lookup
+     * @param defaultVal Default value of the parameter
+     * @return Value of the parameter if provided, else default value above
+     */
+    public static String lookUpStringParam(MessageContext msgCtx, String paramName, String defaultVal) {
+        String value = (String) ConnectorUtils.lookupTemplateParamater(msgCtx, paramName);
+        if (StringUtils.isEmpty(value)) {
+            return defaultVal;
+        } else {
+            return value;
+        }
+    }
+
+    /**
+     * Looks up optional boolean parameter. Value should be a Boolean.
+     *
+     * @param msgCtx     Message Context
+     * @param paramName  Name of the parameter to lookup
+     * @param defaultVal Default boolean value
+     * @return Value of the parameter if provided, else default value above
+     */
+    public static boolean lookUpBooleanParam(MessageContext msgCtx, String paramName, boolean defaultVal) {
+        String value = (String) ConnectorUtils.lookupTemplateParamater(msgCtx, paramName);
+        if (StringUtils.isEmpty(value)) {
+            return defaultVal;
+        } else {
+            return Boolean.parseBoolean(value);
+        }
+    }
+
+    /**
+     * Gets FileSystemHandler associated with connection name.
+     *
+     * @param connectionName Name of the connection
+     * @return FileSystemHandler object
+     * @throws ConnectException Issue when retrieving cached FileSystemHandler
+     */
+    public static FileSystemHandler getFileSystemHandler(String connectionName) throws ConnectException {
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        return (FileSystemHandler) handler
+                .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
+    }
+
+    /**
+     * Sets error to the message context
+     *
+     * @param operationName Name of connector operation
+     * @param msgCtx        Message Context to set info
+     * @param e             Exception associated
+     * @param error         Error code
+     * @param errorDetail   Error detail
+     */
+    public static void setError(String operationName, MessageContext msgCtx, Exception e,
+                                Error error, String errorDetail) {
+        FileOperationResult result = new FileOperationResult(operationName, false, error, e.getMessage());
+        FileConnectorUtils.setResultAsPayload(msgCtx, result);
     }
 
     /**

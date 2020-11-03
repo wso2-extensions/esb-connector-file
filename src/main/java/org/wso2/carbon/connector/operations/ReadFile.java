@@ -40,8 +40,6 @@ import org.apache.synapse.transport.passthru.util.BinaryRelayBuilder;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
@@ -58,7 +56,6 @@ import javax.mail.internet.ContentType;
 import javax.mail.internet.ParseException;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -92,27 +89,19 @@ public class ReadFile extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String sourcePath = null;
         FileObject fileObject = null;
-        FileReadMode readMode;
         FileOperationResult result;
         FileLock fileLock = null;
 
         try {
 
             String connectionName = FileConnectorUtils.getConnectionName(messageContext);
-            sourcePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, PATH_PARAM);
+            Config config = readAndValidateInputs(messageContext);
 
-            if (StringUtils.isEmpty(sourcePath)) {
-                throw new InvalidConfigurationException("Parameter '" + PATH_PARAM + "' is not provided ");
-            }
-
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
-                    .getConnection(FileConnectorConstants.CONNECTOR_NAME, connectionName);
-            String workingDirRelativePAth = sourcePath;
-            sourcePath = fileSystemHandler.getBaseDirectoryPath() + sourcePath;
+            FileSystemHandler fileSystemHandler = FileConnectorUtils.getFileSystemHandler(connectionName);
+            String workingDirRelativePAth = config.path;
+            sourcePath = fileSystemHandler.getBaseDirectoryPath() + config.path;
 
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
             FileSystemOptions fso = fileSystemHandler.getFsOptions();
@@ -124,21 +113,14 @@ public class ReadFile extends AbstractConnector {
             }
 
             if (fileObject.isFolder()) {
-                String filePattern = (String) ConnectorUtils.
-                        lookupTemplateParamater(messageContext, FILE_PATTERN_PARAM);
                 //select file to read
-                fileObject = selectFileToRead(fileObject, filePattern);
+                fileObject = selectFileToRead(fileObject, config.filePattern);
                 workingDirRelativePAth = workingDirRelativePAth + FileConnectorConstants.FILE_SEPARATOR
                         + fileObject.getName().getBaseName();
             }
 
-            //set metadata as context properties
-            setFileProperties(workingDirRelativePAth, fileObject, messageContext);
-
             //lock the file if enabled
-            boolean lockFile = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, ENABLE_LOCK_PARAM));
-            if (lockFile) {
+            if (config.enableLock) {
                 fileLock = new FileLock(sourcePath);
                 boolean lockAcquired = fileLock.acquireLock(fsManager, fso, FileConnectorConstants.DEFAULT_LOCK_TIMEOUT);
                 if (!lockAcquired) {
@@ -147,61 +129,21 @@ public class ReadFile extends AbstractConnector {
                 }
             }
 
-            String fileReadModeAsStr = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, READ_MODE_PARAM);
-            if (StringUtils.isNotEmpty(fileReadModeAsStr)) {
-                readMode = FileReadMode.fromString(fileReadModeAsStr);
-            } else {
-                throw new InvalidConfigurationException("Mandatory parameter '"
-                        + READ_MODE_PARAM + "' is not provided");
-            }
+            readFileMetadata(fileObject, messageContext, workingDirRelativePAth);
 
             //if we need to read metadata only, no need to touch content
-            if (Objects.equals(readMode, FileReadMode.METADATA_ONLY)) {
-                result = new FileOperationResult(
-                        OPERATION_NAME,
-                        true);
+            if (Objects.equals(config.readMode, FileReadMode.METADATA_ONLY)) {
+                result = new FileOperationResult(OPERATION_NAME, true);
                 FileConnectorUtils.setResultAsPayload(messageContext, result);
                 return;
             }
 
-            String injectOperationResultTo = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, INCLUDE_RESULT_TO);
-            String resultPropertyName = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, RESULT_PROPERTY_NAME);
-            if (injectOperationResultTo.equals(FileConnectorConstants.MESSAGE_PROPERTY)
-                    && StringUtils.isEmpty(resultPropertyName)) {
-                throw new InvalidConfigurationException("Parameter resultPropertyName is not provided");
-            }
-            String contentType = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, CONTENT_TYPE_PARAM);
-            String encoding = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, ENCODING_PARAM);
-            boolean isStreaming = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, ENABLE_STREAMING_PARAM));
-
-
-            if (StringUtils.isEmpty(contentType)) {
-                contentType = getContentType(fileObject);
-            }
-
             if (log.isDebugEnabled()) {
-                log.debug("FileConnector:read  - preparing to read file " + sourcePath
-                        + " of Content-type : " + contentType);
+                log.debug("FileConnector:read  - preparing to read file content " + sourcePath
+                        + " of Content-type : " + config.contentType);
             }
 
-            setCharsetEncoding(encoding, contentType, messageContext);
-
-            //read and build file content
-            if (isStreaming) {
-                //here underlying stream to the file content is not closed. We keep it open
-                setStreamToSynapse(fileObject, resultPropertyName, messageContext, contentType);
-            } else {
-                //this will close input stream automatically after building message
-                try (InputStream inputStream = readFile(fileObject, readMode, messageContext)) {
-                    buildSynapseMessage(inputStream, resultPropertyName, messageContext, contentType);
-                }
-            }
+            readFileContent(fileObject, messageContext, config);
 
             //TODO:MTOM Support?
 
@@ -209,45 +151,20 @@ public class ReadFile extends AbstractConnector {
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + sourcePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.INVALID_CONFIGURATION,
-                    e.getMessage());
-
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
         } catch (IllegalPathException e) {
 
             String errorDetail = ERROR_MESSAGE + sourcePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.ILLEGAL_PATH,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
 
         } catch (FileOperationException | IOException e) { //FileSystemException also handled here
             String errorDetail = ERROR_MESSAGE + sourcePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.OPERATION_ERROR,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
         } catch (FileLockException e) {
             String errorDetail = ERROR_MESSAGE + sourcePath;
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    false,
-                    Error.FILE_LOCKING_ERROR,
-                    e.getMessage());
-            FileConnectorUtils.setResultAsPayload(messageContext, result);
-            handleException(errorDetail, e, messageContext);
+            handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
 
         } finally {
 
@@ -271,6 +188,142 @@ public class ReadFile extends AbstractConnector {
         }
     }
 
+    private class Config {
+        String path;
+        String filePattern;
+        boolean enableLock;
+        FileReadMode readMode = FileReadMode.COMPLETE_FILE;
+        String includeResultTo;
+        String resultPropertyName;
+        String contentType;
+        String encoding;
+        boolean enableStreaming;
+        int startLineNum;
+        int endLineNum;
+        int lineNum;
+        String charSet;
+    }
+
+    private Config readAndValidateInputs(MessageContext msgCtx) throws InvalidConfigurationException {
+        Config config = new Config();
+        config.path = FileConnectorUtils.
+                lookUpStringParam(msgCtx, PATH_PARAM);
+        config.filePattern = FileConnectorUtils.
+                lookUpStringParam(msgCtx, FILE_PATTERN_PARAM, FileConnectorConstants.MATCH_ALL_REGEX);
+        config.enableLock = FileConnectorUtils.
+                lookUpBooleanParam(msgCtx, ENABLE_LOCK_PARAM, false);
+        config.readMode = FileReadMode.fromString(FileConnectorUtils.
+                lookUpStringParam(msgCtx, READ_MODE_PARAM, FileReadMode.COMPLETE_FILE.toString()));
+        config.includeResultTo = FileConnectorUtils.
+                lookUpStringParam(msgCtx, INCLUDE_RESULT_TO, FileConnectorConstants.MESSAGE_BODY);
+        config.resultPropertyName = FileConnectorUtils.
+                lookUpStringParam(msgCtx, RESULT_PROPERTY_NAME, FileConnectorConstants.EMPTY_STRING);
+        config.contentType = FileConnectorUtils.
+                lookUpStringParam(msgCtx, CONTENT_TYPE_PARAM, FileConnectorConstants.EMPTY_STRING);
+        config.encoding = FileConnectorUtils.
+                lookUpStringParam(msgCtx, ENCODING_PARAM, FileConnectorConstants.DEFAULT_ENCODING);
+        config.enableStreaming = FileConnectorUtils.
+                lookUpBooleanParam(msgCtx, ENABLE_STREAMING_PARAM, false);
+        config.startLineNum = Integer.
+                parseInt(FileConnectorUtils.lookUpStringParam(msgCtx, START_LINE_NUM_PARAM, "0"));
+        config.endLineNum = Integer.
+                parseInt(FileConnectorUtils.lookUpStringParam(msgCtx, END_LINE_NUM_PARAM, "0"));
+        config.lineNum = Integer.
+                parseInt(FileConnectorUtils.lookUpStringParam(msgCtx, LINE_NUM_PARAM, "0"));
+        config.charSet = FileConnectorUtils.
+                lookUpStringParam(msgCtx, CHARSET_PARAM, FileConnectorConstants.EMPTY_STRING);
+
+        if (config.includeResultTo.equals(FileConnectorConstants.MESSAGE_PROPERTY)
+                && StringUtils.isEmpty(config.resultPropertyName)) {
+            throw new InvalidConfigurationException("Parameter resultPropertyName is not provided");
+        }
+
+        if(config.readMode == null) {
+            throw new InvalidConfigurationException("Unknown file read mode");
+        }
+
+        switch (config.readMode) {
+            case STARTING_FROM_LINE:
+                if (config.startLineNum == 0) {
+                    throw new InvalidConfigurationException("Parameter '"
+                            + START_LINE_NUM_PARAM + "' is required for selected read mode");
+                } else if (config.startLineNum < 0) {
+                    throw new InvalidConfigurationException("Parameter '"
+                            + START_LINE_NUM_PARAM + "' must be positive");
+                }
+                break;
+            case UP_TO_LINE:
+                if (config.endLineNum == 0) {
+                    throw new InvalidConfigurationException("Parameter '"
+                            + END_LINE_NUM_PARAM + "' is required for selected read mode");
+                } else if (config.endLineNum < 0) {
+                    throw new InvalidConfigurationException("Parameter '"
+                            + END_LINE_NUM_PARAM + "' must be positive");
+                }
+                break;
+            case BETWEEN_LINES:
+                if (config.startLineNum == 0 || config.endLineNum == 0) {
+                    throw new InvalidConfigurationException("Parameters 'startLineNum' and"
+                            + " 'endLineNumber' are required for selected read mode");
+                } else if (config.startLineNum < 0 || config.endLineNum < 0) {
+                    throw new InvalidConfigurationException("Parameter 'startLineNum' and"
+                            + " 'endLineNumber' must be positive");
+                } else if (config.endLineNum < config.startLineNum) {
+                    throw new InvalidConfigurationException("Parameter 'endLineNumber' "
+                            + "should be greater than 'startLineNum'");
+                }
+                break;
+            case SPECIFIC_LINE:
+                if (config.lineNum == 0) {
+                    throw new InvalidConfigurationException("Parameter 'lineNum' is required for selected read mode");
+                } else if (config.lineNum < 0) {
+                    throw new InvalidConfigurationException("Parameter 'lineNum' should be positive");
+                }
+                break;
+            default:
+                throw new IllegalStateException("Unexpected value: " + config.readMode.toString());
+        }
+
+        return config;
+    }
+
+    private void readFileMetadata(FileObject file, MessageContext msgCtx, String workingDirRelativePAth)
+            throws FileSystemException {
+        //set metadata as context properties
+        setFileProperties(workingDirRelativePAth, file, msgCtx);
+    }
+
+    private void readFileContent(FileObject file, MessageContext msgCtx, Config config)
+            throws IOException, FileOperationException {
+
+        if (StringUtils.isEmpty(config.contentType)) {
+            config.contentType = getContentType(file);
+        }
+        setCharsetEncoding(config.encoding, config.contentType, msgCtx);
+        //read and build file content
+        if (config.enableStreaming) {
+            //here underlying stream to the file content is not closed. We keep it open
+            setStreamToSynapse(file, config.resultPropertyName, msgCtx, config.contentType);
+        } else {
+            //this will close input stream automatically after building message
+            try (InputStream inputStream = readFile(file, config)) {
+                buildSynapseMessage(inputStream, config.resultPropertyName, msgCtx, config.contentType);
+            }
+        }
+    }
+
+    /**
+     * Sets error to context and handle.
+     *
+     * @param msgCtx      Message Context to set info
+     * @param e           Exception associated
+     * @param error       Error code
+     * @param errorDetail Error detail
+     */
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        FileConnectorUtils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        handleException(errorDetail, e, msgCtx);
+    }
 
     /**
      * Select file to read from the directory provided.
@@ -400,117 +453,50 @@ public class ReadFile extends AbstractConnector {
             throw new FileOperationException("File connector:read Error while processing stream ");
         }
         return new ByteArrayInputStream(tempStream.collect(
-                Collectors.joining(FileConnectorConstants.NEW_LINE)).toString().getBytes());
+                Collectors.joining(FileConnectorConstants.NEW_LINE)).getBytes());
     }
 
 
     /**
      * Read file and generate a InputStream.
      *
-     * @param file       File to read
-     * @param readMode   Reading mode
-     * @param msgContext Message context to lookup read config
+     * @param file     File to read
+     * @param config   Input config
      * @return InputStream to the file
-     * @throws InvalidConfigurationException In case of config error
-     * @throws FileOperationException        In case of I/O error
+     * @throws FileOperationException In case of I/O error
      */
-    private InputStream readFile(FileObject file, FileReadMode readMode, MessageContext msgContext)
-            throws InvalidConfigurationException, FileOperationException {
-
-        int startLine = 0;
-        int endLine = 0;
-        int specificLine = 0;
-
-        //read input params
-        String startLineAsStr = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, START_LINE_NUM_PARAM);
-        String endLineAsStr = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, END_LINE_NUM_PARAM);
-        String specificLineAsStr = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, LINE_NUM_PARAM);
-
-        if (StringUtils.isNotEmpty(startLineAsStr)) {
-            startLine = Integer.parseInt(startLineAsStr);
-        }
-        if (StringUtils.isNotEmpty(endLineAsStr)) {
-            endLine = Integer.parseInt(endLineAsStr);
-        }
-        if (StringUtils.isNotEmpty(specificLineAsStr)) {
-            specificLine = Integer.parseInt(specificLineAsStr);
-        }
+    private InputStream readFile(FileObject file, Config config)
+            throws FileOperationException {
 
         InputStream processedStream;
 
         try {
             InputStream in = new AutoCloseInputStream(file.getContent().getInputStream());
-
-            switch (readMode) {
-
+            switch (config.readMode) {
                 case STARTING_FROM_LINE:
-
-                    if (startLine == 0) {
-                        throw new InvalidConfigurationException("Parameter '"
-                                + START_LINE_NUM_PARAM + "' is required for selected read mode");
-                    } else if (startLine < 0) {
-                        throw new InvalidConfigurationException("Parameter '"
-                                + START_LINE_NUM_PARAM + "' must be positive");
-                    }
-                    processedStream = processStream(in, startLine, 0);
+                    processedStream = processStream(in, config.startLineNum, 0);
                     break;
-
                 case UP_TO_LINE:
-
-                    if (endLine == 0) {
-                        throw new InvalidConfigurationException("Parameter '"
-                                + END_LINE_NUM_PARAM + "' is required for selected read mode");
-                    } else if (endLine < 0) {
-                        throw new InvalidConfigurationException("Parameter '"
-                                + END_LINE_NUM_PARAM + "' must be positive");
-                    }
-                    processedStream = processStream(in, 1, endLine);
+                    processedStream = processStream(in, 1, config.endLineNum);
                     break;
-
                 case BETWEEN_LINES:
-
-                    if (startLine == 0 || endLine == 0) {
-                        throw new InvalidConfigurationException("Parameters 'startLineNum' and"
-                                + " 'endLineNumber' are required for selected read mode");
-                    } else if (startLine < 0 || endLine < 0) {
-                        throw new InvalidConfigurationException("Parameter 'startLineNum' and"
-                                + " 'endLineNumber' must be positive");
-                    } else if (endLine < startLine) {
-                        throw new InvalidConfigurationException("Parameter 'endLineNumber' "
-                                + "should be greater than 'startLineNum'");
-                    }
-                    processedStream = processStream(in, startLine, endLine);
+                    processedStream = processStream(in, config.startLineNum, config.endLineNum);
                     break;
-
                 case SPECIFIC_LINE:
-
-                    if (specificLine == 0) {
-                        throw new InvalidConfigurationException("Parameter 'lineNum' is required for selected read mode");
-                    } else if (specificLine < 0) {
-                        throw new InvalidConfigurationException("Parameter 'lineNum' should be positive");
-                    }
                     BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-
-                    Optional lineFound = reader.lines().skip((long) (specificLine - 1)).findFirst();
+                    Optional lineFound = reader.lines().skip((long) (config.lineNum - 1)).findFirst();
                     String line = "";
                     if (lineFound.isPresent()) {
                         line = (String) lineFound.get();
                     }
                     processedStream = new ByteArrayInputStream(line.getBytes());
                     break;
-
                 case COMPLETE_FILE:
-
                     processedStream = in;
                     break;
-
                 default:
-                    throw new IllegalStateException("Unexpected value: " + readMode);
+                    throw new IllegalStateException("Unexpected value: " + config.readMode.toString());
             }
-
             return processedStream;
 
         } catch (IOException e) {
