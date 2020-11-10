@@ -115,7 +115,7 @@
                   "type": "attribute",
                   "value": {
                     "name": "contentType",
-                    "displayName": "Content Type",
+                    "displayName": "MIME Type",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
