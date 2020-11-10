@@ -34,6 +34,7 @@ public final class Const {
     public static final String CONNECTION_NAME = "name";
     public static final String PROTOCOL = "connectionType";
     public static final String WORKING_DIR = "workingDir";
+    public static final String FILE_LOCK_SCHEME = "fileLockScheme";
     public static final String MAX_FAILURE_RETRY_COUNT = "maxFailureRetryCount";
 
     public static final String HOST = "host";
@@ -105,4 +106,8 @@ public final class Const {
 
     public static final String MATCH_ALL_REGEX = ".*";
     public static final String EMPTY_STRING = "";
+    public static final CharSequence CONNECTOR_LIBRARY_NAME = "file-connector";
+    public static final String CONNECTOR_LIBRARY_PACKAGE_TYPE = "org.wso2.carbon.connector";
+    public static final String LOCAL_FILE_LOCK_SCHEME = "Local";
+    public static final String CLUSTER_FILE_LOCK_SCHEME = "Cluster";
 }

@@ -210,8 +210,19 @@
               "required": "false",
               "helpTip":"FTP Data Channel protection level. Possible values C,S,E,P"
             }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "fileLockScheme",
+              "displayName": "File Locking Behaviour",
+              "inputType": "comboOrExpression",
+              "comboValues": ["Local", "Cluster"],
+              "defaultValue": "Local",
+              "required": "true",
+              "helpTip":"File Locking Behaviour to use in operations associated with this connection."
+            }
           }
-
         ]
       }
     }

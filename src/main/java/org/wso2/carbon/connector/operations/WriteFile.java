@@ -44,12 +44,12 @@ import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
+import org.wso2.carbon.connector.filelock.FileLockManager;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.FileWriteMode;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
-import org.wso2.carbon.connector.utils.FileLock;
 import org.wso2.carbon.relay.ExpandingMessageFormatter;
 
 import java.io.BufferedReader;
@@ -88,6 +88,8 @@ public class WriteFile extends AbstractConnector {
         String targetFilePath = null;
         FileObject targetFile = null;
         FileOperationResult result;
+        FileLockManager fileLockManager = null;
+        boolean lockAcquired = false;
 
         try {
 
@@ -106,14 +108,15 @@ public class WriteFile extends AbstractConnector {
             FileSystemOptions fso = fileSystemHandler.getFsOptions();
             targetFile = fsManager.resolveFile(targetFilePath, fso);
 
+            fileLockManager = fileSystemHandler.getFileLockManager();
+
             if (targetFile.isFolder()) {
                 throw new IllegalPathException("Path does not point to a file " + targetFilePath);
             }
 
             //lock the file if enabled
-            FileLock fileLock = new FileLock(targetFilePath);
             if (config.enableLocking) {
-                boolean lockAcquired = fileLock.acquireLock(fsManager, fso, Const.DEFAULT_LOCK_TIMEOUT);
+                lockAcquired = fileLockManager.tryAndAcquireLock(targetFilePath, Const.DEFAULT_LOCK_TIMEOUT);
                 if (!lockAcquired) {
                     throw new FileLockException("Failed to acquire lock for file "
                             + targetFilePath + ". Another process maybe processing it. ");
@@ -121,18 +124,9 @@ public class WriteFile extends AbstractConnector {
             }
 
             int byteCountWritten;
-            try {
-                byteCountWritten = (int) writeToFile(targetFile, messageContext, config);
-                targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
-            } finally {
-                if (config.enableLocking) {
-                    boolean lockReleased = fileLock.releaseLock();
-                    if (!lockReleased) {
-                        log.error("Failed to release lock for file "
-                                + targetFilePath + ". Is it acquired?");
-                    }
-                }
-            }
+
+            byteCountWritten = (int) writeToFile(targetFile, messageContext, config);
+            targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
 
             result = new FileOperationResult(
                     OPERATION_NAME,
@@ -175,6 +169,10 @@ public class WriteFile extends AbstractConnector {
                             + ":Error while closing folder object while reading files in "
                             + targetFile);
                 }
+            }
+
+            if (fileLockManager != null && lockAcquired) {
+                fileLockManager.releaseLock(targetFilePath);
             }
         }
     }

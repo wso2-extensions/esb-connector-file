@@ -44,12 +44,12 @@ import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
+import org.wso2.carbon.connector.filelock.FileLockManager;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.FileReadMode;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
-import org.wso2.carbon.connector.utils.FileLock;
 import org.wso2.carbon.connector.utils.FileObjectDataSource;
 
 import javax.mail.internet.ContentType;
@@ -92,7 +92,8 @@ public class ReadFile extends AbstractConnector {
         String sourcePath = null;
         FileObject fileObject = null;
         FileOperationResult result;
-        FileLock fileLock = null;
+        FileLockManager fileLockManager = null;
+        boolean lockAcquired = false;
 
         try {
 
@@ -107,6 +108,7 @@ public class ReadFile extends AbstractConnector {
             FileSystemOptions fso = fileSystemHandler.getFsOptions();
             fileObject = fsManager.resolveFile(sourcePath, fso);
 
+            fileLockManager = fileSystemHandler.getFileLockManager();
 
             if (!fileObject.exists()) {
                 throw new IllegalPathException("File or folder not found: " + sourcePath);
@@ -117,12 +119,13 @@ public class ReadFile extends AbstractConnector {
                 fileObject = selectFileToRead(fileObject, config.filePattern);
                 workingDirRelativePAth = workingDirRelativePAth + Const.FILE_SEPARATOR
                         + fileObject.getName().getBaseName();
+                sourcePath = fileSystemHandler.getBaseDirectoryPath() + workingDirRelativePAth + Const.FILE_SEPARATOR
+                        + fileObject.getName().getBaseName();
             }
 
             //lock the file if enabled
             if (config.enableLock) {
-                fileLock = new FileLock(sourcePath);
-                boolean lockAcquired = fileLock.acquireLock(fsManager, fso, Const.DEFAULT_LOCK_TIMEOUT);
+                lockAcquired = fileLockManager.tryAndAcquireLock(sourcePath, Const.DEFAULT_LOCK_TIMEOUT);
                 if (!lockAcquired) {
                     throw new FileLockException("Failed to acquire lock for file "
                             + sourcePath + ". Another process maybe processing it. ");
@@ -177,13 +180,9 @@ public class ReadFile extends AbstractConnector {
                             + fileObject);
                 }
             }
-            if (fileLock != null) {
-                try {
-                    fileLock.releaseLock();
-                } catch (FileSystemException e) {
-                    log.error("[FileConnector] Failed to release lock for file "
-                            + sourcePath + ". Is it acquired?");
-                }
+
+            if (fileLockManager != null && lockAcquired) {
+                fileLockManager.releaseLock(sourcePath);
             }
         }
     }

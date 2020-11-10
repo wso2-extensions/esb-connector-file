@@ -135,6 +135,18 @@
               "required": "false",
               "helpTip":"Socket timeout for FTP client"
             }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "fileLockScheme",
+              "displayName": "File Locking Behaviour",
+              "inputType": "comboOrExpression",
+              "comboValues": ["Local", "Cluster"],
+              "defaultValue": "Local",
+              "required": "true",
+              "helpTip":"File Locking Behaviour to use in operations associated with this connection."
+            }
           }
         ]
       }

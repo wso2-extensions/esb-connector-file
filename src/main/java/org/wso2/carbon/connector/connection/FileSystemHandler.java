@@ -24,8 +24,10 @@ import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
+import org.wso2.carbon.connector.core.connection.ConnectionConfig;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.carbon.connector.core.connection.Connection;
+import org.wso2.carbon.connector.filelock.FileLockManager;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 
 /**
@@ -40,6 +42,7 @@ public class FileSystemHandler implements Connection {
 
     private FileSystemManager fsManager;
     private FileSystemOptions fsOptions;
+    private FileLockManager fileLockManager;
 
     /**
      * URL constructed adding file protocol,
@@ -62,6 +65,7 @@ public class FileSystemHandler implements Connection {
             ((StandardFileSystemManager) fsManager).init();
             this.fsOptions = new FileSystemOptions();
             setupFSO(fsOptions, fsConfig);
+            fileLockManager = new FileLockManager(this, fsConfig.isClusterLockingEnabled());
         } catch (FileSystemException e) {
             String errorMsg = "Unable to create FileSystemManager: " + e.getMessage();
             log.error(errorMsg, e);
@@ -127,5 +131,26 @@ public class FileSystemHandler implements Connection {
      */
     public String getBaseDirectoryPath() {
         return baseDirectoryPath;
+    }
+
+    /**
+     * Get FileLockManager used to lock files
+     * on the connection.
+     *
+     * @return FileLockStore
+     */
+    public FileLockManager getFileLockManager() {
+        return fileLockManager;
+    }
+
+    @Override
+    public void connect(ConnectionConfig config) {
+        throw new UnsupportedOperationException("Nothing to do when connect");
+    }
+
+    @Override
+    public void close() {
+        ((StandardFileSystemManager) fsManager).close();
+        fileLockManager.releaseAllLocks();
     }
 }

@@ -20,12 +20,14 @@ package org.wso2.carbon.connector.operations;
 
 import org.apache.synapse.ManagedLifecycle;
 import org.apache.synapse.MessageContext;
+import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.core.SynapseEnvironment;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.carbon.connector.deploy.ConnectorUndeployObserver;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
@@ -48,14 +50,13 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
 
     @Override
     public void init(SynapseEnvironment synapseEnvironment) {
-        //do nothing on deployment - configs unknown by that time
+        SynapseConfiguration synapseConfig = synapseEnvironment.getSynapseConfiguration();
+        synapseConfig.registerObserver(new ConnectorUndeployObserver(synapseConfig));
     }
 
     @Override
     public void destroy() {
-        //TODO: check. Seems we need to fix connector core
-        ConnectionHandler.getConnectionHandler().
-                shutdownConnections(Const.CONNECTOR_NAME);
+        throw new UnsupportedOperationException("Destroy method of Config init is not supposed to be called");
     }
 
     @Override
@@ -101,6 +102,8 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
                 lookupTemplateParamater(msgContext, Const.PROTOCOL);
         String workingDir = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.WORKING_DIR);
+        String fileLockScheme = (String) ConnectorUtils.
+                lookupTemplateParamater(msgContext, Const.FILE_LOCK_SCHEME);
         String maxFailureRetryCount = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.MAX_FAILURE_RETRY_COUNT);
 
@@ -108,6 +111,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
         connectionConfig.setConnectionName(connectionName);
         connectionConfig.setProtocol(protocol);
         connectionConfig.setWorkingDir(workingDir);
+        connectionConfig.setClusterLockingEnabled(fileLockScheme);
         connectionConfig.setMaxFailureRetryCount(maxFailureRetryCount);
 
         if (connectionConfig.isRemote()) {

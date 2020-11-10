@@ -21,6 +21,7 @@ package org.wso2.carbon.connector.pojo;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.connector.connection.FileServerProtocol;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
+import org.wso2.carbon.connector.utils.Const;
 
 /**
  * Configuration parameters used to
@@ -39,6 +40,8 @@ public class ConnectionConfiguration {
     private String workingDir;
 
     private int maxFailureRetryCount = 0;
+
+    private boolean isClusterLockingEnabled = false;
 
     /**
      * Configs related to remote server
@@ -85,6 +88,20 @@ public class ConnectionConfiguration {
     public void setWorkingDir(String workingDir) {
         if(StringUtils.isNotEmpty(workingDir)) {
             this.workingDir = workingDir;
+        }
+    }
+
+    public boolean isClusterLockingEnabled() {
+        return isClusterLockingEnabled;
+    }
+
+    public void setClusterLockingEnabled(String fileLockScope) throws InvalidConfigurationException {
+        if(fileLockScope.equals(Const.LOCAL_FILE_LOCK_SCHEME)) {
+            isClusterLockingEnabled = false;
+        } else if (fileLockScope.equals(Const.CLUSTER_FILE_LOCK_SCHEME)) {
+            isClusterLockingEnabled = true;
+        } else {
+            throw new InvalidConfigurationException("Parameter 'fileLockScheme' contains an unknown value.");
         }
     }
 

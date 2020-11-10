@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.connector.operations;
 
+import org.apache.axiom.om.OMAttribute;
 import org.apache.axiom.om.OMElement;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileFilter;
@@ -55,6 +56,8 @@ public class ListFiles extends AbstractConnector {
     private static final String SORT_ORDER_PARAM = "sortingOrder";
     private static final String DEFAULT_SORT_ATTRIB = "Name";
     private static final String DEFAULT_SORT_ORDER = "Ascending";
+    private static final String DIRECTORY_ELE_NAME = "directory";
+    private static final String NAME_ATTRIBUTE = "name";
 
     private static final String OPERATION_NAME = "listFiles";
     private static final String ERROR_MESSAGE = "Error while performing file:listFiles for folder ";
@@ -159,7 +162,8 @@ public class ListFiles extends AbstractConnector {
     private OMElement listFilesInFolder(FileObject folder, String pattern, boolean recursive,
                                         String sortingAttribute, String sortOrder) throws FileSystemException {
         String containingFolderName = folder.getName().getBaseName();
-        OMElement folderEle = Utils.createOMElement(containingFolderName, null);
+        OMElement folderEle = Utils.createOMElement(DIRECTORY_ELE_NAME, null);
+        folderEle.addAttribute(NAME_ATTRIBUTE, containingFolderName, null);
         FileObject[] filesOrFolders = getFilesAndFolders(folder, pattern);
         FileSorter fileSorter = new FileSorter(sortingAttribute, sortOrder);
         fileSorter.sort(filesOrFolders);
