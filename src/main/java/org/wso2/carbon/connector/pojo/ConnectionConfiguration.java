@@ -96,6 +96,9 @@ public class ConnectionConfiguration {
     }
 
     public void setClusterLockingEnabled(String fileLockScope) throws InvalidConfigurationException {
+        if(StringUtils.isEmpty(fileLockScope)) {
+            throw new InvalidConfigurationException("Parameter 'fileLockScheme' contains empty value.");
+        }
         if(fileLockScope.equals(Const.LOCAL_FILE_LOCK_SCHEME)) {
             isClusterLockingEnabled = false;
         } else if (fileLockScope.equals(Const.CLUSTER_FILE_LOCK_SCHEME)) {

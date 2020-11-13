@@ -34,6 +34,7 @@ import java.io.File;
 public class ConnectorUndeployObserver extends AbstractSynapseObserver {
 
     private SynapseConfiguration synapseConfiguration;
+    private String connectorName = Const.CONNECTOR_NAME;
 
     public ConnectorUndeployObserver(SynapseConfiguration synapseConfiguration) {
         this.synapseConfiguration = synapseConfiguration;
@@ -50,7 +51,18 @@ public class ConnectorUndeployObserver extends AbstractSynapseObserver {
             }
             ConnectionHandler.getConnectionHandler().
                     shutdownConnections(Const.CONNECTOR_NAME);
+            synapseConfiguration.unregisterObserver(this);
         }
-        synapseConfiguration.unregisterObserver(this);
+    }
+
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ConnectorUndeployObserver that = (ConnectorUndeployObserver) o;
+        return connectorName.equals(that.connectorName);
+    }
+
+    public int hashCode() {
+        return connectorName.hashCode();
     }
 }
