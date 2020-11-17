@@ -1,14 +1,32 @@
 {
   "connectorName": "file",
   "operationName": "splitFile",
-  "title": "Split File",
-  "help": "<h1>Split File</h1><b>The splitFile operation splits a file into multiple chunks.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "title": "Split a file into multiple smaller files",
+  "help": "<h1>Split Files</h1><b>Split a File Into Multiple Files.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
   "elements": [
     {
       "type": "attributeGroup",
       "value": {
         "groupName": "General",
         "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
           {
             "type": "attributeGroup",
             "value": {
@@ -17,56 +35,79 @@
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "source",
-                    "displayName": "Source",
+                    "name": "sourceFilePath",
+                    "displayName": "Path to the file to split",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "true",
-                    "helpTip": "The location of the file."
+                    "helpTip": "Path to the file to split"
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "destination",
-                    "displayName": "Destination",
+                    "name": "targetDirectory",
+                    "displayName": "Target Directory",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "true",
-                    "helpTip": "The location to write the file."
+                    "helpTip": "Folder to place split files. If already exists, it will get overwritten."
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Split Mode",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "splitMode",
+                    "displayName": "Split Mode",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Chunk Size", "Line Count", "XPATH Expression"],
+                    "defaultValue": "Chunk Size",
+                    "required": "true",
+                    "helpTip": "The chunk size in bytes to split the file."
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
                     "name": "chunkSize",
-                    "displayName": "Chunk Size",
+                    "displayName": "Chunk Size (# of bytes)",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
-                    "required": "true",
-                    "helpTip": "The chunk size in bytes to split the file. This is to split the file based on chunk size. You should provide either chunkSize or numberOfLines to split the file."
+                    "enableCondition": [{"splitMode":"Chunk Size"}],
+                    "required": "false",
+                    "helpTip": "The chunk size in bytes to split the file."
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "numberOfLines",
-                    "displayName": "Number of Lines",
+                    "name": "lineCount",
+                    "displayName": "Line Count",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
-                    "required": "true",
-                    "helpTip": "The number of lines per file. This is to split the file based on the number of lines. You should provide either chunkSize or numberOfLines to split the file."
+                    "enableCondition": [{"splitMode":"Line Count"}],
+                    "required": "false",
+                    "helpTip": "The number of lines per file."
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
                     "name": "xpathExpression",
-                    "displayName": "XPath Expression",
+                    "displayName": "XPATH Expression",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
-                    "required": "true",
-                    "helpTip": "Defines a pattern in order to select a set of nodes in XML document."
+                    "enableCondition": [{"splitMode":"XPATH Expression"}],
+                    "required": "false",
+                    "helpTip": "The XPATH expression used to split file."
                   }
                 }
               ]

@@ -1,0 +1,155 @@
+{
+  "connectorName": "file",
+  "connectionName": "FTP",
+  "title": "FTP Connection Config",
+  "help": "<h1>File Connector</h1> <b>The file connector supports Local, FTP, FTPS and SFTP protocols for handling files</b>",
+  "elements": [
+    {
+      "type": "attribute",
+      "value": {
+        "name": "connectionName",
+        "displayName": "Connection Name",
+        "inputType": "string",
+        "defaultValue": "FILE_CONNECTION_1",
+        "required": "true",
+        "helpTip": "The name for the file connection",
+        "validation": "nameWithoutSpecialCharactors"
+      }
+    },
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "host",
+                    "displayName": "Host",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Host name of the FTP server"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "port",
+                    "displayName": "Port",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The port number of the FTP server"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "username",
+                    "displayName": "Username",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Username used to connect with the FTP server"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "password",
+                    "displayName": "Password",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Password to connect with the FTP server"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "userDirIsRoot",
+                    "displayName": "User Directory Is Root",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "True if user directory is considered as root directory"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "workingDir",
+                    "displayName": "Working Directory",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Working directory. File paths in operations should be given w.r.t this folder"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "Advanced",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "isPassive",
+              "displayName": "Is Passive",
+              "inputType": "boolean",
+              "defaultValue": "true",
+              "required": "false",
+              "helpTip":"True if to enter into passive mode"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "ftpConnectionTimeout",
+              "displayName": "FTP Connection Timeout",
+              "inputType": "stringOrExpression",
+              "defaultValue": "100000",
+              "required": "no",
+              "helpTip":"Timeout in milisec for initial control connection"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "ftpSocketTimeout",
+              "displayName": "FTP Socket Timeout",
+              "inputType": "stringOrExpression",
+              "defaultValue": "150000",
+              "required": "false",
+              "helpTip":"Socket timeout for FTP client"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "fileLockScheme",
+              "displayName": "File Locking Behaviour",
+              "inputType": "comboOrExpression",
+              "comboValues": ["Local", "Cluster"],
+              "defaultValue": "Local",
+              "required": "true",
+              "helpTip":"File Locking Behaviour to use in operations associated with this connection."
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

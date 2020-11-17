@@ -1,14 +1,32 @@
 {
   "connectorName": "file",
   "operationName": "move",
-  "title": "Move",
-  "help": "<h1>Move</h1><b>The move operation moves a file or folder from one location to another.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "title": "Moves the File or Folder Specified by SourcePath into TargetPath",
+  "help": "<h1>Move Files</h1><b>Moves the File or Folder Specified by SourcePath into TargetPath.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
   "elements": [
     {
       "type": "attributeGroup",
       "value": {
         "groupName": "General",
         "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
           {
             "type": "attributeGroup",
             "value": {
@@ -17,89 +35,67 @@
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "source",
-                    "displayName": "Source",
+                    "name": "sourcePath",
+                    "displayName": "Source Path",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "true",
-                    "helpTip": "The location of the file. This can be a file on the local physical file system or a file on an FTP server."
+                    "helpTip": "The path to the file to be copied."
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "destination",
-                    "displayName": "Destination",
+                    "name": "targetPath",
+                    "displayName": "Target Path",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "true",
-                    "helpTip": "The location where the file has to be moved to."
+                    "helpTip": "The target directory where to copy the file."
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "setTimeout",
-                    "displayName": "Timeout",
+                    "name": "createParentDirectories",
+                    "displayName": "Create Parent Directories",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "true",
+                    "required": "false",
+                    "helpTip": "Whether or not to create parent directories if they don’t exist in the target path."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "includeParent",
+                    "displayName": "Copy Including Source Parent",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "false",
+                    "helpTip": "Whether to copy including parent folder of the source folder or only content inside."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "overwrite",
+                    "displayName": "Overwrite Existing Files",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "false",
+                    "helpTip": "Whether or not to overwrite the file if the target destination already exists."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "renameTo",
+                    "displayName": "Rename To",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
-                    "helpTip": "The timeout value on the JSC (Java Secure Channel) session in milliseconds. E.g., 100000."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setPassiveMode",
-                    "displayName": "Passive mode",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Set to true if you want to enable passive mode."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setSoTimeout",
-                    "displayName": "Socket Timeout",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "The socket timeout value for the FTP client. E.g., 100000."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setUserDirIsRoot",
-                    "displayName": "Is user directory root?",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Set to true if you want to use root as the user directory."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setStrictHostKeyChecking",
-                    "displayName": "Strict Host Key Checking",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Sets the requirement to use host key checking. E.g., no."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "includeParentDirectory",
-                    "displayName": "Include Parent Directory",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Set to true if you want to include the parent directory."
+                    "helpTip": "The new name for the copied file. If not provided, the original file name is kept."
                   }
                 }
               ]

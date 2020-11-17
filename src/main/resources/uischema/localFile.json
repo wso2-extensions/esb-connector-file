@@ -1,0 +1,67 @@
+{
+  "connectorName": "file",
+  "connectionName": "LOCAL",
+  "title": "Local File",
+  "help": "<h1>File Connector</h1> <b>The file connector supports Local, FTP, FTPS and SFTP protocols for handling files</b>",
+  "elements": [
+    {
+      "type": "attribute",
+      "value": {
+        "name": "connectionName",
+        "displayName": "Connection Name",
+        "inputType": "string",
+        "defaultValue": "FILE_CONNECTION_1",
+        "required": "true",
+        "helpTip": "The name for the file connection",
+        "validation": "nameWithoutSpecialCharactors"
+      }
+    },
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "workingDir",
+                    "displayName": "Working Directory",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Working directory. File paths in operations should be given w.r.t this folder"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "Advanced",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "fileLockScheme",
+              "displayName": "File Locking Behaviour",
+              "inputType": "comboOrExpression",
+              "comboValues": ["Local", "Cluster"],
+              "defaultValue": "Local",
+              "required": "true",
+              "helpTip":"File Locking Behaviour to use in operations associated with this connection."
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

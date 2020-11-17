@@ -1,9 +1,0 @@
-{
-  "source": "%s(moveFrom)",
-  "destination": "%s(moveTo)",
-  "setTimeout": "%s(setTimeout)",
-  "setPassiveMode": "%s(setPassiveMode)",
-  "setUserDirIsRoot": "%s(setUserDirIsRoot)",
-  "setSoTimeout": "%s(setSoTimeout)",
-  "setStrictHostKeyChecking": "%s(setStrictHostKeyChecking)"
-}

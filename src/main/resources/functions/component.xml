@@ -1,0 +1,79 @@
+<!--
+  ~ Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+  ~
+  ~ WSO2 Inc. licenses this file to you under the Apache License,
+  ~ Version 2.0 (the "License"); you may not use this file except
+  ~ in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~   http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing,
+  ~ software distributed under the License is distributed on an
+  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  ~ KIND, either express or implied. See the License for the
+  ~ specific language governing permissions and limitations
+
+  ~ under the License.
+  -->
+
+<component name="functions" type="synapse/template" >
+    <subComponents>
+        <component name="createDirectory" >
+            <file>createDirectory.xml</file>
+            <description>Creates a new directory on directory path.</description>
+        </component>
+        <component name="listFiles" >
+            <file>listFiles.xml</file>
+            <description>Lists all the files in the directory path that match a matcher.</description>
+        </component>
+        <component name="delete" >
+            <file>delete.xml</file>
+            <description>Deletes the file specified by the path.</description>
+        </component>
+        <component name="copy" >
+            <file>copy.xml</file>
+            <description>Copies the file or folder specified by sourcePath into targetPath.</description>
+        </component>
+        <component name="move" >
+            <file>move.xml</file>
+            <description>Moves the file or folder specified by sourcePath into targetPath.</description>
+        </component>
+        <component name="rename" >
+            <file>rename.xml</file>
+            <description>Rename the file to the new name specified.</description>
+        </component>
+        <component name="unzip" >
+            <file>unzip.xml</file>
+            <description>Unzip file to target directory.</description>
+        </component>
+        <component name="splitFile" >
+            <file>splitFile.xml</file>
+            <description>Split a file into multiple smaller files.</description>
+        </component>
+        <component name="mergeFiles" >
+            <file>mergeFiles.xml</file>
+            <description>Merge multiple files in a folder to a single file.</description>
+        </component>
+        <component name="checkExist" >
+            <file>checkExist.xml</file>
+            <description>Check if a file or directory exists.</description>
+        </component>
+        <component name="exploreZipFile" >
+            <file>exploreZipFile.xml</file>
+            <description>List Items In ZIP File Without Extracting.</description>
+        </component>
+        <component name="compress" >
+            <file>compress.xml</file>
+            <description>Compress file or folder.</description>
+        </component>
+        <component name="read" >
+            <file>read.xml</file>
+            <description>Read a specific file or a file in a folder.</description>
+        </component>
+        <component name="write" >
+            <file>write.xml</file>
+            <description>Create a file or write content to a file.</description>
+        </component>
+    </subComponents>
+</component>

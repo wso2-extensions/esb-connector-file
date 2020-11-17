@@ -1,0 +1,77 @@
+{
+  "connectorName": "file",
+  "operationName": "checkExist",
+  "title": "Check Existence of a File or Directory",
+  "help": "<h1>Check Existence</h1><b>Check Existence of a File or Directory.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "elements": [
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "path",
+                    "displayName": "File/Folder Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Path to zip file to extract"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "includeResultTo",
+                    "displayName": "Add Result To",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Message Body","Message Property"],
+                    "defaultValue": "Message Body",
+                    "required": "true",
+                    "helpTip": "Specify where to place operation result. Setting to a property will not change current payload at message body."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "resultPropertyName",
+                    "displayName": "Property Name",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "enableCondition": [{"includeResultTo":"Message Property"}],
+                    "helpTip": "Name of property to add operation result"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

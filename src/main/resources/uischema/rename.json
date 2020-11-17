@@ -1,0 +1,75 @@
+{
+  "connectorName": "file",
+  "operationName": "rename",
+  "title": "Rename the file to the new name specified",
+  "help": "<h1>Rename Files</h1><b>Rename the File to The New Name Specified.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "elements": [
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "path",
+                    "displayName": "Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The path to the file or folder to rename"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "renameTo",
+                    "displayName": "Rename To",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "New name of the file or folder"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "overwrite",
+                    "displayName": "Overwrite Existing Files",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "false",
+                    "helpTip": "Whether or not to overwrite the file if a file with new name already exists"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

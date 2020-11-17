@@ -1,14 +1,32 @@
 {
   "connectorName": "file",
   "operationName": "delete",
-  "title": "Delete",
-  "help": "<h1>Delete</h1><b>The delete operation deletes a file or folder from the file system.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "title": "Delete File Or Folder",
+  "help": "<h1>Delete Files</h1><b>Delete File Or Folder.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
   "elements": [
     {
       "type": "attributeGroup",
       "value": {
         "groupName": "General",
         "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
           {
             "type": "attributeGroup",
             "value": {
@@ -17,78 +35,23 @@
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "source",
-                    "displayName": "Source",
+                    "name": "path",
+                    "displayName": "File/Directory Path",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "true",
-                    "helpTip": "The location of the file. This can be a file on the local physical file system or a file on an FTP server."
+                    "helpTip": "Path to file or directory to delete."
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "filePattern",
-                    "displayName": "File Pattern",
+                    "name": "matchingPattern",
+                    "displayName": "Pattern To Match Files",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
-                    "helpTip": "The pattern of the files to be deleted. (e.g., [a-zA-Z][a-zA-Z]*.(txt|xml|jar))."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setTimeout",
-                    "displayName": "Set Timeout",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "The timeout value on the JSC (Java Secure Channel) session in milliseconds. E.g., 100000."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setPassiveMode",
-                    "displayName": "Passive mode",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Set to true if you want to enable passive mode."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setSoTimeout",
-                    "displayName": "Socket Timeout",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "The socket timeout value for the FTP client. E.g., 100000."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setUserDirIsRoot",
-                    "displayName": "Is user directory root?",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Set to true if you want to use root as the user directory."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setStrictHostKeyChecking",
-                    "displayName": "Strict Host Key Checking",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Sets the requirement to use host key checking. E.g., no."
+                    "helpTip": "Pattern (regex) to match file name. Matching files will get removed. If not provided all files will get removed"
                   }
                 }
               ]

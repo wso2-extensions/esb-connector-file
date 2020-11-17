@@ -1,14 +1,32 @@
 {
   "connectorName": "file",
   "operationName": "copy",
-  "title": "Copy",
-  "help": "<h1>Copy</h1><b>The copy operation copies files from one location to another. This operation can be used when you want to copy any kind of files and large files as well. You can also copy particular files with specified file patterns.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "title": "Copies the File or Folder Specified by SourcePath into TargetPath",
+  "help": "<h1>Copy Files</h1><b>Copies the File or Folder Specified by SourcePath into TargetPath.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
   "elements": [
     {
       "type": "attributeGroup",
       "value": {
         "groupName": "General",
         "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
           {
             "type": "attributeGroup",
             "value": {
@@ -17,100 +35,67 @@
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "source",
-                    "displayName": "Source",
+                    "name": "sourcePath",
+                    "displayName": "Source Path",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "true",
-                    "helpTip": "The location of the file. This can be a file on the local physical file system or a file on an FTP server."
+                    "helpTip": "The path to the file to be copied."
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "destination",
-                    "displayName": "Destination",
+                    "name": "targetPath",
+                    "displayName": "Target Path",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "true",
-                    "helpTip": "The location where the file has to be copied to."
+                    "helpTip": "The target directory where to copy the file."
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "filePattern",
-                    "displayName": "File Pattern",
+                    "name": "sourceFilePattern",
+                    "displayName": "Source File Pattern",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
-                    "helpTip": "The pattern of the files to be copied. (e.g., [a-zA-Z][a-zA-Z]*.(txt|xml|jar))."
+                    "helpTip": "The pattern (regex) of the files to be copied. (e.g., [a-zA-Z][a-zA-Z]*.(txt|xml|jar))."
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "setTimeout",
-                    "displayName": "Timeout",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "The timeout value on the JSC (Java Secure Channel) session in milliseconds. E.g., 100000."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setPassiveMode",
-                    "displayName": "Passive mode",
+                    "name": "includeParent",
+                    "displayName": "Copy Including Source Parent",
                     "inputType": "booleanOrExpression",
-                    "defaultValue": "",
+                    "defaultValue": "false",
                     "required": "false",
-                    "helpTip": "Set to true if you want to enable passive mode."
+                    "helpTip": "Whether to copy including parent folder of the source folder or only content inside."
                   }
                 },
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "setSoTimeout",
-                    "displayName": "Socket Timeout",
+                    "name": "overwrite",
+                    "displayName": "Overwrite Existing Files",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "false",
+                    "helpTip": "Whether or not to overwrite the file if the target destination already exists."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "renameTo",
+                    "displayName": "Rename To",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
-                    "helpTip": "The socket timeout value for the FTP client. E.g., 100000."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setUserDirIsRoot",
-                    "displayName": "Is user directory root?",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Set to true if you want to use root as the user directory."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "setStrictHostKeyChecking",
-                    "displayName": "Strict Host Key Checking",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Sets the requirement to use host key checking. E.g., no."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "includeParentDirectory",
-                    "displayName": "Include Parent Directory",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "Set to true if you want to include the parent directory."
+                    "helpTip": "The new name for the copied file. If not provided, the original file name is kept."
                   }
                 }
               ]
