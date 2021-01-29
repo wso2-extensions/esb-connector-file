@@ -76,6 +76,9 @@ public class CheckFileExist extends AbstractConnector {
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
             FileSystemOptions fso = fileSystemHandler.getFsOptions();
             fileObject = fsManager.resolveFile(filePath, fso);
+            fsManager.getFilesCache().removeFile(fileObject.getFileSystem(),  fileObject.getName());
+            fsManager.getFilesCache().removeFile(fileObject.getParent().getFileSystem(),  fileObject.getParent().getName());
+            fileObject = fsManager.resolveFile(filePath, fso);
 
 
             String operationResult;
