@@ -126,8 +126,9 @@ public class WriteFile extends AbstractConnector {
             int byteCountWritten;
 
             byteCountWritten = (int) writeToFile(targetFile, messageContext, config);
-            targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
-
+            if (!targetFile.getURL().toString().startsWith(Const.FTP_PROTOCOL_PREFIX)) {
+                targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
+            }
             result = new FileOperationResult(
                     OPERATION_NAME,
                     true,
