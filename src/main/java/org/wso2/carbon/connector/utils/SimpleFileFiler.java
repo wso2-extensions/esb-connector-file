@@ -41,7 +41,7 @@ public class SimpleFileFiler implements FileFilter {
 
     @Override
     public boolean accept(FileSelectInfo fileSelectInfo) {
-        String fileName = fileSelectInfo.getFile().getName().getBaseName().toLowerCase();
+        String fileName = fileSelectInfo.getFile().getName().getBaseName();
         return pattern.matcher(fileName).matches();
     }
 }
