@@ -40,7 +40,7 @@ public class SimpleFileSelector implements org.apache.commons.vfs2.FileSelector 
 
     @Override
     public boolean includeFile(FileSelectInfo fileSelectInfo) throws Exception {
-        String fileName = fileSelectInfo.getFile().getName().getBaseName().toLowerCase();
+        String fileName = fileSelectInfo.getFile().getName().getBaseName();
         return pattern.matcher(fileName).matches();
     }
 
