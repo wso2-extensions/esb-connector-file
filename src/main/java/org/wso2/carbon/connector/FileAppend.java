@@ -103,20 +103,22 @@ public class FileAppend extends AbstractConnector implements Connector {
                 fileObj.createFile();
             }
             reader = new BufferedReader(new InputStreamReader(fileObj.getContent().getInputStream()));
-            List<String> lines = reader.lines().collect(Collectors.toList());
-            if (StringUtils.isNotEmpty(position) && Integer.parseInt(position) <= lines.size()
-                    && Integer.parseInt(position) > 0) {
-                lines.add(Integer.parseInt(position) - 1, content);
-                out = fileObj.getContent().getOutputStream();
-                if(StringUtils.isEmpty(encoding)) {
-                    IOUtils.writeLines(lines, null, out, DEFAULT_ENCODING);
-                } else {
-                    IOUtils.writeLines(lines, null, out, encoding);
+            if (StringUtils.isNotEmpty(position)) {
+                List<String> lines = reader.lines().collect(Collectors.toList());
+                if (Integer.parseInt(position) <= lines.size()
+                        && Integer.parseInt(position) > 0) {
+                    lines.add(Integer.parseInt(position) - 1, content);
+                    out = fileObj.getContent().getOutputStream();
+                    if (StringUtils.isEmpty(encoding)) {
+                        IOUtils.writeLines(lines, null, out, DEFAULT_ENCODING);
+                    } else {
+                        IOUtils.writeLines(lines, null, out, encoding);
+                    }
+                    return true;
+                } else if (StringUtils.isNotEmpty(position)) {
+                    log.warn("Position is greater/less than the file size. " +
+                            "Appending the content at the end of the file");
                 }
-                return true;
-            } else if(StringUtils.isNotEmpty(position)) {
-                log.warn("Position is greater/less than the file size. " +
-                        "Appending the content at the end of the file");
             }
             out = fileObj.getContent().getOutputStream(true);
             if (StringUtils.isEmpty(encoding)) {
