@@ -48,6 +48,7 @@ import org.wso2.carbon.connector.util.ResultPayloadCreate;
 
 public class FileAppend extends AbstractConnector implements Connector {
     private static final String DEFAULT_ENCODING = "UTF8";
+    private static int position = -1;
     private static final Log log = LogFactory.getLog(FileAppend.class);
 
     public void connect(MessageContext messageContext) {
@@ -57,8 +58,11 @@ public class FileAppend extends AbstractConnector implements Connector {
                 FileConstants.CONTENT);
         String encoding = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.ENCODING);
-        String position = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+        String stringPosition = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.POSITION);
+        if (StringUtils.isNotEmpty(stringPosition)) {
+            position = Integer.parseInt(stringPosition);
+        }
         boolean resultStatus = appendFile(destination, content, position, encoding, messageContext);
         generateResult(messageContext, resultStatus);
     }
@@ -88,7 +92,7 @@ public class FileAppend extends AbstractConnector implements Connector {
      * @param messageContext The message context that is generated for processing the file
      * @return true/false
      */
-    private boolean appendFile(String destination, String content, String position,
+    private boolean appendFile(String destination, String content, int position,
                                String encoding, MessageContext messageContext) {
         OutputStream out = null;
         boolean resultStatus = false;
@@ -102,12 +106,11 @@ public class FileAppend extends AbstractConnector implements Connector {
             if (!fileObj.exists()) {
                 fileObj.createFile();
             }
-            reader = new BufferedReader(new InputStreamReader(fileObj.getContent().getInputStream()));
-            if (StringUtils.isNotEmpty(position)) {
+            if (position != -1) {
+                reader = new BufferedReader(new InputStreamReader(fileObj.getContent().getInputStream()));
                 List<String> lines = reader.lines().collect(Collectors.toList());
-                if (Integer.parseInt(position) <= lines.size()
-                        && Integer.parseInt(position) > 0) {
-                    lines.add(Integer.parseInt(position) - 1, content);
+                if (position <= lines.size() && position > 0) {
+                    lines.add(position - 1, content);
                     out = fileObj.getContent().getOutputStream();
                     if (StringUtils.isEmpty(encoding)) {
                         IOUtils.writeLines(lines, null, out, DEFAULT_ENCODING);
@@ -115,7 +118,7 @@ public class FileAppend extends AbstractConnector implements Connector {
                         IOUtils.writeLines(lines, null, out, encoding);
                     }
                     return true;
-                } else if (StringUtils.isNotEmpty(position)) {
+                } else {
                     log.warn("Position is greater/less than the file size. " +
                             "Appending the content at the end of the file");
                 }
