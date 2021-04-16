@@ -114,13 +114,13 @@ public class FileCopy extends AbstractConnector implements Connector {
         StandardFileSystemManager manager = null;
         try {
             manager = FileConnectorUtils.getManager();
-            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
-            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+            FileSystemOptions sourceFso = FileConnectorUtils.getSourceFso(messageContext, source, manager);
+            FileSystemOptions destinationFso = FileConnectorUtils.getTargetFso(messageContext, destination, manager);
             FileObject souFile = manager.resolveFile(source, sourceFso);
             if (StringUtils.isNotEmpty(filePattern)) {
                 if (includeParentDirectory) {
                     destination = createParentDirectory(souFile, destination, manager, messageContext);
-                    destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+                    destinationFso = FileConnectorUtils.getTargetFso(messageContext, destination, manager);
                 }
                 FileObject[] children = souFile.getChildren();
                 for (FileObject child : children) {
@@ -154,7 +154,7 @@ public class FileCopy extends AbstractConnector implements Connector {
                 if (souFile.exists()) {
                     if (includeParentDirectory) {
                         destination = createParentDirectory(souFile, destination, manager, messageContext);
-                        destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+                        destinationFso = FileConnectorUtils.getTargetFso(messageContext, destination, manager);
                     }
                     if (souFile.getType() == FileType.FILE) {
                         try {
@@ -249,7 +249,7 @@ public class FileCopy extends AbstractConnector implements Connector {
     private String createParentDirectory(FileObject souFile, String destination,
                                                  StandardFileSystemManager manager, MessageContext messageContext) {
         try {
-            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+            FileSystemOptions destinationFso = FileConnectorUtils.getTargetFso(messageContext, destination, manager);
             destination += File.separator + souFile.getName().getBaseName();
             FileObject destFile = manager.resolveFile(destination, destinationFso);
             if (!destFile.exists()) {

@@ -52,13 +52,23 @@
       "type":"string",
       "nullable":"true"
     },
-    "sftpIdentities":{
-      "id":"http:\/\/wso2jsonschema.org\/sftpIdentities",
-      "type":"string",
-      "nullable":"true"
+    "sourceSftpIdentities":{
+      "id": "http:\/\/wso2jsonschema.org\/sourceSftpIdentities",
+      "type": "string",
+      "nullable": "true"
     },
-    "sftpIdentityPassphrase": {
-      "id": "http:\/\/wso2jsonschema.org\/sftpIdentityPassphrase",
+    "sourceSftpIdentityPassphrase":{
+      "id": "http:\/\/wso2jsonschema.org\/sourceSftpIdentityPassphrase",
+      "type": "string",
+      "nullable": "true"
+    },
+    "targetSftpIdentities":{
+      "id": "http:\/\/wso2jsonschema.org\/targetSftpIdentities",
+      "type": "string",
+      "nullable": "true"
+    },
+    "targetSftpIdentityPassphrase":{
+      "id": "http:\/\/wso2jsonschema.org\/targetSftpIdentityPassphrase",
       "type": "string",
       "nullable": "true"
     }

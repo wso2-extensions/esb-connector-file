@@ -109,14 +109,15 @@ public class FileMove extends AbstractConnector implements Connector {
         StandardFileSystemManager manager = null;
         try {
             manager = FileConnectorUtils.getManager();
-            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
+            FileSystemOptions sourceFso = FileConnectorUtils.getSourceFso(messageContext, source, manager);
             // Create remote object
             FileObject remoteFile = manager.resolveFile(source, sourceFso);
             if (remoteFile.exists()) {
-                FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+                FileSystemOptions destinationFso = FileConnectorUtils.getTargetFso(messageContext, destination, manager);
+
                 if (includeParentDirectory) {
                     destination = createParentDirectory(remoteFile, destination, manager, messageContext);
-                    destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+                    destinationFso = FileConnectorUtils.getTargetFso(messageContext, destination, manager);
                 }
                 if (remoteFile.getType() == FileType.FILE) {
                     fileMove(destination, destinationFso, remoteFile, manager);
@@ -181,9 +182,9 @@ public class FileMove extends AbstractConnector implements Connector {
      * @throws IOException
      */
     private void folderMove(String source, FileSystemOptions sourceFso, String destination,
-                            FileSystemOptions destinationFso, String filePattern, boolean includeParentDirectory,
-                            boolean includeSubDirectories, MessageContext messageContext,
-                            StandardFileSystemManager manager) throws IOException {
+                            FileSystemOptions destinationFso, String filePattern,
+                            boolean includeParentDirectory, boolean includeSubDirectories,
+                            MessageContext messageContext, StandardFileSystemManager manager) throws IOException {
 
         FileObject remoteFile = manager.resolveFile(source, sourceFso);
         FileObject destinationFile = manager.resolveFile(destination, destinationFso);
@@ -202,12 +203,12 @@ public class FileMove extends AbstractConnector implements Connector {
                 }
             } else if (child.getType() == FileType.FOLDER && includeSubDirectories) {
                 source += File.separator + child.getName().getBaseName();
-                sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
+                sourceFso = FileConnectorUtils.getSourceFso(messageContext, source, manager);
 
                 String newDestination = destination;
                 if (includeParentDirectory) {
                     newDestination += File.separator + child.getName().getBaseName();
-                    destinationFso = FileConnectorUtils.getFso(messageContext, newDestination, manager);
+                    destinationFso = FileConnectorUtils.getTargetFso(messageContext, newDestination, manager);
                 }
                 folderMove(source, sourceFso, newDestination, destinationFso, filePattern, includeParentDirectory,
                         includeSubDirectories, messageContext, manager);
@@ -256,7 +257,7 @@ public class FileMove extends AbstractConnector implements Connector {
     private String createParentDirectory(FileObject souFile, String destination,
                                          StandardFileSystemManager manager, MessageContext messageContext) {
         try {
-            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+            FileSystemOptions destinationFso = FileConnectorUtils.getTargetFso(messageContext, destination, manager);
             destination += File.separator + souFile.getName().getBaseName();
             FileObject destFile = manager.resolveFile(destination, destinationFso);
             if (!destFile.exists()) {

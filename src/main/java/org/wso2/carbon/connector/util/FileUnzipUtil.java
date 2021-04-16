@@ -27,6 +27,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.*;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.apache.synapse.MessageContext;
+import org.wso2.carbon.connector.core.util.ConnectorUtils;
 
 import java.io.*;
 import java.util.zip.ZipEntry;
@@ -50,8 +51,9 @@ public class FileUnzipUtil {
         try {
             sourceManager = FileConnectorUtils.getManager();
             destinationManager = FileConnectorUtils.getManager();
-            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, sourceManager);
-            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destDirectory, destinationManager);
+            FileSystemOptions sourceFso = FileConnectorUtils.getSourceFso(messageContext, source, sourceManager);
+            FileSystemOptions destinationFso = FileConnectorUtils.getTargetFso(messageContext, destDirectory,
+                    destinationManager);
 
             // Create remote object
             FileObject remoteFile = sourceManager.resolveFile(source, sourceFso);

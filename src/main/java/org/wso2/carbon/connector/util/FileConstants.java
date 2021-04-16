@@ -42,6 +42,10 @@ public final class FileConstants {
     public static final String SET_USER_DIRISROOT = "setUserDirIsRoot";
     public static final String SFTP_IDENTITIES = "sftpIdentities";
     public static final String SFTP_IDENTITY_PASSPHRASE = "sftpIdentityPassphrase";
+    public static final String SOURCE_SFTP_IDENTITIES = "sourceSftpIdentities";
+    public static final String SOURCE_SFTP_IDENTITY_PASSPHRASE = "sourceSftpIdentityPassphrase";
+    public static final String TARGET_SFTP_IDENTITIES = "targetSftpIdentities";
+    public static final String TARGET_SFTP_IDENTITY_PASSPHRASE = "targetSftpIdentityPassphrase";
     public static final int TIME_OUT = 100000;
     public static final String START_TAG = "<result><success>";
     public static final String END_TAG = "</success></result>";
