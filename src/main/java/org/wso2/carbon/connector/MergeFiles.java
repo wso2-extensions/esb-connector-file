@@ -63,7 +63,6 @@ public class MergeFiles extends AbstractConnector implements Connector {
      * @param source Location of the source file.
      * @param filePattern Pattern of the files to process.
      * @param destination   Location of the destination to write the merged file.
-     * @param options Init configuration options.
      * @param messageContext    Message context.
      * @return Status true/false.
      */
@@ -78,8 +77,9 @@ public class MergeFiles extends AbstractConnector implements Connector {
         byte[] fileBytes;
         try {
             manager = FileConnectorUtils.getManager();
-            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
-            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+            FileSystemOptions sourceFso = FileConnectorUtils.getSourceFso(messageContext, source, manager);
+            FileSystemOptions destinationFso = FileConnectorUtils.getTargetFso(messageContext, destination, manager);
+
 
             sourceFileObj = manager.resolveFile(source, sourceFso);
             if (!sourceFileObj.exists()) {

@@ -27,8 +27,10 @@
     <parameter name="setUserDirIsRoot" description="Sets the whether to use the user directory as root."/>
     <parameter name="includeParentDirectory"
                description="Boolean type, indicating whether the parent directory will include or not."/>
-    <parameter name="sftpIdentities" description="The location of the private key"/>
-    <parameter name="sftpIdentityPassphrase" description="The passphrase of the private key"/>
+    <parameter name="sourceSftpIdentities" description="The location of the source's private key"/>
+    <parameter name="sourceSftpIdentityPassphrase" description="The passphrase of the source's private key"/>
+    <parameter name="targetSftpIdentities" description="The location of the target's private key"/>
+    <parameter name="targetSftpIdentityPassphrase" description="The passphrase of the target's private key"/>
     <parameter name="includeSubDirectories" description="Boolean type, indicating whether the sub directories will be included or not."/>
     <sequence>
         <property name="source" expression="$func:source"/>
@@ -40,8 +42,10 @@
         <property name="setStrictHostKeyChecking" expression="$func:setStrictHostKeyChecking"/>
         <property name="setUserDirIsRoot" expression="$func:setUserDirIsRoot"/>
         <property name="includeParentDirectory" expression="$func:includeParentDirectory"/>
-        <property name="sftpIdentities" expression="$func:sftpIdentities"/>
-        <property name="sftpIdentityPassphrase" expression="$func:sftpIdentityPassphrase"/>
+        <property name="sourceSftpIdentities" expression="$func:sourceSftpIdentities"/>
+        <property name="sourceSftpIdentityPassphrase" expression="$func:sourceSftpIdentityPassphrase"/>
+        <property name="targetSftpIdentities" expression="$func:targetSftpIdentities"/>
+        <property name="targetSftpIdentityPassphrase" expression="$func:targetSftpIdentityPassphrase"/>
         <property name="includeSubDirectories" expression="$func:includeSubDirectories"/>
         <class name="org.wso2.carbon.connector.FileCopy"/>
     </sequence>

@@ -109,7 +109,8 @@ public class FileConnectorUtils {
         return fsm;
     }
 
-    public static FileSystemOptions getFso(MessageContext messageContext, String fileUrl, FileSystemManager fsManager) {
+    public static FileSystemOptions getFso(MessageContext messageContext, String fileUrl, FileSystemManager fsManager,
+                                           String sftpIdentities, String sftpIdentityPassphrase) {
 
         String setTimeout = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.SET_TIME_OUT);
@@ -121,10 +122,6 @@ public class FileConnectorUtils {
                 (messageContext, FileConstants.SET_STRICT_HOST_KEY_CHECKING);
         String setUserDirIsRoot = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.SET_USER_DIRISROOT);
-        String sftpIdentities = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                FileConstants.SFTP_IDENTITIES);
-        String sftpIdentityPassphrase = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                FileConstants.SFTP_IDENTITY_PASSPHRASE);
 
         if (log.isDebugEnabled()) {
             log.debug("File init starts with " + setTimeout + "," + setPassiveMode + "," +
@@ -231,6 +228,34 @@ public class FileConnectorUtils {
             log.debug("FileConnector configuration is completed.");
         }
         return opts;
+    }
+    public static FileSystemOptions getFso(MessageContext messageContext, String source, StandardFileSystemManager manager) {
+        String sftpIdentities = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.SFTP_IDENTITIES);
+        String sftpIdentityPassphrase = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.SFTP_IDENTITY_PASSPHRASE);
+        return getFso(messageContext, source, manager, sftpIdentities, sftpIdentityPassphrase);
+    }
+
+    public static FileSystemOptions getSourceFso(MessageContext messageContext, String source,
+                                           StandardFileSystemManager manager) {
+        String sourceSftpIdentities = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.SOURCE_SFTP_IDENTITIES);
+        String sourceSftpIdentityPassphrase = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.SOURCE_SFTP_IDENTITY_PASSPHRASE);
+        return getFso(messageContext, source, manager, sourceSftpIdentities,
+                sourceSftpIdentityPassphrase);
+    }
+
+    public static FileSystemOptions getTargetFso(MessageContext messageContext, String destination,
+                                           StandardFileSystemManager manager) {
+
+        String targetSftpIdentities = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.TARGET_SFTP_IDENTITIES);
+        String targetSftpIdentityPassphrase = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.TARGET_SFTP_IDENTITY_PASSPHRASE);
+        return getFso(messageContext, destination, manager, targetSftpIdentities,
+                targetSftpIdentityPassphrase);
     }
 
     public static FileSystemOptions generateFileSystemOptions(String fileUrl, FileSystemManager fsManager)

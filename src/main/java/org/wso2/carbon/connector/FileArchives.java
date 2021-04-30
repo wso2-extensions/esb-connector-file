@@ -71,8 +71,8 @@ public class FileArchives extends AbstractConnector implements Connector {
     private boolean fileCompress(MessageContext messageContext, String source, String destination,
                                  boolean includeSubDirectories) {
         StandardFileSystemManager manager = FileConnectorUtils.getManager();
-        FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
-        FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+        FileSystemOptions sourceFso = FileConnectorUtils.getSourceFso(messageContext, source, manager);
+        FileSystemOptions destinationFso = FileConnectorUtils.getTargetFso(messageContext, destination, manager);
 
         String inputContent = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.CONTENT);
         String fileName = (String) ConnectorUtils.lookupTemplateParamater(messageContext, FileConstants.FILE_NAME);

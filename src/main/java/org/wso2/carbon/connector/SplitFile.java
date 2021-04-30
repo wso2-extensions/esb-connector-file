@@ -92,8 +92,9 @@ public class SplitFile extends AbstractConnector implements Connector {
         FileObject sourceFileObj = null;
         try {
             manager = FileConnectorUtils.getManager();
-            FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, fileLocation, manager);
-            FileSystemOptions destinationFso = FileConnectorUtils.getFso(messageContext, destination, manager);
+            FileSystemOptions sourceFso = FileConnectorUtils.getSourceFso(messageContext, fileLocation, manager);
+            FileSystemOptions destinationFso = FileConnectorUtils.getTargetFso(messageContext, destination, manager);
+
             sourceFileObj = manager.resolveFile(fileLocation, sourceFso);
             if (!sourceFileObj.exists() || sourceFileObj.getType() != FileType.FILE) {
                 handleException("File does not exists, or source is not a file in the location: " + fileLocation,
