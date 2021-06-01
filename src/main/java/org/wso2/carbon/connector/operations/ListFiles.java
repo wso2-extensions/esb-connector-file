@@ -23,10 +23,12 @@ import org.apache.axiom.om.OMElement;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileFilter;
 import org.apache.commons.vfs2.FileFilterSelector;
+import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.provider.local.LocalFileName;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.AbstractConnector;
@@ -43,6 +45,9 @@ import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.SimpleFileFiler;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 
 /**
  * Implements File listing capability
@@ -52,12 +57,20 @@ public class ListFiles extends AbstractConnector {
 
     private static final String MATCHING_PATTERN = "matchingPattern";
     private static final String RECURSIVE_PARAM = "recursive";
+    private static final String RESPONSE_FORMAT_PARAM = "responseFormat";
     private static final String SORT_ATTRIB_PARAM = "sortingAttribute";
     private static final String SORT_ORDER_PARAM = "sortingOrder";
     private static final String DEFAULT_SORT_ATTRIB = "Name";
     private static final String DEFAULT_SORT_ORDER = "Ascending";
     private static final String DIRECTORY_ELE_NAME = "directory";
+    private static final String FILES_ELE_NAME = "files";
     private static final String NAME_ATTRIBUTE = "name";
+    private static final String FILE_NAME_ELE_NAME = "name";
+    private static final String FILE_PATH_ELE_NAME = "path";
+
+    private static final String HIERARCHICAL_FORMAT = "Hierarchical";
+    private static final String FLAT_FORMAT = "Flat";
+
 
     private static final String OPERATION_NAME = "listFiles";
     private static final String ERROR_MESSAGE = "Error while performing file:listFiles for folder ";
@@ -68,6 +81,7 @@ public class ListFiles extends AbstractConnector {
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String folderPath = null;
         String fileMatchingPattern;
+        String responseFormat = HIERARCHICAL_FORMAT;
         boolean recursive;
         FileObject folder = null;
 
@@ -85,6 +99,8 @@ public class ListFiles extends AbstractConnector {
                     lookupTemplateParamater(messageContext, Const.DIRECTORY_PATH);
             fileMatchingPattern = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, MATCHING_PATTERN);
+            responseFormat = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, RESPONSE_FORMAT_PARAM);
             if (StringUtils.isEmpty(fileMatchingPattern)) {
                 fileMatchingPattern = Const.MATCH_ALL_REGEX;
             }
@@ -103,7 +119,7 @@ public class ListFiles extends AbstractConnector {
                 if (folder.isFolder()) {
 
                     OMElement fileListEle = listFilesInFolder(folder, fileMatchingPattern,
-                            recursive, sortingAttribute, sortingOrder);
+                            recursive, responseFormat, sortingAttribute, sortingOrder);
                     FileOperationResult result = new FileOperationResult(
                             OPERATION_NAME,
                             true,
@@ -151,16 +167,48 @@ public class ListFiles extends AbstractConnector {
      * This method will recursively look into subdirectories.
      * Lists files adhering to sort attribute and order specified.
      *
-     * @param folder    Folder to scan
-     * @param pattern   Specific pattern of files to include in the listing
-     * @param recursive true, if to look into subdirectories
+     * @param folder           Folder to scan
+     * @param pattern          Specific pattern of files to include in the listing
+     * @param recursive        true, if to look into subdirectories
+     * @param responseFormat   OMElement returned is formatted depending on this
      * @param sortingAttribute Attribute to use for file sorting
-     * @param sortOrder Sorting order to use
-     * @return OMElement with organized listing.
-     * @throws FileSystemException In case of reading the directory.
+     * @param sortOrder        Sorting order to use
+     * @return OMElement with organized listing
+     * @throws FileSystemException           In case of reading the directory
+     * @throws InvalidConfigurationException In case issue of config issue
      */
     private OMElement listFilesInFolder(FileObject folder, String pattern, boolean recursive,
-                                        String sortingAttribute, String sortOrder) throws FileSystemException {
+                                        String responseFormat, String sortingAttribute, String sortOrder)
+            throws FileSystemException, InvalidConfigurationException {
+
+        if (responseFormat.equals(HIERARCHICAL_FORMAT)) {
+            return listFilesInHierarchicalFormat(folder, pattern, recursive, sortingAttribute, sortOrder);
+        } else if (responseFormat.equals(FLAT_FORMAT)) {
+            OMElement filesEle = Utils.createOMElement(FILES_ELE_NAME, null);
+            listFilesInFlatFormat(folder, pattern, recursive, sortingAttribute, sortOrder, filesEle);
+            return filesEle;
+        } else {
+            throw new InvalidConfigurationException("Unknown responseFormat found " + responseFormat);
+        }
+    }
+
+    /**
+     * List all files in the directory in hierarchical manner. If recursive = true,
+     * This method will recursively look into subdirectories.
+     * Lists files adhering to sort attribute and order specified.
+     *
+     * @param folder           Folder to scan
+     * @param pattern          Specific pattern of files to include in the listing
+     * @param recursive        true, if to look into subdirectories
+     * @param sortingAttribute Attribute to use for file sorting
+     * @param sortOrder        Sorting order to use
+     * @return OMElement with organized listing
+     * @throws FileSystemException In case of issue reading the directory
+     */
+    private OMElement listFilesInHierarchicalFormat(FileObject folder, String pattern,
+                                                    boolean recursive, String sortingAttribute,
+                                                    String sortOrder) throws FileSystemException {
+
         String containingFolderName = folder.getName().getBaseName();
         OMElement folderEle = Utils.createOMElement(DIRECTORY_ELE_NAME, null);
         folderEle.addAttribute(NAME_ATTRIBUTE, containingFolderName, null);
@@ -174,7 +222,7 @@ public class ListFiles extends AbstractConnector {
                 folderEle.addChild(fileEle);
             } else {
                 if (recursive) {
-                    OMElement subFolderEle = listFilesInFolder(fileOrFolder, pattern, recursive,
+                    OMElement subFolderEle = listFilesInHierarchicalFormat(fileOrFolder, pattern, recursive,
                             sortingAttribute, sortOrder);
                     folderEle.addChild(subFolderEle);
                 }
@@ -184,14 +232,65 @@ public class ListFiles extends AbstractConnector {
     }
 
     /**
+     * List all files in the directory in flat manner. If recursive = true,
+     * This method will recursively look into subdirectories.
+     * Lists files adhering to sort attribute and order specified.
+     *
+     * @param folder           Folder to scan
+     * @param pattern          Specific pattern of files to include in the listing
+     * @param recursive        true, if to look into subdirectories
+     * @param sortingAttribute Attribute to use for file sorting
+     * @param sortOrder        Sorting order to use
+     * @param parentEle        Parent OMElement to include found files information in
+     * @throws FileSystemException In case of issue reading the directory
+     */
+    private void listFilesInFlatFormat(FileObject folder, String pattern,
+                                       boolean recursive, String sortingAttribute,
+                                       String sortOrder, OMElement parentEle) throws FileSystemException {
+
+        FileObject[] filesOrFolders = getFilesAndFolders(folder, pattern);
+        FileSorter fileSorter = new FileSorter(sortingAttribute, sortOrder);
+        fileSorter.sort(filesOrFolders);
+        for (FileObject fileOrFolder : filesOrFolders) {
+            if (fileOrFolder.isFile()) {
+                OMElement fileEle = Utils.createOMElement(Const.FILE_ELEMENT, null);
+                OMElement nameEle = Utils.createOMElement(FILE_NAME_ELE_NAME, fileOrFolder.getName().getBaseName());
+                OMElement pathEle = Utils.createOMElement(FILE_PATH_ELE_NAME, getFilePath(fileOrFolder.getName()));
+                fileEle.addChild(nameEle);
+                fileEle.addChild(pathEle);
+                parentEle.addChild(fileEle);
+            } else {
+                if (recursive) {
+                    listFilesInFlatFormat(fileOrFolder, pattern, recursive,
+                            sortingAttribute, sortOrder, parentEle);
+                }
+            }
+        }
+    }
+
+
+    /**
      * Finds the set of matching descendants of this file.
      *
      * @param pattern pattern to match
      */
     private FileObject[] getFilesAndFolders(FileObject folder, String pattern) throws FileSystemException {
+
         FileFilter fileFilter = new SimpleFileFiler(pattern);
         FileFilterSelector fileFilterSelector = new FileFilterSelector(fileFilter);
-        return folder.findFiles(fileFilterSelector);
+        ArrayList<FileObject> matchingFilesAndFolders =
+                new ArrayList<>(Arrays.asList(folder.findFiles(fileFilterSelector)));
+        //when a pattern exists folder.findFiles does not return folders
+        if (!StringUtils.isEmpty(pattern)) {
+            FileObject[] children = folder.getChildren();
+            for (FileObject child : children) {
+                if (child.isFolder()) {
+                    matchingFilesAndFolders.add(child);
+                }
+            }
+        }
+        FileObject[] filesWithFolders = new FileObject[matchingFilesAndFolders.size()];
+        return matchingFilesAndFolders.toArray(filesWithFolders);
     }
 
     /**
@@ -205,5 +304,20 @@ public class ListFiles extends AbstractConnector {
     private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
         Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
         handleException(errorDetail, e, msgCtx);
+    }
+
+    /**
+     * Get the file path of a file including the drive letter of windows files.
+     *
+     * @param fileName Name of the file
+     * @return File path
+     */
+    private String getFilePath(FileName fileName) {
+        if (fileName instanceof LocalFileName) {
+            LocalFileName localFileName = (LocalFileName) fileName;
+            return localFileName.getRootFile() + localFileName.getPath();
+        } else {
+            return fileName.getPath();
+        }
     }
 }
