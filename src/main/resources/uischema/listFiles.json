@@ -64,6 +64,18 @@
                     "required": "false",
                     "helpTip": "List files in sub-directories"
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "responseFormat",
+                    "displayName": "Response Format",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Hierarchical", "Flat"],
+                    "defaultValue": "Hierarchical",
+                    "required": "true",
+                    "helpTip": "Response will be formatted as per this attribute."
+                  }
                 }
               ]
             }
