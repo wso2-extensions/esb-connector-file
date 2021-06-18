@@ -29,6 +29,7 @@
     <parameter name="enableLock" description="Whether to lock the file when reading"/>
     <parameter name="includeResultTo" description="Specify where to place operation result."/>
     <parameter name="resultPropertyName" description="Name of property to add operation result."/>
+    <parameter name="updateLastModified" description="Whether to update the last modified timestamp."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.WriteFile" />
     </sequence>

@@ -69,6 +69,7 @@ public class WriteFile extends AbstractConnector {
 
     private static final String FILE_PATH_PARAM = "filePath";
     private static final String ENABLE_LOCK_PARAM = "enableLock";
+    private static final String UPDATE_LAST_MODIFIED_TIMESTAMP = "updateLastModified";
     private static final String INCLUDE_RESULT_TO = "includeResultTo";
     private static final String RESULT_PROPERTY_NAME = "resultPropertyName";
     private static final String COMPRESS_PARAM = "compress";
@@ -126,7 +127,7 @@ public class WriteFile extends AbstractConnector {
             int byteCountWritten;
 
             byteCountWritten = (int) writeToFile(targetFile, messageContext, config);
-            if (!targetFile.getURL().toString().startsWith(Const.FTP_PROTOCOL_PREFIX)) {
+            if (!targetFile.getURL().toString().startsWith(Const.FTP_PROTOCOL_PREFIX) && config.updateLastModified) {
                 targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
             }
             result = new FileOperationResult(
@@ -182,6 +183,7 @@ public class WriteFile extends AbstractConnector {
         Config config = new Config();
         config.targetFilePath = Utils.lookUpStringParam(msgCtx, FILE_PATH_PARAM);
         config.enableLocking = Utils.lookUpBooleanParam(msgCtx, ENABLE_LOCK_PARAM, false);
+        config.updateLastModified = Utils.lookUpBooleanParam(msgCtx, UPDATE_LAST_MODIFIED_TIMESTAMP, true);
         config.includeResultTo = Utils.lookUpStringParam(msgCtx, INCLUDE_RESULT_TO, Const.MESSAGE_BODY);
         String resultPropertyName = Utils.lookUpStringParam(msgCtx, RESULT_PROPERTY_NAME, Const.EMPTY_STRING);
         if (config.includeResultTo.equals(Const.MESSAGE_PROPERTY) && StringUtils.isEmpty(resultPropertyName)) {
@@ -220,6 +222,7 @@ public class WriteFile extends AbstractConnector {
         boolean appendNewLine = false;
         boolean enableStreaming = false;
         int appendPosition = Integer.MAX_VALUE;
+        boolean updateLastModified = true;
     }
 
     /**
