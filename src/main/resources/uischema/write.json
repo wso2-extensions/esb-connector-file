@@ -156,6 +156,17 @@
                     "required": "true",
                     "helpTip": "Whether to lock the file when writing"
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "updateLastModified",
+                    "displayName": "Update Last Modified Timestamp",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "true",
+                    "required": "false",
+                    "helpTip": "Set as false to skip updating the last modified timestamp"
+                  }
                 }
               ]
             }
