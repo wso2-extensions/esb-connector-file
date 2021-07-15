@@ -84,7 +84,11 @@ public class Utils {
      * @return
      */
     public static String getTenantSpecificConnectionName(String connectionName, MessageContext messageContext) {
-        return String.format("%s@%s", connectionName, messageContext.getProperty(Const.TENANT_INFO_DOMAIN));
+        Object tenantDomain = messageContext.getProperty(Const.TENANT_INFO_DOMAIN);
+        if (tenantDomain != null) {
+            return String.format("%s@%s", connectionName, tenantDomain);
+        }
+        return connectionName;
     }
 
     /**
