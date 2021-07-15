@@ -73,9 +73,19 @@ public class Utils {
         if (connectionName == null) {
             throw new InvalidConfigurationException("Connection name is not set.");
         }
-        return connectionName;
+        return getTenantSpecificConnectionName(connectionName, messageContext);
     }
 
+    /**
+     * Create a tenant specific unique key to maintain connections per tenant.
+     *
+     * @param connectionName connection name as specified as configKey attribute or from the template parameter
+     * @param messageContext Message Context from which the tenant.info.domain should be extracted
+     * @return
+     */
+    public static String getTenantSpecificConnectionName(String connectionName, MessageContext messageContext) {
+        return String.format("%s@%s", connectionName, messageContext.getProperty(Const.TENANT_INFO_DOMAIN));
+    }
 
     /**
      * Generate OMElement out of result config.
