@@ -103,6 +103,7 @@ public final class Const {
     public static final String MESSAGE_BODY = "Message Body";
 
     public static final String MESSAGE_PROPERTY = "Message Property";
+    public static final String TENANT_INFO_DOMAIN = "tenant.info.domain";
 
     public static final String MATCH_ALL_REGEX = ".*";
     public static final String EMPTY_STRING = "";

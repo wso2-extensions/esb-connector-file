@@ -81,7 +81,7 @@ public class ListFiles extends AbstractConnector {
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String folderPath = null;
         String fileMatchingPattern;
-        String responseFormat = HIERARCHICAL_FORMAT;
+        String responseFormat;
         boolean recursive;
         FileObject folder = null;
 
@@ -101,6 +101,9 @@ public class ListFiles extends AbstractConnector {
                     lookupTemplateParamater(messageContext, MATCHING_PATTERN);
             responseFormat = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, RESPONSE_FORMAT_PARAM);
+            if (StringUtils.isEmpty(responseFormat)) {
+                responseFormat = HIERARCHICAL_FORMAT;
+            }
             if (StringUtils.isEmpty(fileMatchingPattern)) {
                 fileMatchingPattern = Const.MATCH_ALL_REGEX;
             }

@@ -65,13 +65,14 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
         String connectorName = Const.CONNECTOR_NAME;
         String connectionName = (String) ConnectorUtils.
                 lookupTemplateParamater(messageContext, Const.CONNECTION_NAME);
+        String tenantSpecificConnectionName = Utils.getTenantSpecificConnectionName(connectionName, messageContext);
         try {
             ConnectionConfiguration configuration = getConnectionConfigFromContext(messageContext);
 
             ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
-            if (!handler.checkIfConnectionExists(connectorName, connectionName)) {
+            if (!handler.checkIfConnectionExists(connectorName, tenantSpecificConnectionName)) {
                 FileSystemHandler fileSystemHandler = new FileSystemHandler(configuration);
-                handler.createConnection(Const.CONNECTOR_NAME, connectionName, fileSystemHandler);
+                handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName, fileSystemHandler);
             }
         } catch (InvalidConfigurationException e) {
 
