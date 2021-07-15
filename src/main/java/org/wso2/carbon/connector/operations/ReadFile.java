@@ -59,7 +59,10 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -117,10 +120,19 @@ public class ReadFile extends AbstractConnector {
             if (fileObject.isFolder()) {
                 //select file to read
                 fileObject = selectFileToRead(fileObject, config.filePattern);
-                workingDirRelativePAth = workingDirRelativePAth + Const.FILE_SEPARATOR
-                        + fileObject.getName().getBaseName();
-                sourcePath = fileSystemHandler.getBaseDirectoryPath() + workingDirRelativePAth + Const.FILE_SEPARATOR
-                        + fileObject.getName().getBaseName();
+                if(fileObject == null) {
+                    log.info("No matching file to be read path= " + sourcePath);
+                    //return without error
+                    return;
+                }
+
+                String filePathAsString = fileObject.getName().getFriendlyURI();
+                Path filePath = Paths.get(filePathAsString);
+                Path workingDriPath = Paths.get(fileSystemHandler.getBaseDirectoryPath());
+                Path filePathRelativeToWorkingDir = workingDriPath.relativize(filePath);
+                workingDirRelativePAth = filePathRelativeToWorkingDir.toString();
+                sourcePath = filePathAsString;
+
             }
 
             //lock the file if enabled
@@ -329,7 +341,8 @@ public class ReadFile extends AbstractConnector {
     }
 
     /**
-     * Select file to read from the directory provided.
+     * Select file to read from the directory provided. Overall this will be
+     * a depth first search in the directory structure.
      *
      * @param directory   directory to scan
      * @param filePattern file pattern to search files
@@ -343,34 +356,31 @@ public class ReadFile extends AbstractConnector {
         FileObject fileToRead = null;
         FileObject[] children = directory.getChildren();
 
-        if (children == null || children.length == 0) {
-
-            throw new FileOperationException("There is no immediate files to read in the folder " + directory.getURL());
-
-        } else if (StringUtils.isNotEmpty(filePattern)) {
-
-            boolean bFound = false;
-            for (FileObject child : children) {
-                if (child.getName().getBaseName().matches(filePattern)) {
-                    fileToRead = child;
-                    bFound = true;
-                    break;
+        if (children == null || children.length == 0) {     //no files or folders
+            return null;
+        } else {
+            ArrayList<FileObject> subFolders = new ArrayList<>();
+            for (FileObject fileOrFolder : children) {
+                if (fileOrFolder.isFile()) {     //if a file met, check if it matches pattern
+                    if (fileOrFolder.getName().getBaseName().matches(filePattern)) {
+                        fileToRead = fileOrFolder;
+                        return fileToRead;      //matching file found, we are done
+                    }
+                } else {
+                    subFolders.add(fileOrFolder);    //if a sub-folder is met, keep it aside.
                 }
             }
-            if (!bFound) {
-                throw new FileOperationException("There is no immediate files to "
-                        + "read that matches with given pattern in the folder "
-                        + directory.getURL());
+            for (FileObject subFolder : subFolders) {   // We will go inside if no matching file found in this folder
+                fileToRead = selectFileToRead(subFolder, filePattern);
+                if (fileToRead != null) {
+                    return fileToRead;
+                }
             }
-
-        } else {
-
-            fileToRead = children[0];
-
         }
 
-        return fileToRead;
+        return null;    //no matching file is found in whole dir structure
     }
+
 
     /**
      * Set properties of file being read into the messageContext.
