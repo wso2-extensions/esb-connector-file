@@ -238,6 +238,7 @@ public class MoveFiles extends AbstractConnector {
      * @param destinationFile          Destination folder
      * @param overWrite                True if to overwrite any existing file when moving
      * @param filePattern              The pattern (regex) of the files to be moved
+     * @param isSuccessful             Flag to keep track of something goes wrong while moving a file.
      * @return True if operation is performed fine
      * @throws FileSystemException In case of I/O error
      */
@@ -300,9 +301,9 @@ public class MoveFiles extends AbstractConnector {
     }
 
     /**
-     * @param remoteFile               Location of the file
-     * @param target              New file location
-     * @param filePattern              Pattern of the file
+     * @param remoteFile  Location of the file
+     * @param target      New file location
+     * @param filePattern Pattern of the file
      * @return True if operation is performed fine
      */
     private boolean moveFileWithPattern(FileObject remoteFile, FileObject target, String filePattern) {
