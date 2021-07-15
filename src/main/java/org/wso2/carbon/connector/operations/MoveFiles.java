@@ -24,6 +24,7 @@ import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.FileType;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.AbstractConnector;
@@ -34,10 +35,12 @@ import org.wso2.carbon.connector.exception.FileAlreadyExistsException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
-import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Error;
+import org.wso2.carbon.connector.utils.FilePatternMatcher;
 import org.wso2.carbon.connector.utils.Utils;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -52,8 +55,12 @@ public class MoveFiles extends AbstractConnector {
     private static final String INCLUDE_PARENT_PARAM = "includeParent";
     private static final String OVERWRITE_PARAM = "overwrite";
     private static final String RENAME_TO_PARAM = "renameTo";
+    private static final String FILE_PATTERN_PARAM = "filePattern";
     private static final String OPERATION_NAME = "moveFiles";
     private static final String ERROR_MESSAGE = "Error while performing file:move for file/folder ";
+
+    private FileSystemOptions fso;
+    private FileSystemManager fsManager;
 
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
@@ -65,6 +72,7 @@ public class MoveFiles extends AbstractConnector {
         boolean includeParent;
         boolean overwrite;
         String renameTo;
+        String filePattern;
         FileObject sourceFile = null;
 
         try {
@@ -73,8 +81,8 @@ public class MoveFiles extends AbstractConnector {
             String connectionName = Utils.getConnectionName(messageContext);
             FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
+            fsManager = fileSystemHandler.getFsManager();
+            fso = fileSystemHandler.getFsOptions();
 
             //read inputs
             sourcePath = (String) ConnectorUtils.
@@ -89,7 +97,8 @@ public class MoveFiles extends AbstractConnector {
                     lookupTemplateParamater(messageContext, OVERWRITE_PARAM));
             renameTo = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, RENAME_TO_PARAM);
-
+            filePattern = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, FILE_PATTERN_PARAM);
             sourcePath = fileSystemHandler.getBaseDirectoryPath() + sourcePath;
             targetPath = fileSystemHandler.getBaseDirectoryPath() + targetPath;
 
@@ -125,6 +134,12 @@ public class MoveFiles extends AbstractConnector {
 
                 } else {
                     //in case of folder
+                    FileObject targetFile = fsManager.resolveFile(targetPath, fso);
+
+                    if (!targetFile.exists() && !createNonExistingParents) {
+                        throw new FileOperationException("Target folder does not exist and not configured to create");
+                    }
+
                     if (includeParent) {
                         if (StringUtils.isNotEmpty(renameTo)) {
                             targetPath = targetPath + Const.FILE_SEPARATOR + renameTo;
@@ -132,11 +147,10 @@ public class MoveFiles extends AbstractConnector {
                             String sourceParentFolderName = sourceFile.getName().getBaseName();
                             targetPath = targetPath + Const.FILE_SEPARATOR + sourceParentFolderName;
                         }
+                        targetFile = fsManager.resolveFile(targetPath, fso);
                     }
 
-                    FileObject targetFile = fsManager.resolveFile(targetPath, fso);
-
-                    boolean success = moveFolder(sourceFile, createNonExistingParents, targetFile, overwrite);
+                    boolean success = moveFolder(sourceFile, targetFile, overwrite, filePattern, true);
                     FileOperationResult result;
                     if (success) {
                         result = new FileOperationResult(
@@ -144,8 +158,7 @@ public class MoveFiles extends AbstractConnector {
                                 true);
                         Utils.setResultAsPayload(messageContext, result);
                     } else {
-                        throw new FileAlreadyExistsException("Folder or one or more sub-directories "
-                                + "already exists and overwrite not allowed");
+                        throw new FileOperationException("Error occurred while moving one or more File(s)/Folder.");
                     }
                 }
 
@@ -158,7 +171,7 @@ public class MoveFiles extends AbstractConnector {
             String errorDetail = ERROR_MESSAGE + sourcePath;
             handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
-        } catch (FileSystemException e) {
+        } catch (FileSystemException | FileOperationException e) {
 
             String errorDetail = ERROR_MESSAGE + sourcePath;
             handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
@@ -222,14 +235,14 @@ public class MoveFiles extends AbstractConnector {
      * any file.
      *
      * @param srcFile                  Src directory to move
-     * @param createNonExistingParents True if to create directories along the path if not exist
      * @param destinationFile          Destination folder
      * @param overWrite                True if to overwrite any existing file when moving
+     * @param filePattern              The pattern (regex) of the files to be moved
      * @return True if operation is performed fine
      * @throws FileSystemException In case of I/O error
      */
-    private boolean moveFolder(FileObject srcFile, boolean createNonExistingParents,
-                               FileObject destinationFile, boolean overWrite) throws FileSystemException {
+    private boolean moveFolder(FileObject srcFile, FileObject destinationFile, boolean overWrite,
+                               String filePattern, boolean isSuccessful) throws FileSystemException {
 
         if (destinationFile.exists()) {
             if (!overWrite) {
@@ -239,26 +252,73 @@ public class MoveFiles extends AbstractConnector {
                 ArrayList<String> sourceChildrenNames = new ArrayList<>(sourceFileChildren.length);
                 ArrayList<String> destinationChildrenNames = new ArrayList<>(destinationFileChildren.length);
                 for (FileObject child : sourceFileChildren) {
-                    sourceChildrenNames.add(child.getName().getBaseName());
+                    if (child.getType() == FileType.FILE) {
+                        sourceChildrenNames.add(child.getName().getBaseName());
+                    }
                 }
                 for (FileObject child : destinationFileChildren) {
-                    destinationChildrenNames.add(child.getName().getBaseName());
+                    if (child.getType() == FileType.FILE) {
+                        destinationChildrenNames.add(child.getName().getBaseName());
+                    }
                 }
 
                 Collection commonFiles = CollectionUtils.intersection(sourceChildrenNames, destinationChildrenNames);
                 if (!commonFiles.isEmpty()) {
+                    log.error("Folder or one or more sub-directories already exists and overwrite not allowed");
                     return false;
                 }
             }
-        } else {
-            if (createNonExistingParents) {
-                destinationFile.createFolder();
-            } else {
-                log.error("Destination folder does not exist and not configured to create");
-            }
         }
 
-        srcFile.moveTo(destinationFile);
+        if (StringUtils.isNotEmpty(filePattern)) {
+            FileObject[] children = srcFile.getChildren();
+            for (FileObject child : children) {
+                boolean result;
+                if (child.getType() == FileType.FILE) {
+                    result = moveFileWithPattern(child, destinationFile, filePattern);
+                } else if (child.getType() == FileType.FOLDER) {
+                    String newDestination = destinationFile.getPublicURIString() + Const.FILE_SEPARATOR
+                            + child.getName().getBaseName();
+                    result = moveFolder(child, fsManager.resolveFile(newDestination, fso),
+                            overWrite, filePattern, isSuccessful);
+                } else {
+                    log.error("Could not move the file: " + child.getName() + "Unsupported file type: "
+                            + child.getType() + " for move operation.");
+                    result = false;
+                }
+
+                if (!result) {
+                    // if any error happens while moving a file/folder, mark the whole move operation as a failure.
+                    // But keep moving whatever the remaining files/folders.
+                    isSuccessful = false;
+                }
+            }
+        } else {
+            srcFile.moveTo(destinationFile);
+        }
+        return isSuccessful;
+    }
+
+    /**
+     * @param remoteFile               Location of the file
+     * @param target              New file location
+     * @param filePattern              Pattern of the file
+     * @return True if operation is performed fine
+     */
+    private boolean moveFileWithPattern(FileObject remoteFile, FileObject target, String filePattern) {
+        FilePatternMatcher patternMatcher = new FilePatternMatcher(filePattern);
+        try {
+            if (patternMatcher.validate(remoteFile.getName().getBaseName())) {
+                if (!target.exists()) {
+                    target.createFolder();
+                }
+                String newTarget = target + Const.FILE_SEPARATOR + remoteFile.getName().getBaseName();
+                remoteFile.moveTo(fsManager.resolveFile(newTarget, fso));
+            }
+        } catch (IOException e) {
+            log.error("Error occurred while moving a file. " + e.getMessage(), e);
+            return false;
+        }
         return true;
     }
 

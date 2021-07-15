@@ -97,6 +97,17 @@
                     "required": "false",
                     "helpTip": "The new name for the copied file. If not provided, the original file name is kept."
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "filePattern",
+                    "displayName": "File pattern",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The pattern (regex) of the files to be moved."
+                  }
                 }
               ]
             }
