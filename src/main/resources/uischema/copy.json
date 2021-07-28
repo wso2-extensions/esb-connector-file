@@ -62,7 +62,7 @@
                   "type": "attribute",
                   "value": {
                     "name": "setPassiveMode",
-                    "displayName": "Passive mode",
+                    "displayName": "Passive Mode",
                     "inputType": "booleanOrExpression",
                     "defaultValue": "",
                     "required": "false",
@@ -84,7 +84,7 @@
                   "type": "attribute",
                   "value": {
                     "name": "setUserDirIsRoot",
-                    "displayName": "Is user directory root?",
+                    "displayName": "Is User Directory Root",
                     "inputType": "booleanOrExpression",
                     "defaultValue": "",
                     "required": "false",
@@ -111,6 +111,61 @@
                     "defaultValue": "",
                     "required": "false",
                     "helpTip": "Set to true if you want to include the parent directory."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "includeSubDirectories",
+                    "displayName": "Include Sub Directories",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Set to true if you want to include the sub directories."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sourceSftpIdentities",
+                    "displayName": "Source's Private Key Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The location of the source's private key."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sourceSftpIdentityPassphrase",
+                    "displayName": "Source's Private Key Passphrase",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The passphrase of the source's private key."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "targetSftpIdentities",
+                    "displayName": "Target's Private Key Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The location of the target's private key."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "targetSftpIdentityPassphrase",
+                    "displayName": "Target's Private Key passphrase",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The passphrase of the target's private key."
                   }
                 }
               ]

@@ -23,6 +23,8 @@
     <parameter name="setSoTimeout" description="Sets the socket timeout for the FTP client."/>
     <parameter name="setStrictHostKeyChecking" description="Sets the host key checking to use."/>
     <parameter name="setUserDirIsRoot" description="Sets the whether to use the user directory as root."/>
+    <parameter name="sftpIdentities" description="The location of the private key"/>
+    <parameter name="sftpIdentityPassphrase" description="The passphrase of the private key"/>
     <sequence>
         <property name="source" expression="$func:source"/>
         <property name="setTimeout" expression="$func:setTimeout"/>
@@ -30,6 +32,8 @@
         <property name="setSoTimeout" expression="$func:setSoTimeout"/>
         <property name="setStrictHostKeyChecking" expression="$func:setStrictHostKeyChecking"/>
         <property name="setUserDirIsRoot" expression="$func:setUserDirIsRoot"/>
+        <property name="sftpIdentities" expression="$func:sftpIdentities"/>
+        <property name="sftpIdentityPassphrase" expression="$func:sftpIdentityPassphrase"/>
         <class name="org.wso2.carbon.connector.FileExist"/>
     </sequence>
 </template>

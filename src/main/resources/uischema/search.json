@@ -33,7 +33,7 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "true",
-                    "helpTip": "The pattern of the files to be read. (e.g., [a-zA-Z][a-zA-Z]*.(txt|xml|jar))."
+                    "helpTip": "The pattern of the files to be searched. (e.g., [a-zA-Z][a-zA-Z]*.(txt|xml|jar))."
                   }
                 },
                 {

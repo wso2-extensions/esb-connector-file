@@ -90,6 +90,50 @@
                     "required": "false",
                     "helpTip": "Sets the requirement to use host key checking. E.g., no."
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sourceSftpIdentities",
+                    "displayName": "Source's Private Key Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The location of the source's private key."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sourceSftpIdentityPassphrase",
+                    "displayName": "Source's Private Key Passphrase",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The passphrase of the source's private key."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "targetSftpIdentities",
+                    "displayName": "Target's Private Key Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The location of the target's private key."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "targetSftpIdentityPassphrase",
+                    "displayName": "Target's Private Key passphrase",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The passphrase of the target's private key."
+                  }
                 }
               ]
             }
