@@ -25,6 +25,7 @@
     <parameter name="setStrictHostKeyChecking" description="Sets the host key checking to use."/>
     <parameter name="setUserDirIsRoot" description="Sets the whether to use the user directory as root."/>
     <parameter name="includeSubDirectories" description="Boolean type, indicating whether the sub directories will be included or not."/>
+    <parameter name="deleteContainerFolders" description="Boolean type, indicating whether the container folders will be deleted or not."/>
     <parameter name="sftpIdentities" description="The location of the private key"/>
     <parameter name="sftpIdentityPassphrase" description="The passphrase of the private key"/>
     <sequence>
@@ -38,6 +39,7 @@
         <property name="includeSubDirectories" expression="$func:includeSubDirectories"/>
         <property name="sftpIdentities" expression="$func:sftpIdentities"/>
         <property name="sftpIdentityPassphrase" expression="$func:sftpIdentityPassphrase"/>
+        <property name="deleteContainerFolders" expression="$func:deleteContainerFolders"/>
         <class name="org.wso2.carbon.connector.FileDelete"/>
     </sequence>
 </template>

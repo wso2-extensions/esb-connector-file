@@ -79,6 +79,28 @@
                     "required": "false",
                     "helpTip": "Sets the requirement to use host key checking. E.g., no."
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sftpIdentities",
+                    "displayName": "Private Key Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The location of the private key."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sftpIdentityPassphrase",
+                    "displayName": "Private Key's Passphrase",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The passphrase of the private key."
+                  }
                 }
               ]
             }

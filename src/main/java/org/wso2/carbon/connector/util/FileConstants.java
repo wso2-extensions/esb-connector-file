@@ -74,7 +74,9 @@ public final class FileConstants {
     public static final String INCLUDE_PARENT_DIRECTORY = "includeParentDirectory";
     public static final String DEFAULT_INCLUDE_PARENT_DIRECTORY = "false";
     public static final String INCLUDE_SUBDIRECTORIES = "includeSubDirectories";
+    public static final String DELETE_CONTAINER_FOLDERS = "deleteContainerFolders";
     public static final String DEFAULT_INCLUDE_SUBDIRECTORIES = "true";
+    public static final String DEFAULT_DELETE_CONTAINER_FOLDERS = "true";
     public static final String START = "start";
     public static final String END = "end";
     public static final String NEW_LINE = "\n";

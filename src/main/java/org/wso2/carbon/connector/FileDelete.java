@@ -43,30 +43,40 @@ public class FileDelete extends AbstractConnector implements Connector {
     private static final Log log = LogFactory.getLog(FileDelete.class);
 
     public void connect(MessageContext messageContext) {
-        boolean includeSubDirectories;
+        boolean includeSubDirectories, deleteContainerFolders;
         String source = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.FILE_LOCATION);
         String includeSubDirs = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.INCLUDE_SUBDIRECTORIES);
+        String deleteParentFolders = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.DELETE_CONTAINER_FOLDERS);
         if (StringUtils.isEmpty(includeSubDirs)) {
             includeSubDirectories = Boolean.parseBoolean(FileConstants.DEFAULT_INCLUDE_SUBDIRECTORIES);
         } else {
             includeSubDirectories = Boolean.parseBoolean(includeSubDirs);
         }
+        if (StringUtils.isEmpty(deleteParentFolders)) {
+            deleteContainerFolders = Boolean.parseBoolean(FileConstants.DEFAULT_DELETE_CONTAINER_FOLDERS);
+        } else {
+            deleteContainerFolders = Boolean.parseBoolean(deleteParentFolders);
+        }
 
         StandardFileSystemManager manager = FileConnectorUtils.getManager();
         FileSystemOptions sourceFso = FileConnectorUtils.getFso(messageContext, source, manager);
-        boolean resultStatus = deleteFile(source, sourceFso, includeSubDirectories, manager, messageContext);
-        try {
-            FileObject remoteFile = manager.resolveFile(source, sourceFso);
-            if (remoteFile.getType() == FileType.FOLDER && remoteFile.getChildren().length == 0) {
-                remoteFile.delete(Selectors.SELECT_ALL);
-            }
-        } catch (IOException e) {
-            handleException("Error occurs while deleting the root folder.", e, messageContext);
-        } finally {
-            if (manager != null) {
-                manager.close();
+        boolean resultStatus = deleteFile(source, sourceFso, includeSubDirectories, deleteContainerFolders, manager,
+                messageContext);
+        if(deleteContainerFolders) {
+            try {
+                FileObject remoteFile = manager.resolveFile(source, sourceFso);
+                if (remoteFile.getType() == FileType.FOLDER && remoteFile.getChildren().length == 0) {
+                    remoteFile.delete(Selectors.SELECT_ALL);
+                }
+            } catch (IOException e) {
+                handleException("Error occurs while deleting the root folder.", e, messageContext);
+            } finally {
+                if (manager != null) {
+                    manager.close();
+                }
             }
         }
         generateResults(messageContext, resultStatus);
@@ -104,7 +114,8 @@ public class FileDelete extends AbstractConnector implements Connector {
      * @return                      Return the status
      */
     private boolean deleteFile(String source, FileSystemOptions sourceFso, boolean includeSubDirectories,
-                               StandardFileSystemManager manager, MessageContext messageContext) {
+                               boolean deleteContainerFolders, StandardFileSystemManager manager,
+                               MessageContext messageContext) {
         boolean resultStatus = false;
         try {
             // Create remote object
@@ -129,10 +140,11 @@ public class FileDelete extends AbstractConnector implements Connector {
                         } else if (child.getType() == FileType.FOLDER && includeSubDirectories) {
                             String newSource = source + File.separator + child.getName().getBaseName();
                             sourceFso = FileConnectorUtils.getFso(messageContext, newSource, manager);
-                            deleteFile(newSource, sourceFso, includeSubDirectories, manager, messageContext);
+                            deleteFile(newSource, sourceFso, includeSubDirectories, deleteContainerFolders, manager,
+                                    messageContext);
                         }
                     }
-                    if (remoteFile.getChildren().length == 0) {
+                    if (deleteContainerFolders && remoteFile.getChildren().length == 0) {
                         remoteFile.delete(Selectors.SELECT_ALL);
                     }
                 }

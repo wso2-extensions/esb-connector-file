@@ -73,7 +73,7 @@
                   "type": "attribute",
                   "value": {
                     "name": "setPassiveMode",
-                    "displayName": "Passive mode",
+                    "displayName": "Passive Mode",
                     "inputType": "booleanOrExpression",
                     "defaultValue": "",
                     "required": "false",
@@ -95,7 +95,7 @@
                   "type": "attribute",
                   "value": {
                     "name": "setUserDirIsRoot",
-                    "displayName": "Is user directory root?",
+                    "displayName": "Is User Directory Root",
                     "inputType": "booleanOrExpression",
                     "defaultValue": "",
                     "required": "false",
@@ -111,6 +111,28 @@
                     "defaultValue": "",
                     "required": "false",
                     "helpTip": "Sets the requirement to use host key checking. E.g., no."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sftpIdentities",
+                    "displayName": "Private Key's Location",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The location of the private key."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sftpIdentityPassphrase",
+                    "displayName": "Private Key's Passphrase",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The passphrase of the private key."
                   }
                 }
               ]
