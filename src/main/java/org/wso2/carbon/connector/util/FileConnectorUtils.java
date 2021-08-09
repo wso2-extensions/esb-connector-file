@@ -122,6 +122,8 @@ public class FileConnectorUtils {
                 (messageContext, FileConstants.SET_STRICT_HOST_KEY_CHECKING);
         String setUserDirIsRoot = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
                 FileConstants.SET_USER_DIRISROOT);
+        String setAvoidPermission = (String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                FileConstants.SET_AVOID_PERMISSION);
 
         if (log.isDebugEnabled()) {
             log.debug("File init starts with " + setTimeout + "," + setPassiveMode + "," +
@@ -223,6 +225,9 @@ public class FileConnectorUtils {
                 throw new SynapseTaskException("Error while configuring a " +
                         "setSoTimeout", e);
             }
+        }
+        if (!StringUtils.isEmpty(setAvoidPermission)) {
+            SftpFileSystemConfigBuilder.getInstance().setAvoidPermissionCheck(opts, setAvoidPermission.trim());
         }
         if (log.isDebugEnabled()) {
             log.debug("FileConnector configuration is completed.");
