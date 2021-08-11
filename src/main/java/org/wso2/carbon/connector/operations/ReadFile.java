@@ -119,8 +119,7 @@ public class ReadFile extends AbstractConnector {
                 fileObject = selectFileToRead(fileObject, config.filePattern);
                 workingDirRelativePAth = workingDirRelativePAth + Const.FILE_SEPARATOR
                         + fileObject.getName().getBaseName();
-                sourcePath = fileSystemHandler.getBaseDirectoryPath() + workingDirRelativePAth + Const.FILE_SEPARATOR
-                        + fileObject.getName().getBaseName();
+                sourcePath = fileSystemHandler.getBaseDirectoryPath() + workingDirRelativePAth;
             }
 
             //lock the file if enabled
