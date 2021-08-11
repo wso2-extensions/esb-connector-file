@@ -25,6 +25,7 @@
     <parameter name="setSoTimeout" description="Sets the socket timeout for the FTP client."/>
     <parameter name="setStrictHostKeyChecking" description="Sets the host key checking to use."/>
     <parameter name="setUserDirIsRoot" description="Sets the whether to use the user directory as root."/>
+    <parameter name="setAvoidPermission" description="Sets whether to avoid file permission check."/>
     <parameter name="includeParentDirectory"
                description="Boolean type, indicating whether the parent directory will include or not."/>
     <parameter name="filePattern" description="The pattern of the files to be copied."/>
@@ -48,6 +49,7 @@
         <property name="sourceSftpIdentityPassphrase" expression="$func:sourceSftpIdentityPassphrase"/>
         <property name="targetSftpIdentities" expression="$func:targetSftpIdentities"/>
         <property name="targetSftpIdentityPassphrase" expression="$func:targetSftpIdentityPassphrase"/>
+        <property name="setAvoidPermission" expression="$func:setAvoidPermission"/>
         <class name="org.wso2.carbon.connector.FileMove"/>
     </sequence>
 </template>

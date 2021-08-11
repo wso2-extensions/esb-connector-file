@@ -83,6 +83,17 @@
                 {
                   "type": "attribute",
                   "value": {
+                    "name": "setAvoidPermission",
+                    "displayName": "Avoid Permissions",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Set to true if you want to avoid permission check."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
                     "name": "setStrictHostKeyChecking",
                     "displayName": "Strict Host Key Checking",
                     "inputType": "stringOrExpression",
