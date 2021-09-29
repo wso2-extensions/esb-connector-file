@@ -39,6 +39,7 @@ import org.wso2.carbon.connector.utils.Utils;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -57,7 +58,7 @@ public class UnzipFile extends AbstractConnector {
 
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String filePath = null;
-        FileObject zipFile = null;
+        FileObject compressedFile = null;
         String folderPathToExtract;
         FileObject targetFolder;
         FileOperationResult result;
@@ -78,26 +79,26 @@ public class UnzipFile extends AbstractConnector {
 
             FileSystemManager fsManager = fileSystemHandler.getFsManager();
             FileSystemOptions fso = fileSystemHandler.getFsOptions();
-            zipFile = fsManager.resolveFile(filePath, fso);
+            compressedFile = fsManager.resolveFile(filePath, fso);
             targetFolder = fsManager.resolveFile(folderPathToExtract, fso);
 
             //execute validations
 
-            if (!zipFile.exists()) {
+            if (!compressedFile.exists()) {
                 throw new IllegalPathException("File not found: " + filePath);
             }
 
-            if (!zipFile.isFile()) {
-                throw new IllegalPathException("File is not a zip file: " + filePath);
+            if (!compressedFile.isFile()) {
+                throw new IllegalPathException("File is not a compressed file: " + filePath);
             }
 
             if (!targetFolder.exists()) {
                 targetFolder.createFolder();
             }
 
-            OMElement zipFileContentEle = executeUnzip(zipFile, folderPathToExtract, fsManager, fso);
+            OMElement fileContentEle = executeDecompression(compressedFile, folderPathToExtract, fsManager, fso);
 
-            result = new FileOperationResult(OPERATION_NAME, true, zipFileContentEle);
+            result = new FileOperationResult(OPERATION_NAME, true, fileContentEle);
 
             Utils.setResultAsPayload(messageContext, result);
 
@@ -113,68 +114,92 @@ public class UnzipFile extends AbstractConnector {
 
         } finally {
 
-            if (zipFile != null) {
+            if (compressedFile != null) {
                 try {
-                    zipFile.close();
+                    compressedFile.close();
                 } catch (FileSystemException e) {
                     log.error(Const.CONNECTOR_NAME
-                            + ":Error while closing file object while unzipping file. "
-                            + zipFile);
+                            + ":Error while closing file object while decompressing the file. "
+                            + compressedFile);
                 }
             }
         }
     }
 
     /**
-     * Execute unzip, iterating over zip entries.
+     * Execute decompression, iterating over compressed entries.
      *
-     * @param zipFile             Zip file
-     * @param folderPathToExtract Directory path to unzip
+     * @param sourceFile             Compressed file
+     * @param folderPathToExtract Directory path to decompress
      * @param fsManager           File System Manager associated with the file connection
      * @param fso                 File System Options associated with the file connection
-     * @return OMElement with zip file entries extracted
+     * @return OMElement with compressed file entries extracted
      * @throws IOException In case of I/O error
      */
-    private OMElement executeUnzip(FileObject zipFile, String folderPathToExtract,
-                                   FileSystemManager fsManager, FileSystemOptions fso) throws IOException {
-        //execute unzip
-        ZipInputStream zipIn = null;
-        OMElement zipFileContentEle = Utils.
-                createOMElement("zipFileContent", null);
-        try {
-            zipIn = new ZipInputStream(zipFile.getContent().getInputStream());
-            ZipEntry entry = zipIn.getNextEntry();
-            //iterate over the entries
-            while (entry != null) {
-                String zipEntryPath = folderPathToExtract + Const.FILE_SEPARATOR + entry.getName();
-                FileObject zipEntryTargetFile = fsManager.resolveFile(zipEntryPath, fso);
-                try {
-                    if (!entry.isDirectory()) {
-                        // if the entry is a file, extracts it
-                        extractFile(zipIn, zipEntryTargetFile);
-                        //"/" is not allowed when constructing XML
-                        String entryName = entry.getName().replace("/", "--");
-                        OMElement zipEntryEle = Utils.
-                                createOMElement(entryName, "extracted");
-                        zipFileContentEle.addChild(zipEntryEle);
-                    } else {
-                        // if the entry is a directory, make the directory
-                        zipEntryTargetFile.createFolder();
-                    }
-                } catch (IOException e) {
-                    log.error("Unable to extract the zip file. ", e);
-                } finally {
+    private OMElement executeDecompression(FileObject sourceFile, String folderPathToExtract,
+                                           FileSystemManager fsManager, FileSystemOptions fso) throws IOException {
+        //execute decompression
+        String fileExtension = sourceFile.getName().getExtension();
+        OMElement compressedFileContentEle;
+        if (fileExtension.equals("gz")) {
+            FileObject target = fsManager.resolveFile(folderPathToExtract + Const.FILE_SEPARATOR
+                    + sourceFile.getName().getBaseName()
+                    .replace("." + sourceFile.getName().getExtension(), ""), fso);
+            extractGzip(sourceFile, target);
+            String entryName = sourceFile.getName().getBaseName().replace("/", "--");
+            compressedFileContentEle = Utils.
+                    createOMElement("gzFile", entryName + " has been extracted");
+            return compressedFileContentEle;
+        } else {
+            ZipInputStream zipIn = null;
+            compressedFileContentEle = Utils.
+                    createOMElement("zipFileContent", null);
+            try {
+                zipIn = new ZipInputStream(sourceFile.getContent().getInputStream());
+                ZipEntry entry = zipIn.getNextEntry();
+                //iterate over the entries
+                while (entry != null) {
+                    String zipEntryPath = folderPathToExtract + Const.FILE_SEPARATOR + entry.getName();
+                    FileObject zipEntryTargetFile = fsManager.resolveFile(zipEntryPath, fso);
                     try {
-                        zipIn.closeEntry();
+                        if (!entry.isDirectory()) {
+                            // if the entry is a file, extracts it
+                            extractFile(zipIn, zipEntryTargetFile);
+                            //"/" is not allowed when constructing XML
+                            String entryName = entry.getName().replace("/", "--");
+                            OMElement zipEntryEle = Utils.
+                                    createOMElement(entryName, "extracted");
+                            compressedFileContentEle.addChild(zipEntryEle);
+                        } else {
+                            // if the entry is a directory, make the directory
+                            zipEntryTargetFile.createFolder();
+                        }
+                    } catch (IOException e) {
+                        log.error("Unable to extract the zip file. ", e);
                     } finally {
-                        entry = zipIn.getNextEntry();
+                        try {
+                            zipIn.closeEntry();
+                        } finally {
+                            entry = zipIn.getNextEntry();
+                        }
                     }
                 }
+                return compressedFileContentEle;
+            } finally {
+                if (zipIn != null) {
+                    zipIn.close();
+                }
             }
-            return zipFileContentEle;
-        } finally {
-            if (zipIn != null) {
-                zipIn.close();
+        }
+    }
+
+    public static void extractGzip(FileObject source, FileObject target) throws IOException {
+        try (GZIPInputStream gis = new GZIPInputStream(source.getContent().getInputStream());
+             OutputStream fos = target.getContent().getOutputStream()) {
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = gis.read(buffer)) > 0) {
+                fos.write(buffer, 0, len);
             }
         }
     }
