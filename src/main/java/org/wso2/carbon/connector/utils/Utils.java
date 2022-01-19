@@ -185,7 +185,7 @@ public class Utils {
      * @return Value of the parameter if provided, else default value above
      */
     public static String lookUpStringParam(MessageContext msgCtx, String paramName, String defaultVal) {
-        String value = (String) ConnectorUtils.lookupTemplateParamater(msgCtx, paramName);
+        String value = ConnectorUtils.lookupTemplateParamater(msgCtx, paramName).toString();
         if (StringUtils.isEmpty(value)) {
             return defaultVal;
         } else {
