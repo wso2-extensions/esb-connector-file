@@ -228,12 +228,15 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
                 lookupTemplateParamater(msgContext, Const.PRIVATE_KEY_FILE_PATH);
         String privateKeyPassword = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.PRIVATE_KEY_PASSWORD);
+        String setAvoidPermission = (String) ConnectorUtils.
+                lookupTemplateParamater(msgContext, Const.SET_AVOID_PERMISSION);
 
         config.setConnectionTimeout(sftpConnectionTimeout);
         config.setSessionTimeout(sftpSessionTimeout);
         config.setStrictHostKeyChecking(strictHostKeyChecking);
         config.setPrivateKeyFilePath(privateKeyFilePath);
         config.setPrivateKeyPassword(privateKeyPassword);
+        config.setAvoidPermissionCheck(setAvoidPermission);
     }
 
     /**

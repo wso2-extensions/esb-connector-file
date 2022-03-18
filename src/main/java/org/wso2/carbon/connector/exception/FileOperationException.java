@@ -19,6 +19,7 @@
 package org.wso2.carbon.connector.exception;
 
 import org.wso2.carbon.connector.core.ConnectException;
+import org.wso2.carbon.connector.utils.Utils;
 
 /**
  * Represents any exception thrown by the connector in general.
@@ -28,11 +29,11 @@ public class FileOperationException extends ConnectException {
 
     public FileOperationException(String message) {
 
-        super(message);
+        super(Utils.maskURLPassword(message));
     }
 
     public FileOperationException(String message, Throwable cause) {
 
-        super(cause, message);
+        super(cause, Utils.maskURLPassword(message));
     }
 }

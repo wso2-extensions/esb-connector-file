@@ -19,6 +19,7 @@
 package org.wso2.carbon.connector.exception;
 
 import org.wso2.carbon.connector.core.ConnectException;
+import org.wso2.carbon.connector.utils.Utils;
 
 /**
  * Represents exception thrown when
@@ -28,7 +29,7 @@ public class IllegalPathException extends ConnectException {
 
     public IllegalPathException(String message) {
 
-        super(message);
+        super(Utils.maskURLPassword(message));
     }
 
     public IllegalPathException(String message, Throwable cause) {

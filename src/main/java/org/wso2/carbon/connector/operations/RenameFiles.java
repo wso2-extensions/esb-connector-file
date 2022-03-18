@@ -148,6 +148,7 @@ public class RenameFiles extends AbstractConnector {
      * @param errorDetail Error detail
      */
     private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        errorDetail = Utils.maskURLPassword(errorDetail);
         Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
         handleException(errorDetail, e, msgCtx);
     }
