@@ -36,6 +36,7 @@ public final class Const {
     public static final String WORKING_DIR = "workingDir";
     public static final String FILE_LOCK_SCHEME = "fileLockScheme";
     public static final String MAX_FAILURE_RETRY_COUNT = "maxFailureRetryCount";
+    public static final String SET_AVOID_PERMISSION = "setAvoidPermission";
 
     public static final String HOST = "host";
     public static final String PORT = "port";

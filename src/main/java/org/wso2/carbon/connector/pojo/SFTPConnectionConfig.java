@@ -45,6 +45,8 @@ public class SFTPConnectionConfig extends RemoteServerConfig {
     //Passphrase of the private key
     private String privateKeyPassword;
 
+    private String setAvoidPermission;
+
     /**
      * Create a SFTPConnectionConfig
      * with default values set
@@ -53,6 +55,7 @@ public class SFTPConnectionConfig extends RemoteServerConfig {
         this.strictHostKeyChecking = false;
         this.connectionTimeout = 100000;
         this.sessionTimeout = 150000;
+        this.setAvoidPermission = "false";
     }
 
     public int getConnectionTimeout() {
@@ -110,6 +113,16 @@ public class SFTPConnectionConfig extends RemoteServerConfig {
     public void setPrivateKeyPassword(String privateKeyPassword) {
         if (StringUtils.isNotEmpty(privateKeyPassword)) {
             this.privateKeyPassword = privateKeyPassword;
+        }
+    }
+
+    public String getAvoidPermissionCheck() {
+        return setAvoidPermission;
+    }
+
+    public void setAvoidPermissionCheck(String setAvoidPermission) {
+        if (StringUtils.isNotBlank(setAvoidPermission)) {
+            this.setAvoidPermission = setAvoidPermission;
         }
     }
 }

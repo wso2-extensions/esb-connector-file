@@ -43,6 +43,7 @@ public class SFTPFileSystemSetup implements ProtocolBasedFileSystemSetup {
         SftpFileSystemConfigBuilder sftpConfigBuilder = SftpFileSystemConfigBuilder.getInstance();
 
         try {
+            sftpConfigBuilder.setAvoidPermissionCheck(fso, sftpConnectionConfig.getAvoidPermissionCheck());
             sftpConfigBuilder.setTimeout(fso, sftpConnectionConfig.getSessionTimeout());
 
             if (sftpConnectionConfig.isStrictHostKeyChecking()) {
