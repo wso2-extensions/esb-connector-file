@@ -211,7 +211,7 @@ public class ReadFile extends AbstractConnector {
         config.enableLock = Utils.
                 lookUpBooleanParam(msgCtx, ENABLE_LOCK_PARAM, false);
         config.readMode = FileReadMode.fromString(Utils.
-                lookUpStringParam(msgCtx, READ_MODE_PARAM, FileReadMode.COMPLETE_FILE.toString()));
+                lookUpStringParam(msgCtx, READ_MODE_PARAM, FileReadMode.COMPLETE_FILE.getMode()));
         config.includeResultTo = Utils.
                 lookUpStringParam(msgCtx, INCLUDE_RESULT_TO, Const.MESSAGE_BODY);
         config.resultPropertyName = Utils.
@@ -323,6 +323,7 @@ public class ReadFile extends AbstractConnector {
      * @param errorDetail Error detail
      */
     private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+        errorDetail = Utils.maskURLPassword(errorDetail);
         Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
         handleException(errorDetail, e, msgCtx);
     }

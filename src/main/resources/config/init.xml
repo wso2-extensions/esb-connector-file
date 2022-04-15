@@ -46,6 +46,7 @@
 	<parameter name="strictHostKeyChecking" description="Host key checking to use. If true it will use 'yes'"/>
 	<parameter name="privateKeyFilePath" description="path to private key file"/>
 	<parameter name="privateKeyPassword" description="Passphrase of the private key"/>
+	<parameter name="setAvoidPermission" description="Sets whether to avoid file permission check."/>
 	<sequence>
 		<property name="name" expression="$func:name"/>
 		<class name="org.wso2.carbon.connector.operations.FileConfig" />

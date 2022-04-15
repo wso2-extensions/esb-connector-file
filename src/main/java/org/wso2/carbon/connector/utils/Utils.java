@@ -36,7 +36,12 @@ import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 
+import java.util.regex.Matcher;
+
 import javax.xml.stream.XMLStreamException;
+
+import static org.apache.synapse.SynapseConstants.PASSWORD_PATTERN;
+import static org.apache.synapse.SynapseConstants.URL_PATTERN;
 
 /**
  * Util methods related to file connector operations
@@ -261,5 +266,23 @@ public class Utils {
         ((Axis2MessageContext) msgContext).getAxis2MessageContext().
                 removeProperty(PassThroughConstants.NO_ENTITY_BODY);
         soapBody.addChild(resultElement);
+    }
+
+    /**
+     * Mask the password of the connection url with ***
+     *
+     * @param url the actual url
+     * @return the masked url
+     */
+    public static String maskURLPassword(String url) {
+
+        final Matcher urlMatcher = URL_PATTERN.matcher(url);
+        String maskUrl;
+        if (urlMatcher.find()) {
+            final Matcher pwdMatcher = PASSWORD_PATTERN.matcher(url);
+            maskUrl = pwdMatcher.replaceFirst(":***@");
+            return maskUrl;
+        }
+        return url;
     }
 }
