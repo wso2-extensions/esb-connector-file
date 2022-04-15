@@ -425,7 +425,7 @@ public class ReadFile extends AbstractConnector {
             }
         }
         ((Axis2MessageContext) msgContext).getAxis2MessageContext().
-                setProperty(Const.SET_CHARACTER_ENCODING, true);
+                setProperty(Const.SET_CHARACTER_ENCODING, "true");
         ((Axis2MessageContext) msgContext).getAxis2MessageContext().
                 setProperty(Constants.Configuration.CHARACTER_SET_ENCODING, charSetEnc);
     }
