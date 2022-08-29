@@ -220,7 +220,9 @@ public class MoveFiles extends AbstractConnector {
             if (createNonExistingParents) {
                 destinationFile.createFolder();
             } else {
-                log.error("Destination file does not exist and not configured to create");
+                if (log.isDebugEnabled()) {
+                    log.debug("Parent directory creation is skipped.");
+                }
             }
             srcFile.moveTo(destinationFile);
             return true;
