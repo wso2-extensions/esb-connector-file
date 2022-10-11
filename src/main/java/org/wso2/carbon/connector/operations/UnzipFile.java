@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.connector.operations;
 
-import org.apache.axiom.om.OMElement;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
@@ -96,9 +95,9 @@ public class UnzipFile extends AbstractConnector {
                 targetFolder.createFolder();
             }
 
-            OMElement fileContentEle = executeDecompression(compressedFile, folderPathToExtract, fsManager, fso);
+            boolean decompressionSucceed = executeDecompression(compressedFile, folderPathToExtract, fsManager, fso);
 
-            result = new FileOperationResult(OPERATION_NAME, true, fileContentEle);
+            result = new FileOperationResult(OPERATION_NAME, decompressionSucceed);
 
             Utils.setResultAsPayload(messageContext, result);
 
@@ -136,26 +135,19 @@ public class UnzipFile extends AbstractConnector {
      * @return OMElement with compressed file entries extracted
      * @throws IOException In case of I/O error
      */
-    private OMElement executeDecompression(FileObject sourceFile, String folderPathToExtract,
+    private boolean executeDecompression(FileObject sourceFile, String folderPathToExtract,
                                            FileSystemManager fsManager, FileSystemOptions fso) throws IOException {
         //execute decompression
         String fileExtension = sourceFile.getName().getExtension();
-        OMElement compressedFileContentEle;
         if (fileExtension.equals("gz")) {
             FileObject target = fsManager.resolveFile(folderPathToExtract + Const.FILE_SEPARATOR
                     + sourceFile.getName().getBaseName()
                     .replace("." + sourceFile.getName().getExtension(), ""), fso);
             extractGzip(sourceFile, target);
-            String entryName = sourceFile.getName().getBaseName().replace("/", "--");
-            compressedFileContentEle = Utils.
-                    createOMElement("gzFile", entryName + " has been extracted");
-            return compressedFileContentEle;
+            return true;
         } else {
-            ZipInputStream zipIn = null;
-            compressedFileContentEle = Utils.
-                    createOMElement("zipFileContent", null);
-            try {
-                zipIn = new ZipInputStream(sourceFile.getContent().getInputStream());
+            boolean decompressionSucceed = true;
+            try (ZipInputStream zipIn = new ZipInputStream(sourceFile.getContent().getInputStream())) {
                 ZipEntry entry = zipIn.getNextEntry();
                 //iterate over the entries
                 while (entry != null) {
@@ -165,16 +157,12 @@ public class UnzipFile extends AbstractConnector {
                         if (!entry.isDirectory()) {
                             // if the entry is a file, extracts it
                             extractFile(zipIn, zipEntryTargetFile);
-                            //"/" is not allowed when constructing XML
-                            String entryName = entry.getName().replace("/", "--");
-                            OMElement zipEntryEle = Utils.
-                                    createOMElement(entryName, "extracted");
-                            compressedFileContentEle.addChild(zipEntryEle);
                         } else {
                             // if the entry is a directory, make the directory
                             zipEntryTargetFile.createFolder();
                         }
                     } catch (IOException e) {
+                        decompressionSucceed = false;
                         log.error("Unable to extract the zip file. ", e);
                     } finally {
                         try {
@@ -184,11 +172,7 @@ public class UnzipFile extends AbstractConnector {
                         }
                     }
                 }
-                return compressedFileContentEle;
-            } finally {
-                if (zipIn != null) {
-                    zipIn.close();
-                }
+                return decompressionSucceed;
             }
         }
     }
