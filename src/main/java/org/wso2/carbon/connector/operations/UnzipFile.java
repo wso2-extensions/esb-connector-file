@@ -95,9 +95,9 @@ public class UnzipFile extends AbstractConnector {
                 targetFolder.createFolder();
             }
 
-            boolean decompressionSucceed = executeDecompression(compressedFile, folderPathToExtract, fsManager, fso);
+            executeDecompression(compressedFile, folderPathToExtract, fsManager, fso);
 
-            result = new FileOperationResult(OPERATION_NAME, decompressionSucceed);
+            result = new FileOperationResult(OPERATION_NAME, true);
 
             Utils.setResultAsPayload(messageContext, result);
 
@@ -132,10 +132,9 @@ public class UnzipFile extends AbstractConnector {
      * @param folderPathToExtract Directory path to decompress
      * @param fsManager           File System Manager associated with the file connection
      * @param fso                 File System Options associated with the file connection
-     * @return OMElement with compressed file entries extracted
      * @throws IOException In case of I/O error
      */
-    private boolean executeDecompression(FileObject sourceFile, String folderPathToExtract,
+    private void executeDecompression(FileObject sourceFile, String folderPathToExtract,
                                            FileSystemManager fsManager, FileSystemOptions fso) throws IOException {
         //execute decompression
         String fileExtension = sourceFile.getName().getExtension();
@@ -144,35 +143,30 @@ public class UnzipFile extends AbstractConnector {
                     + sourceFile.getName().getBaseName()
                     .replace("." + sourceFile.getName().getExtension(), ""), fso);
             extractGzip(sourceFile, target);
-            return true;
-        } else {
-            boolean decompressionSucceed = true;
-            try (ZipInputStream zipIn = new ZipInputStream(sourceFile.getContent().getInputStream())) {
-                ZipEntry entry = zipIn.getNextEntry();
-                //iterate over the entries
-                while (entry != null) {
-                    String zipEntryPath = folderPathToExtract + Const.FILE_SEPARATOR + entry.getName();
-                    FileObject zipEntryTargetFile = fsManager.resolveFile(zipEntryPath, fso);
+            return;
+        }
+
+        try (ZipInputStream zipIn = new ZipInputStream(sourceFile.getContent().getInputStream())) {
+            ZipEntry entry = zipIn.getNextEntry();
+            //iterate over the entries
+            while (entry != null) {
+                String zipEntryPath = folderPathToExtract + Const.FILE_SEPARATOR + entry.getName();
+                FileObject zipEntryTargetFile = fsManager.resolveFile(zipEntryPath, fso);
+                try {
+                    if (!entry.isDirectory()) {
+                        // if the entry is a file, extracts it
+                        extractFile(zipIn, zipEntryTargetFile);
+                    } else {
+                        // if the entry is a directory, make the directory
+                        zipEntryTargetFile.createFolder();
+                    }
+                } finally {
                     try {
-                        if (!entry.isDirectory()) {
-                            // if the entry is a file, extracts it
-                            extractFile(zipIn, zipEntryTargetFile);
-                        } else {
-                            // if the entry is a directory, make the directory
-                            zipEntryTargetFile.createFolder();
-                        }
-                    } catch (IOException e) {
-                        decompressionSucceed = false;
-                        log.error("Unable to extract the zip file. ", e);
+                        zipIn.closeEntry();
                     } finally {
-                        try {
-                            zipIn.closeEntry();
-                        } finally {
-                            entry = zipIn.getNextEntry();
-                        }
+                        entry = zipIn.getNextEntry();
                     }
                 }
-                return decompressionSucceed;
             }
         }
     }
