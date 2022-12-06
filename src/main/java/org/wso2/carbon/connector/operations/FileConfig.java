@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.connector.operations;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.synapse.ManagedLifecycle;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.config.SynapseConfiguration;
@@ -39,6 +40,9 @@ import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 /**
  * Initializes the file connection based on provided configs
  * at config/init.xml. Required input validations also
@@ -47,6 +51,7 @@ import org.wso2.carbon.connector.utils.Utils;
 public class FileConfig extends AbstractConnector implements ManagedLifecycle {
 
     private static final String OPERATION_NAME = "init";
+    ConnectionHandler handler;
 
     @Override
     public void init(SynapseEnvironment synapseEnvironment) {
@@ -69,11 +74,35 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
         try {
             ConnectionConfiguration configuration = getConnectionConfigFromContext(messageContext);
 
-            ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+            handler = ConnectionHandler.getConnectionHandler();
             if (!handler.checkIfConnectionExists(connectorName, tenantSpecificConnectionName)) {
                 FileSystemHandler fileSystemHandler = new FileSystemHandler(configuration);
                 handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName, fileSystemHandler);
             }
+
+            // Runs a task to clear cached connections in the connection pool
+            int sessionTimeout = 0;
+            String sessionTimeoutValue = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, Const.CONNECTION_POOL_TIMEOUT);
+
+            if (StringUtils.isNotEmpty(sessionTimeoutValue)) {
+                try {
+                    sessionTimeout = Integer.parseInt(sessionTimeoutValue);
+                } catch (NumberFormatException nfe) {
+                    log.warn("invalid session timeout provided", nfe);
+                }
+                if (sessionTimeout > 0) {
+                    Timer timer = new Timer();
+                    timer.scheduleAtFixedRate(new TimerTask() {
+                        @Override
+                        public void run() {
+                            log.debug("Cleaning Connections...");
+                            handler.shutdownConnections(connectorName);
+                        }
+                    }, sessionTimeout * 1000L, sessionTimeout * 1000L);
+                }
+            }
+
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = "[" + connectionName + "]Failed to initiate file connector configuration.";
