@@ -23,6 +23,7 @@ import org.apache.synapse.MessageContext;
 import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.core.SynapseEnvironment;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
+import org.wso2.carbon.connector.connection.SFTPConnectionFactory;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
@@ -70,7 +71,9 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
             ConnectionConfiguration configuration = getConnectionConfigFromContext(messageContext);
 
             ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
-            if (!handler.checkIfConnectionExists(connectorName, tenantSpecificConnectionName)) {
+            if ("SFTP".equalsIgnoreCase(configuration.getProtocol().getName())) {
+                handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName, new SFTPConnectionFactory(configuration), configuration.getConfiguration());
+            } else if (!handler.checkIfConnectionExists(connectorName, tenantSpecificConnectionName)) {
                 FileSystemHandler fileSystemHandler = new FileSystemHandler(configuration);
                 handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName, fileSystemHandler);
             }
@@ -107,8 +110,17 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
                 lookupTemplateParamater(msgContext, Const.FILE_LOCK_SCHEME);
         String maxFailureRetryCount = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.MAX_FAILURE_RETRY_COUNT);
+        String sftpPoolConnectionAgedTimeout = (String) ConnectorUtils.lookupTemplateParamater(msgContext, Const.SFTP_POOL_CONNECTION_AGED_TIMEOUT);
 
         ConnectionConfiguration connectionConfig = new ConnectionConfiguration();
+        if (sftpPoolConnectionAgedTimeout != null) {
+            try {
+                connectionConfig.setPoolConnectionAgedTimeout(Long.parseLong(sftpPoolConnectionAgedTimeout));
+            } catch (NumberFormatException numberFormatException) {
+                log.warn("Ignore setting SFTP_POOL_CONNECTION_AGED_TIMEOUT property. Since the value is not set " +
+                        "properly");
+            }
+        }
         connectionConfig.setConnectionName(connectionName);
         connectionConfig.setProtocol(protocol);
         connectionConfig.setWorkingDir(workingDir);

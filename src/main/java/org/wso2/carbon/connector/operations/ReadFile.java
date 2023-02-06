@@ -40,6 +40,9 @@ import org.apache.synapse.transport.passthru.util.BinaryRelayBuilder;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
+import org.wso2.carbon.connector.core.connection.Connection;
+import org.wso2.carbon.connector.core.connection.ConnectionHandler;
+import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
@@ -94,21 +97,22 @@ public class ReadFile extends AbstractConnector {
         FileOperationResult result;
         FileLockManager fileLockManager = null;
         boolean lockAcquired = false;
-
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
         try {
-
-            String connectionName = Utils.getConnectionName(messageContext);
             Config config = readAndValidateInputs(messageContext);
 
-            FileSystemHandler fileSystemHandler = Utils.getFileSystemHandler(connectionName);
+            fileSystemHandlerConnection = Utils.getFileSystemHandler(connectionName);
             String workingDirRelativePAth = config.path;
-            sourcePath = fileSystemHandler.getBaseDirectoryPath() + config.path;
+            sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + config.path;
 
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             fileObject = fsManager.resolveFile(sourcePath, fso);
 
-            fileLockManager = fileSystemHandler.getFileLockManager();
+            fileLockManager = fileSystemHandlerConnection.getFileLockManager();
 
             if (!fileObject.exists()) {
                 throw new IllegalPathException("File or folder not found: " + sourcePath);
@@ -119,7 +123,7 @@ public class ReadFile extends AbstractConnector {
                 fileObject = selectFileToRead(fileObject, config.filePattern);
                 workingDirRelativePAth = workingDirRelativePAth + Const.FILE_SEPARATOR
                         + fileObject.getName().getBaseName();
-                sourcePath = fileSystemHandler.getBaseDirectoryPath() + workingDirRelativePAth;
+                sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + workingDirRelativePAth;
             }
 
             //lock the file if enabled
@@ -169,7 +173,6 @@ public class ReadFile extends AbstractConnector {
             handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
 
         } finally {
-
             if (fileObject != null) {
                 try {
                     fileObject.close();
@@ -179,7 +182,11 @@ public class ReadFile extends AbstractConnector {
                             + fileObject);
                 }
             }
-
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+                }
+            }
             if (fileLockManager != null && lockAcquired) {
                 fileLockManager.releaseLock(sourcePath);
             }

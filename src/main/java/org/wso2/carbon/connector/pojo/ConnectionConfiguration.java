@@ -20,6 +20,7 @@ package org.wso2.carbon.connector.pojo;
 
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.connector.connection.FileServerProtocol;
+import org.wso2.carbon.connector.core.pool.Configuration;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.utils.Const;
 
@@ -30,6 +31,8 @@ import org.wso2.carbon.connector.utils.Const;
 public class ConnectionConfiguration {
 
     private String connectionName;
+
+    private Configuration configuration;
 
     private FileServerProtocol protocol;
     /**
@@ -49,6 +52,16 @@ public class ConnectionConfiguration {
      */
     private RemoteServerConfig remoteServerConfig;
     private boolean isRemote = false;
+
+    private long poolConnectionAgedTimeout;
+
+    public ConnectionConfiguration() {
+
+        this.configuration = new Configuration();
+        // Set default values
+        this.configuration.setExhaustedAction("WHEN_EXHAUSTED_FAIL");
+        this.configuration.setTestOnBorrow(true);
+    }
 
     public String getConnectionName() {
         return connectionName;
@@ -127,5 +140,83 @@ public class ConnectionConfiguration {
 
     public void setRemoteServerConfig(RemoteServerConfig remoteServerConfig) {
         this.remoteServerConfig = remoteServerConfig;
+    }
+    public int getMaxActiveConnections() {
+
+        return configuration.getMaxActiveConnections();
+    }
+
+    public void setMaxActiveConnections(int maxActiveConnections) {
+
+        this.configuration.setMaxActiveConnections(maxActiveConnections);
+    }
+
+    public int getMaxIdleConnections() {
+
+        return configuration.getMaxIdleConnections();
+    }
+
+    public void setMaxIdleConnections(int maxIdleConnections) {
+
+        this.configuration.setMaxIdleConnections(maxIdleConnections);
+    }
+
+    public long getMaxWaitTime() {
+
+        return configuration.getMaxWaitTime();
+    }
+
+    public void setMaxWaitTime(long maxWaitTime) {
+
+        this.configuration.setMaxWaitTime(maxWaitTime);
+    }
+
+    public long getMinEvictionTime() {
+
+        return configuration.getMinEvictionTime();
+    }
+
+    public void setMinEvictionTime(long minEvictionTime) {
+
+        this.configuration.setMinEvictionTime(minEvictionTime);
+    }
+
+    public long getEvictionCheckInterval() {
+
+        return configuration.getEvictionCheckInterval();
+    }
+
+    public void setEvictionCheckInterval(long evictionCheckInterval) {
+
+        this.configuration.setEvictionCheckInterval(evictionCheckInterval);
+    }
+
+    public String getExhaustedAction() {
+
+        return configuration.getExhaustedAction();
+    }
+
+    public void setExhaustedAction(String exhaustedAction) {
+
+        this.configuration.setExhaustedAction(exhaustedAction);
+    }
+
+    public Configuration getConfiguration() {
+
+        return configuration;
+    }
+
+    public void setConfiguration(Configuration configuration) {
+
+        this.configuration = configuration;
+    }
+
+    public long getPoolConnectionAgedTimeout() {
+        return poolConnectionAgedTimeout;
+    }
+
+    public void setPoolConnectionAgedTimeout(long poolConnectionAgedTimeout) {
+        this.configuration.setPoolConnectionAgedTimeout(poolConnectionAgedTimeout);
+        this.poolConnectionAgedTimeout = poolConnectionAgedTimeout;
     }
 }

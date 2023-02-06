@@ -91,7 +91,6 @@ public class SplitFile extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String sourceFilePath = null;
         FileObject fileToSplit = null;
         String targetDirectoryPath;
@@ -99,10 +98,12 @@ public class SplitFile extends AbstractConnector {
         FileOperationResult result;
 
         FileSplitMode splitMode;
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
 
         try {
-
-            String connectionName = Utils.getConnectionName(messageContext);
             sourceFilePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SOURCE_FILE_PATH_PARAM);
             targetDirectoryPath = (String) ConnectorUtils.
@@ -120,13 +121,13 @@ public class SplitFile extends AbstractConnector {
                 throw new InvalidConfigurationException("Parameter '" + SPLIT_MODE_PARAM + "' is not provided");
             }
 
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
-            sourceFilePath = fileSystemHandler.getBaseDirectoryPath() + sourceFilePath;
-            targetDirectoryPath = fileSystemHandler.getBaseDirectoryPath() + targetDirectoryPath;
+            sourceFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourceFilePath;
+            targetDirectoryPath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetDirectoryPath;
 
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             fileToSplit = fsManager.resolveFile(sourceFilePath, fso);
             targetDir = fsManager.resolveFile(targetDirectoryPath, fso);
 
@@ -212,7 +213,6 @@ public class SplitFile extends AbstractConnector {
             handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
         } finally {
-
             if (fileToSplit != null) {
                 try {
                     fileToSplit.close();
@@ -220,6 +220,12 @@ public class SplitFile extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object while creating directory "
                             + fileToSplit);
+                }
+            }
+
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
         }

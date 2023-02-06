@@ -61,7 +61,6 @@ public class CompressFiles extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String sourceFilePath = null;
         FileObject fileToCompress = null;
         String targetZipFilePath = null;
@@ -69,9 +68,12 @@ public class CompressFiles extends AbstractConnector {
         boolean includeSubDirectories = true;
         FileOperationResult result;
 
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
         try {
 
-            String connectionName = Utils.getConnectionName(messageContext);
             sourceFilePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SOURCE_DIRECTORY_PATH);
             targetZipFilePath = (String) ConnectorUtils.
@@ -87,13 +89,13 @@ public class CompressFiles extends AbstractConnector {
                 includeSubDirectories = Boolean.parseBoolean(includeSubDirectoriesAsStr);
             }
 
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
-            sourceFilePath = fileSystemHandler.getBaseDirectoryPath() + sourceFilePath;
-            targetZipFilePath = fileSystemHandler.getBaseDirectoryPath() + targetZipFilePath;
+            sourceFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourceFilePath;
+            targetZipFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetZipFilePath;
 
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             fileToCompress = fsManager.resolveFile(sourceFilePath, fso);
 
             if (!fileToCompress.exists()) {
@@ -138,6 +140,11 @@ public class CompressFiles extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing folder object while merging files in "
                             + fileToCompress);
+                }
+            }
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
         }

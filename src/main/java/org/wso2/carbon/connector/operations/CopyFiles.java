@@ -62,7 +62,6 @@ public class CopyFiles extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String sourcePath = null;
         String targetPath = null;
         String sourceFilePattern;
@@ -72,14 +71,16 @@ public class CopyFiles extends AbstractConnector {
         FileObject sourceFile = null;
         FileSelector fileSelector;
 
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
         try {
 
-            //get connection
-            String connectionName = Utils.getConnectionName(messageContext);
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
 
             //read inputs
             sourcePath = (String) ConnectorUtils.
@@ -95,8 +96,8 @@ public class CopyFiles extends AbstractConnector {
             renameTo = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, RENAME_TO_PARAM);
 
-            sourcePath = fileSystemHandler.getBaseDirectoryPath() + sourcePath;
-            targetPath = fileSystemHandler.getBaseDirectoryPath() + targetPath;
+            sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourcePath;
+            targetPath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetPath;
 
             if (StringUtils.isNotEmpty(sourceFilePattern)) {
                 fileSelector = new SimpleFileSelector(sourceFilePattern);
@@ -192,6 +193,11 @@ public class CopyFiles extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object"
                             + sourcePath);
+                }
+            }
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
         }

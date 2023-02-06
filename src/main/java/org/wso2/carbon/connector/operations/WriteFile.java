@@ -39,6 +39,7 @@ import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
+import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
@@ -91,25 +92,26 @@ public class WriteFile extends AbstractConnector {
         FileOperationResult result;
         FileLockManager fileLockManager = null;
         boolean lockAcquired = false;
-
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
         try {
 
             Config config = readAndValidateInputs(messageContext);
             targetFilePath = config.targetFilePath;
-
-            String connectionName = Utils.getConnectionName(messageContext);
-            FileSystemHandler fileSystemHandler = Utils.getFileSystemHandler(connectionName);
+            fileSystemHandlerConnection = Utils.getFileSystemHandler(connectionName);
 
             //if compress is enabled we need to resolve a zip file
             targetFilePath = getModifiedFilePathForCompress(targetFilePath, messageContext);
 
-            targetFilePath = fileSystemHandler.getBaseDirectoryPath() + targetFilePath;
+            targetFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetFilePath;
 
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             targetFile = fsManager.resolveFile(targetFilePath, fso);
 
-            fileLockManager = fileSystemHandler.getFileLockManager();
+            fileLockManager = fileSystemHandlerConnection.getFileLockManager();
 
             if (targetFile.isFolder()) {
                 throw new IllegalPathException("Path does not point to a file " + targetFilePath);
@@ -162,7 +164,6 @@ public class WriteFile extends AbstractConnector {
             String errorDetail = ERROR_MESSAGE + targetFilePath;
             handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
         } finally {
-
             if (targetFile != null) {
                 try {
                     targetFile.close();
@@ -170,6 +171,11 @@ public class WriteFile extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing folder object while reading files in "
                             + targetFile);
+                }
+            }
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
 
