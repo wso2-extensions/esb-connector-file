@@ -61,7 +61,6 @@ public class MergeFiles extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String sourceDirectoryPath = null;
         FileObject sourceDir = null;
         String targetFilePath;
@@ -69,10 +68,13 @@ public class MergeFiles extends AbstractConnector {
         FileOperationResult result;
         int numberOfMergedFiles = 0;
         long numberOfTotalBytesWritten = 0;
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
 
         try {
 
-            String connectionName = Utils.getConnectionName(messageContext);
             sourceDirectoryPath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SOURCE_DIRECTORY_PATH_PARAM);
             targetFilePath = (String) ConnectorUtils.
@@ -82,13 +84,13 @@ public class MergeFiles extends AbstractConnector {
             String writeMode = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, WRITE_MODE_PARAM);
 
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
-            sourceDirectoryPath = fileSystemHandler.getBaseDirectoryPath() + sourceDirectoryPath;
-            targetFilePath = fileSystemHandler.getBaseDirectoryPath() + targetFilePath;
+            sourceDirectoryPath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourceDirectoryPath;
+            targetFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetFilePath;
 
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             sourceDir = fsManager.resolveFile(sourceDirectoryPath, fso);
             targetFile = fsManager.resolveFile(targetFilePath, fso);
 
@@ -157,6 +159,11 @@ public class MergeFiles extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing folder object while merging files in "
                             + sourceDir);
+                }
+            }
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
         }

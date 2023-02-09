@@ -56,14 +56,16 @@ public class ExploreZipFile extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String filePath = null;
         FileObject zipFile = null;
         FileOperationResult result;
 
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
         try {
 
-            String connectionName = Utils.getConnectionName(messageContext);
             filePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, ZIP_FILE_PATH);
 
@@ -71,12 +73,12 @@ public class ExploreZipFile extends AbstractConnector {
                 throw new InvalidConfigurationException("Parameter '" + ZIP_FILE_PATH + "' is not provided ");
             }
 
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
-            filePath = fileSystemHandler.getBaseDirectoryPath() + filePath;
+            filePath = fileSystemHandlerConnection.getBaseDirectoryPath() + filePath;
 
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             zipFile = fsManager.resolveFile(filePath, fso);
 
             if (!zipFile.exists()) {
@@ -134,6 +136,11 @@ public class ExploreZipFile extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing zip file object while zip file explore in "
                             + zipFile);
+                }
+            }
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
         }

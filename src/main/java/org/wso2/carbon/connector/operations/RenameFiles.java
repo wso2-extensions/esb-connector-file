@@ -49,16 +49,18 @@ public class RenameFiles extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String fileOrFolderPath = null;
         String newName;
         FileObject fileToRename = null;
         boolean overwrite;
         FileOperationResult result;
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
         try {
 
-            String connectionName = Utils.getConnectionName(messageContext);
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
             overwrite = Boolean.parseBoolean((String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, OVERWRITE_PARAM));
@@ -66,9 +68,9 @@ public class RenameFiles extends AbstractConnector {
                     lookupTemplateParamater(messageContext, RENAME_TO_PARAM);
             fileOrFolderPath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, Const.FILE_OR_DIRECTORY_PATH);
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
-            fileOrFolderPath = fileSystemHandler.getBaseDirectoryPath() + fileOrFolderPath;
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+            fileOrFolderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + fileOrFolderPath;
             fileToRename = fsManager.resolveFile(fileOrFolderPath, fso);
 
             //path after rename
@@ -136,6 +138,12 @@ public class RenameFiles extends AbstractConnector {
                             + fileToRename);
                 }
             }
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+                }
+            }
+
         }
     }
 
