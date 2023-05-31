@@ -378,8 +378,7 @@ public class WriteFile extends AbstractConnector {
                 // Write binary content decoded from a base64 string
                 byte[] decoded = Base64.getDecoder().decode(config.contentToWrite);
                 out.write(decoded);
-            }
-            if (StringUtils.isNotEmpty(config.encoding)) {
+            } else if (StringUtils.isNotEmpty(config.encoding)) {
                 IOUtils.write(config.contentToWrite, out, config.encoding);
             } else {
                 IOUtils.write(config.contentToWrite, out, Const.DEFAULT_ENCODING);
