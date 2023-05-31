@@ -45,19 +45,22 @@ public class CreateDirectory extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String folderPath = null;
         FileObject folderToCreate = null;
+
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
         try {
 
-            String connectionName = Utils.getConnectionName(messageContext);
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
             folderPath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, Const.DIRECTORY_PATH);
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
-            folderPath = fileSystemHandler.getBaseDirectoryPath() + folderPath;
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+            folderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPath;
             folderToCreate = fsManager.resolveFile(folderPath, fso);
             //create folder if it doesn't exist
             folderToCreate.createFolder();
@@ -85,6 +88,11 @@ public class CreateDirectory extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object while creating directory "
                             + folderToCreate);
+                }
+            }
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
         }

@@ -54,14 +54,16 @@ public class CheckFileExist extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String filePath = null;
         FileObject fileObject = null;
         FileOperationResult result;
 
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
         try {
 
-            String connectionName = Utils.getConnectionName(messageContext);
             filePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, PATH_PARAM);
 
@@ -69,12 +71,12 @@ public class CheckFileExist extends AbstractConnector {
                 throw new InvalidConfigurationException("Parameter '" + PATH_PARAM + "' is not provided ");
             }
 
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
-            filePath = fileSystemHandler.getBaseDirectoryPath() + filePath;
+            filePath = fileSystemHandlerConnection.getBaseDirectoryPath() + filePath;
 
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             fileObject = fsManager.resolveFile(filePath, fso);
             /*
                 Temporarily reverting this fix with expensive file system resolve calls.
@@ -135,6 +137,11 @@ public class CheckFileExist extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing folder object while merging files in "
                             + fileObject);
+                }
+            }
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
         }

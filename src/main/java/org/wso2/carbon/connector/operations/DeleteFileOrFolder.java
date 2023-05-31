@@ -52,24 +52,27 @@ public class DeleteFileOrFolder extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String fileOrFolderPath = null;
         FileObject fileObjectToDelete = null;
         String fileMatchingPattern;
         boolean isOperationSuccessful;
         FileOperationResult result = null;
+
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
         try {
 
-            String connectionName = Utils.getConnectionName(messageContext);
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
             fileMatchingPattern = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, MATCHING_PATTERN_PARAM);
             fileOrFolderPath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, Const.FILE_OR_DIRECTORY_PATH);
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
-            fileOrFolderPath = fileSystemHandler.getBaseDirectoryPath() + fileOrFolderPath;
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+            fileOrFolderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + fileOrFolderPath;
             fileObjectToDelete = fsManager.resolveFile(fileOrFolderPath, fso);
 
             //Deletes this file. Does nothing if this file does not exist
@@ -126,6 +129,12 @@ public class DeleteFileOrFolder extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object while creating directory "
                             + fileObjectToDelete);
+                }
+            }
+
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
         }

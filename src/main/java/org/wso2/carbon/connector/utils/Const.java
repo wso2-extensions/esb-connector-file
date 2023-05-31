@@ -56,6 +56,7 @@ public final class Const {
 
     public static final String SFTP_CONNECTION_TIMEOUT = "sftpConnectionTimeout";
     public static final String SFTP_SESSION_TIMEOUT = "sftpSessionTimeout";
+    public static final String SFTP_POOL_CONNECTION_AGED_TIMEOUT = "sftpPoolConnectionAgedTimeout";
     public static final String STRICT_HOST_KEY_CHECKING = "strictHostKeyChecking";
     public static final String PRIVATE_KEY_FILE_PATH = "privateKeyFilePath";
     public static final String PRIVATE_KEY_PASSWORD = "privateKeyPassword";

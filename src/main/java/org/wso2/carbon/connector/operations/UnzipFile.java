@@ -55,29 +55,30 @@ public class UnzipFile extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String filePath = null;
         FileObject compressedFile = null;
         String folderPathToExtract;
         FileObject targetFolder;
         FileOperationResult result;
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
 
         try {
-
-            String connectionName = Utils.getConnectionName(messageContext);
             filePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SOURCE_FILE_PATH_PARAM);
             folderPathToExtract = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, TARGET_DIRECTORY_PARAM);
 
 
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
-            filePath = fileSystemHandler.getBaseDirectoryPath() + filePath;
-            folderPathToExtract = fileSystemHandler.getBaseDirectoryPath() + folderPathToExtract;
+            filePath = fileSystemHandlerConnection.getBaseDirectoryPath() + filePath;
+            folderPathToExtract = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPathToExtract;
 
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             compressedFile = fsManager.resolveFile(filePath, fso);
             targetFolder = fsManager.resolveFile(folderPathToExtract, fso);
 
@@ -112,7 +113,6 @@ public class UnzipFile extends AbstractConnector {
             handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
 
         } finally {
-
             if (compressedFile != null) {
                 try {
                     compressedFile.close();
@@ -120,6 +120,12 @@ public class UnzipFile extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object while decompressing the file. "
                             + compressedFile);
+                }
+            }
+
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
         }

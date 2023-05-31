@@ -47,6 +47,7 @@
 	<parameter name="privateKeyFilePath" description="path to private key file"/>
 	<parameter name="privateKeyPassword" description="Passphrase of the private key"/>
 	<parameter name="setAvoidPermission" description="Sets whether to avoid file permission check."/>
+	<parameter name="sftpPoolConnectionAgedTimeout" description="Interval to close connections in the connection pool in seconds"/>
 	<sequence>
 		<property name="name" expression="$func:name"/>
 		<class name="org.wso2.carbon.connector.operations.FileConfig" />

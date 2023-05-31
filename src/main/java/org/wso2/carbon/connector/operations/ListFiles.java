@@ -78,21 +78,23 @@ public class ListFiles extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String folderPath = null;
         String fileMatchingPattern;
         String responseFormat;
         boolean recursive;
         FileObject folder = null;
 
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
+
         try {
 
-            //get connection
-            String connectionName = Utils.getConnectionName(messageContext);
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
-            FileSystemManager fsManager = fileSystemHandler.getFsManager();
-            FileSystemOptions fso = fileSystemHandler.getFsOptions();
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
 
             //read inputs
             folderPath = (String) ConnectorUtils.
@@ -114,7 +116,7 @@ public class ListFiles extends AbstractConnector {
             String sortingAttribute = Utils.lookUpStringParam(messageContext, SORT_ATTRIB_PARAM, DEFAULT_SORT_ATTRIB);
             String sortingOrder  = Utils.lookUpStringParam(messageContext, SORT_ORDER_PARAM, DEFAULT_SORT_ORDER);
 
-            folderPath = fileSystemHandler.getBaseDirectoryPath() + folderPath;
+            folderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPath;
             folder = fsManager.resolveFile(folderPath, fso);
 
             if (folder.exists()) {
@@ -160,6 +162,11 @@ public class ListFiles extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object while creating directory "
                             + folder);
+                }
+            }
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
         }

@@ -65,7 +65,6 @@ public class MoveFiles extends AbstractConnector {
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
 
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String sourcePath = null;
         String targetPath = null;
         boolean createNonExistingParents;
@@ -74,15 +73,16 @@ public class MoveFiles extends AbstractConnector {
         String renameTo;
         String filePattern;
         FileObject sourceFile = null;
-
+        FileSystemHandler fileSystemHandlerConnection = null;
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        String connectionName = Utils.getConnectionName(messageContext);
+        String connectorName = Const.CONNECTOR_NAME;
         try {
 
-            //get connection
-            String connectionName = Utils.getConnectionName(messageContext);
-            FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
+            fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
-            fsManager = fileSystemHandler.getFsManager();
-            fso = fileSystemHandler.getFsOptions();
+            fsManager = fileSystemHandlerConnection.getFsManager();
+            fso = fileSystemHandlerConnection.getFsOptions();
 
             //read inputs
             sourcePath = (String) ConnectorUtils.
@@ -99,8 +99,8 @@ public class MoveFiles extends AbstractConnector {
                     lookupTemplateParamater(messageContext, RENAME_TO_PARAM);
             filePattern = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, FILE_PATTERN_PARAM);
-            sourcePath = fileSystemHandler.getBaseDirectoryPath() + sourcePath;
-            targetPath = fileSystemHandler.getBaseDirectoryPath() + targetPath;
+            sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourcePath;
+            targetPath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetPath;
 
             //execute copy
             sourceFile = fsManager.resolveFile(sourcePath, fso);
@@ -190,6 +190,11 @@ public class MoveFiles extends AbstractConnector {
                     log.error(Const.CONNECTOR_NAME
                             + ":Error while closing file object"
                             + sourcePath);
+                }
+            }
+            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                if (fileSystemHandlerConnection != null) {
+                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
         }
