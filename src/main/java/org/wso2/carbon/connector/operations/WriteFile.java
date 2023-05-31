@@ -377,7 +377,7 @@ public class WriteFile extends AbstractConnector {
                     IOUtils.write(config.contentToWrite, out, config.encoding);
                 } else {
                     IOUtils.write(config.contentToWrite, out, Const.DEFAULT_ENCODING);
-                }
+                } 
             }
             return out.getByteCount();
         } finally {
