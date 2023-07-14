@@ -128,6 +128,17 @@
           {
             "type": "attribute",
             "value": {
+              "name": "retryCount",
+              "displayName": "retryCount for FTP Connection",
+              "inputType": "stringOrExpression",
+              "defaultValue": "5",
+              "required": "no",
+              "helpTip":"Number of times to retry for FTP Connection"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
               "name": "ftpSocketTimeout",
               "displayName": "FTP Socket Timeout",
               "inputType": "stringOrExpression",

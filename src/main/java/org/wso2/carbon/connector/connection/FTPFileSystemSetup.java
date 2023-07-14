@@ -36,6 +36,7 @@ public class FTPFileSystemSetup implements ProtocolBasedFileSystemSetup {
         FtpFileSystemConfigBuilder ftpConfigBuilder = FtpFileSystemConfigBuilder.getInstance();
         ftpConfigBuilder.setPassiveMode(fso, ftpConnectionConfig.isPassive());
         ftpConfigBuilder.setConnectTimeout(fso, ftpConnectionConfig.getConnectionTimeout());
+        ftpConfigBuilder.setRetryCount(fso, fsConfig.getRetryCount());
         ftpConfigBuilder.setSoTimeout(fso, ftpConnectionConfig.getSocketTimeout());
         ftpConfigBuilder.setUserDirIsRoot(fso, ftpConnectionConfig.isUserDirIsRoot());
 
