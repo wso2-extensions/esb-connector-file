@@ -33,6 +33,7 @@
 	<parameter name="isPassive" description="True if to enter into passive mode"/>
 	<parameter name="ftpConnectionTimeout" description="Timeout in milisec for initial control connection"/>
 	<parameter name="ftpSocketTimeout" description="Socket timeout for FTP client"/>
+	<parameter name="retryCount" description="Retry count for FTP client"/>
 	<!--FTPS specific params-->
 	<parameter name="keyStorePath" description="Path to keyStore"/>
 	<parameter name="keyStorePassword" description="KeyStore password"/>

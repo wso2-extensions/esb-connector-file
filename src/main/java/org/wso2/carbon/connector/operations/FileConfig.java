@@ -112,6 +112,9 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
                 lookupTemplateParamater(msgContext, Const.MAX_FAILURE_RETRY_COUNT);
         String sftpPoolConnectionAgedTimeout = (String) ConnectorUtils.lookupTemplateParamater(msgContext, Const.SFTP_POOL_CONNECTION_AGED_TIMEOUT);
 
+        String retryCount = (String) ConnectorUtils.
+                lookupTemplateParamater(msgContext, Const.RETRY_COUNT);
+
         ConnectionConfiguration connectionConfig = new ConnectionConfiguration();
         if (sftpPoolConnectionAgedTimeout != null) {
             try {
@@ -119,6 +122,13 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
             } catch (NumberFormatException numberFormatException) {
                 log.warn("Ignore setting SFTP_POOL_CONNECTION_AGED_TIMEOUT property. Since the value is not set " +
                         "properly");
+            }
+        }
+        if (retryCount != null) {
+            try {
+                connectionConfig.setRetryCount(Integer.parseInt(retryCount));
+            } catch (NumberFormatException numberFormatException) {
+                log.warn("Ignore setting RETRY_COUNT property. Since the value is not set properly");
             }
         }
         connectionConfig.setConnectionName(connectionName);

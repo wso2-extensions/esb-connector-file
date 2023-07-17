@@ -219,4 +219,13 @@ public class ConnectionConfiguration {
         this.configuration.setPoolConnectionAgedTimeout(poolConnectionAgedTimeout);
         this.poolConnectionAgedTimeout = poolConnectionAgedTimeout;
     }
+
+    public int getRetryCount() {
+        return configuration.getRetryCount();
+    }
+
+    public void setRetryCount(int retryCount) {
+        this.configuration.setRetryCount(retryCount);
+    }
+
 }
