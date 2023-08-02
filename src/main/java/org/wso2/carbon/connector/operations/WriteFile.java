@@ -438,14 +438,21 @@ public class WriteFile extends AbstractConnector {
             reader = new BufferedReader(new InputStreamReader(targetFile.getContent().getInputStream()));
             List<String> lines = reader.lines().collect(Collectors.toList());
             if (config.appendPosition <= lines.size()) {
-                lines.add(config.appendPosition - 1, config.contentToWrite);
+                String contentToWrite = lines.get(config.appendPosition - 1) + config.contentToWrite;
+                lines.set(config.appendPosition - 1, contentToWrite);
             } else {
                 if (config.appendPosition != Integer.MAX_VALUE) {
                     log.warn("FileConnector:write - Append position is greater than the existing line count of file "
                             + targetFile.getName().getBaseName()
                             + ". Hence appending the content at EOF.");
                 }
-                lines.add(config.contentToWrite);
+                if (lines.size() > 0) {
+                    String contentToWrite = lines.get(lines.size() - 1) + config.contentToWrite;
+                    lines.set(lines.size() - 1, contentToWrite);
+                } else {
+                    // handle empty files
+                    lines.add(config.contentToWrite);
+                }
             }
 
             out = new CountingOutputStream(targetFile.getContent().getOutputStream());
