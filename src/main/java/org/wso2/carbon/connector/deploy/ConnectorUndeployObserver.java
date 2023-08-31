@@ -43,7 +43,8 @@ public class ConnectorUndeployObserver extends AbstractSynapseObserver {
     @Override
     public void synapseLibraryRemoved(Library library) {
         String libraryPath = library.getFileName();
-        String libraryName = libraryPath.substring(libraryPath.lastIndexOf(File.separator));
+        // No need to use File.separator here since libraryPath we are getting from synapse is formatted with "/"
+        String libraryName = libraryPath.substring(libraryPath.lastIndexOf("/"));
         if (libraryName.contains(Const.CONNECTOR_LIBRARY_NAME)
                 && library.getPackage().equals(Const.CONNECTOR_LIBRARY_PACKAGE_TYPE)) {
             if (log.isDebugEnabled()) {
