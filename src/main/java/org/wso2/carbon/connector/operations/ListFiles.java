@@ -294,7 +294,7 @@ public class ListFiles extends AbstractConnector {
         if (!StringUtils.isEmpty(pattern)) {
             FileObject[] children = folder.getChildren();
             for (FileObject child : children) {
-                if (child.isFolder()) {
+                if (child.isFolder() && !matchingFilesAndFolders.contains(child)) {
                     matchingFilesAndFolders.add(child);
                 }
             }
