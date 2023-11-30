@@ -76,8 +76,8 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
                     handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName,
                             new SFTPConnectionFactory(configuration), configuration.getConfiguration(), messageContext);
                 } catch (NoSuchMethodError e) {
-                    //Running in a version of Mediation that does not support local entry undeploy callback.
-                    // Hence Ignoring
+                    handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName,
+                            new SFTPConnectionFactory(configuration), configuration.getConfiguration());
                 }
             } else if (!handler.checkIfConnectionExists(connectorName, tenantSpecificConnectionName)) {
                 FileSystemHandler fileSystemHandler = new FileSystemHandler(configuration);
@@ -85,8 +85,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
                     handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName, fileSystemHandler
                             , messageContext);
                 } catch (NoSuchMethodError e) {
-                    //Running in a version of Mediation that does not support local entry undeploy callback.
-                    // Hence Ignoring
+                    handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName, fileSystemHandler);
                 }
             }
         } catch (InvalidConfigurationException e) {
