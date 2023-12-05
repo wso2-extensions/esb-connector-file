@@ -22,7 +22,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.carbon.esb.connector</groupId>
     <artifactId>org.wso2.carbon.esb.connector.file</artifactId>
-    <version>4.0.19</version>
+    <version>4.0.20</version>
     <packaging>jar</packaging>
     <name>WSO2 Carbon - Connector For esb-connector-file</name>
     <url>http://wso2.org</url>
