@@ -40,9 +40,7 @@ import org.apache.synapse.transport.passthru.util.BinaryRelayBuilder;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.Connection;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
@@ -63,6 +61,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
+import java.util.Base64;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -86,6 +85,7 @@ public class ReadFile extends AbstractConnector {
     private static final String END_LINE_NUM_PARAM = "endLineNum";
     private static final String LINE_NUM_PARAM = "lineNum";
     private static final String CHARSET_PARAM = "charset";
+    private static final String IS_CONTENT_AS_BASE64_PARAM = "isContentInBase64";
     private static final String OPERATION_NAME = "read";
     private static final String ERROR_MESSAGE = "Error while performing file:read for file/directory ";
 
@@ -207,6 +207,7 @@ public class ReadFile extends AbstractConnector {
         int endLineNum;
         int lineNum;
         String charSet;
+        boolean isContentAsBase64 = false;
     }
 
     private Config readAndValidateInputs(MessageContext msgCtx) throws InvalidConfigurationException {
@@ -237,9 +238,15 @@ public class ReadFile extends AbstractConnector {
                 parseInt(Utils.lookUpStringParam(msgCtx, LINE_NUM_PARAM, "0"));
         config.charSet = Utils.
                 lookUpStringParam(msgCtx, CHARSET_PARAM, Const.EMPTY_STRING);
+        config.isContentAsBase64 = Utils.
+                lookUpBooleanParam(msgCtx, IS_CONTENT_AS_BASE64_PARAM, false);
 
         if (config.includeResultTo.equals(Const.MESSAGE_PROPERTY)
                 && StringUtils.isEmpty(config.resultPropertyName)) {
+            throw new InvalidConfigurationException("Parameter resultPropertyName is not provided");
+        }
+        if ((config.isContentAsBase64 && config.includeResultTo.equals(Const.MESSAGE_BODY))
+                || (config.isContentAsBase64 && StringUtils.isEmpty(config.resultPropertyName))) {
             throw new InvalidConfigurationException("Parameter resultPropertyName is not provided");
         }
 
@@ -313,6 +320,12 @@ public class ReadFile extends AbstractConnector {
         if (config.enableStreaming) {
             //here underlying stream to the file content is not closed. We keep it open
             setStreamToSynapse(file, config.resultPropertyName, msgCtx, config.contentType);
+        } else if (config.isContentAsBase64) {
+            try (InputStream inputStream = file.getContent().getInputStream()) {
+                // Read the bytes from the InputStream
+                String base64EncodedContent = Utils.readStream(inputStream);
+                buildSynapseMessage(base64EncodedContent, config.resultPropertyName, msgCtx);
+            }
         } else {
             //this will close input stream automatically after building message
             try (InputStream inputStream = readFile(file, config)) {
@@ -580,6 +593,30 @@ public class ReadFile extends AbstractConnector {
             }
         } catch (AxisFault e) {
             throw new FileOperationException("Axis2 error while building message from Stream", e);
+        } catch (OMException e) {
+            throw new FileOperationException("Error while building message from Stream", e);
+        }
+    }
+
+    /**
+     * Build synapse message using string content.
+     *
+     * @param content             Base64 encoded file content
+     * @param contentPropertyName Property name to set content
+     * @param msgCtx              Message context
+     * @throws FileOperationException In case of building the message
+     */
+    private void buildSynapseMessage(String content, String contentPropertyName, MessageContext msgCtx)
+            throws FileOperationException {
+        try {
+            if (StringUtils.isNotEmpty(contentPropertyName)) {
+                msgCtx.setProperty(contentPropertyName, content);
+            } else {
+                FileOperationResult result = new FileOperationResult(
+                        OPERATION_NAME,
+                        true);
+                Utils.setResultAsPayload(msgCtx, result);
+            }
         } catch (OMException e) {
             throw new FileOperationException("Error while building message from Stream", e);
         }

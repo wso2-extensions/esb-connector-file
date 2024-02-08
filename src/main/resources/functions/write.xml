@@ -30,6 +30,7 @@
     <parameter name="includeResultTo" description="Specify where to place operation result."/>
     <parameter name="resultPropertyName" description="Name of property to add operation result."/>
     <parameter name="updateLastModified" description="Whether to update the last modified timestamp."/>
+    <parameter name="isContentInBase64" description="Whether the content has to be write from a byte stream."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.WriteFile" />
     </sequence>
