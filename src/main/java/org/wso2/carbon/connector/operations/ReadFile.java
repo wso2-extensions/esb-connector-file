@@ -207,7 +207,6 @@ public class ReadFile extends AbstractConnector {
         int endLineNum;
         int lineNum;
         String charSet;
-        boolean isContentAsBase64 = false;
     }
 
     private Config readAndValidateInputs(MessageContext msgCtx) throws InvalidConfigurationException {
@@ -238,15 +237,9 @@ public class ReadFile extends AbstractConnector {
                 parseInt(Utils.lookUpStringParam(msgCtx, LINE_NUM_PARAM, "0"));
         config.charSet = Utils.
                 lookUpStringParam(msgCtx, CHARSET_PARAM, Const.EMPTY_STRING);
-        config.isContentAsBase64 = Utils.
-                lookUpBooleanParam(msgCtx, IS_CONTENT_AS_BASE64_PARAM, false);
 
         if (config.includeResultTo.equals(Const.MESSAGE_PROPERTY)
                 && StringUtils.isEmpty(config.resultPropertyName)) {
-            throw new InvalidConfigurationException("Parameter resultPropertyName is not provided");
-        }
-        if ((config.isContentAsBase64 && config.includeResultTo.equals(Const.MESSAGE_BODY))
-                || (config.isContentAsBase64 && StringUtils.isEmpty(config.resultPropertyName))) {
             throw new InvalidConfigurationException("Parameter resultPropertyName is not provided");
         }
 
@@ -320,7 +313,7 @@ public class ReadFile extends AbstractConnector {
         if (config.enableStreaming) {
             //here underlying stream to the file content is not closed. We keep it open
             setStreamToSynapse(file, config.resultPropertyName, msgCtx, config.contentType);
-        } else if (config.isContentAsBase64) {
+        } else if (Objects.equals(config.contentType, Const.CONTENT_TYPE_BINARY)) {
             try (InputStream inputStream = file.getContent().getInputStream()) {
                 // Read the bytes from the InputStream
                 String base64EncodedContent = Utils.readStream(inputStream);

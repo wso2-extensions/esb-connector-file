@@ -81,7 +81,6 @@ public class WriteFile extends AbstractConnector {
     private static final String APPEND_NEW_LINE_PARAM = "appendNewLine";
     private static final String ENABLE_STREAMING_PARAM = "enableStreaming";
     private static final String APPEND_POSITION_PARAM = "appendPosition";
-    private static final String IS_CONTENT_AS_BASE64_PARAM = "isContentInBase64";
     private static final String OPERATION_NAME = "write";
     private static final String ERROR_MESSAGE = "Error while performing file:write for file ";
 
@@ -205,7 +204,6 @@ public class WriteFile extends AbstractConnector {
         config.mimeType = Utils.lookUpStringParam(msgCtx, MIME_TYPE_PARAM, Const.EMPTY_STRING);
         config.appendNewLine = Utils.lookUpBooleanParam(msgCtx, APPEND_NEW_LINE_PARAM, false);
         config.enableStreaming = Utils.lookUpBooleanParam(msgCtx, ENABLE_STREAMING_PARAM, false);
-        config.isContentAsBase64 = Utils.lookUpBooleanParam(msgCtx, IS_CONTENT_AS_BASE64_PARAM, false);
         String appendPosition = Utils.lookUpStringParam(msgCtx, APPEND_POSITION_PARAM, String.valueOf(Integer.MAX_VALUE));
         config.appendPosition = Integer.parseInt(appendPosition);
 
@@ -231,7 +229,6 @@ public class WriteFile extends AbstractConnector {
         boolean enableStreaming = false;
         int appendPosition = Integer.MAX_VALUE;
         boolean updateLastModified = true;
-        boolean isContentAsBase64 = false;
     }
 
     /**
@@ -309,7 +306,7 @@ public class WriteFile extends AbstractConnector {
         boolean contentToWriteIsProvided = false;
         if (StringUtils.isNotEmpty(config.contentToWrite)) {
             contentToWriteIsProvided = true;
-            if (config.appendNewLine && !config.isContentAsBase64) {
+            if (config.appendNewLine) {
                 config.contentToWrite = config.contentToWrite + Const.NEW_LINE;
             }
         }
@@ -321,35 +318,25 @@ public class WriteFile extends AbstractConnector {
                             + targetFile.getURL());
                 } else {
                     targetFile.createFile();
-                    if (config.isContentAsBase64) {
-                        writtenBytesCount = performContentWriteAsStream(targetFile, config);
-                    } else {
-                        if (contentToWriteIsProvided) {
-                            writtenBytesCount = performContentWrite(targetFile, config);
-                        } else {
-                            writtenBytesCount = performBodyWrite(targetFile, msgCtx, false, config);
-                        }
-                    }
-                }
-                break;
-            case OVERWRITE:
-                targetFile.createFile();
-                if (config.isContentAsBase64) {
-                    writtenBytesCount = performContentWriteAsStream(targetFile, config);
-                } else {
                     if (contentToWriteIsProvided) {
                         writtenBytesCount = performContentWrite(targetFile, config);
                     } else {
                         writtenBytesCount = performBodyWrite(targetFile, msgCtx, false, config);
                     }
                 }
+
+                break;
+            case OVERWRITE:
+                targetFile.createFile();
+                if (contentToWriteIsProvided) {
+                    writtenBytesCount = performContentWrite(targetFile, config);
+                } else {
+                    writtenBytesCount = performBodyWrite(targetFile, msgCtx, false, config);
+                }
                 break;
             case APPEND:
                 if (config.appendPosition <= 0) {
                     throw new FileOperationException("Invalid file append position. Expecting a positive value");
-                }
-                if (config.isContentAsBase64) {
-                    throw new FileOperationException("Cannot perform append as a base64 encoded stream on a file");
                 }
                 if (!targetFile.exists()) {
                     throw new IllegalPathException("File to append is not found: " + targetFile.getURL());
@@ -398,32 +385,6 @@ public class WriteFile extends AbstractConnector {
             } else {
                 IOUtils.write(config.contentToWrite, out, Const.DEFAULT_ENCODING);
             }
-            return out.getByteCount();
-        } finally {
-            try {
-                if (out != null) {
-                    out.close();
-                }
-            } catch (IOException e) {
-                log.error("FileConnector:write - Error while closing OutputStream: "
-                        + targetFile.getName().getBaseName(), e);
-            }
-        }
-    }
-
-    private long performContentWriteAsStream(FileObject targetFile, Config config) throws IOException {
-        CountingOutputStream out = null;
-        try {
-            if (config.compress) {
-                ZipEntry zipEntry = new ZipEntry(config.fileNameWithExtension);
-                ZipOutputStream zipOutputStream = new ZipOutputStream(targetFile.getContent().getOutputStream());
-                zipOutputStream.putNextEntry(zipEntry);
-                out = new CountingOutputStream(zipOutputStream);
-            } else {
-                out = new CountingOutputStream(targetFile.getContent().getOutputStream());
-            }
-            byte [] decodedContent = Base64.getDecoder().decode(config.contentToWrite);
-            out.write(decodedContent);
             return out.getByteCount();
         } finally {
             try {

@@ -16,7 +16,7 @@
   ~ under the License.
   -->
 
-<template xmlns="http://ws.apache.org/ns/synapse" name="fetchContent">
+<template xmlns="http://ws.apache.org/ns/synapse" name="fetchDirectoryContent">
     <parameter name="directoryPath" description="The path to the directory to list files"/>
     <parameter name="matchingPattern" description="Pattern to match when listing files"/>
     <parameter name="recursive" description="List files in sub-directories"/>
