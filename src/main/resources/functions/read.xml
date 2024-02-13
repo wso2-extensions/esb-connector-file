@@ -29,7 +29,6 @@
     <parameter name="resultPropertyName" description="Name of property to add operation result."/>
     <parameter name="enableStreaming" description="Read the file in streaming manner. No message interpretation"/>
     <parameter name="enableLock" description="Whether to lock the file when reading"/>
-    <parameter name="isContentInBase64" description="Whether the content has to be read to a byte stream."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.ReadFile" />
     </sequence>
