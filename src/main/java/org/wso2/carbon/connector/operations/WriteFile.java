@@ -324,7 +324,6 @@ public class WriteFile extends AbstractConnector {
                         writtenBytesCount = performBodyWrite(targetFile, msgCtx, false, config);
                     }
                 }
-
                 break;
             case OVERWRITE:
                 targetFile.createFile();
