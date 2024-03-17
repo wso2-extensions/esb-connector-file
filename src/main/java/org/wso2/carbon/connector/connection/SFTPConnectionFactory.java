@@ -17,6 +17,9 @@
  */
 package org.wso2.carbon.connector.connection;
 
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemManager;
+import org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.carbon.connector.core.pool.ConnectionFactory;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 
@@ -38,7 +41,21 @@ public class SFTPConnectionFactory implements ConnectionFactory  {
 
     @Override
     public boolean validateObject(Object connection) {
-        return true;
+        try {
+            FileSystemHandler fileSystemHandlerConnection = (FileSystemHandler) connection;
+            String filePath = fileSystemHandlerConnection.getBaseDirectoryPath();
+            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+
+            // Use try-with-resources statement for the FileObject to ensure it's properly closed
+            try (FileObject fileObject = fsManager.resolveFile(filePath, fso)) {
+                // Attempt to perform a simple operation on the root directory.
+                // Checking for existence is a minimal, non-intrusive operation.
+                return fileObject.exists(); // This throws an exception if the connection is not valid
+            }
+        } catch (Throwable e) {
+            return false;
+        }
     }
 
     @Override

@@ -55,7 +55,7 @@ public class SFTPConnectionConfig extends RemoteServerConfig {
         this.strictHostKeyChecking = false;
         this.connectionTimeout = 100000;
         this.sessionTimeout = 150000;
-        this.setAvoidPermission = "false";
+        this.setAvoidPermission = "true";
     }
 
     public int getConnectionTimeout() {

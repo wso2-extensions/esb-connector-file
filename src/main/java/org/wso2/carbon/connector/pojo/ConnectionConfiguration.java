@@ -19,8 +19,10 @@
 package org.wso2.carbon.connector.pojo;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileServerProtocol;
 import org.wso2.carbon.connector.core.pool.Configuration;
+import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.utils.Const;
 
@@ -55,11 +57,11 @@ public class ConnectionConfiguration {
 
     private long poolConnectionAgedTimeout;
 
-    public ConnectionConfiguration() {
+    public ConnectionConfiguration(MessageContext messageContext) {
 
-        this.configuration = new Configuration();
+        this.configuration = ConnectorUtils.getPoolConfiguration(messageContext);
         // Set default values
-        this.configuration.setExhaustedAction("WHEN_EXHAUSTED_FAIL");
+        this.configuration.setExhaustedAction("WHEN_EXHAUSTED_BLOCK");
         this.configuration.setTestOnBorrow(true);
     }
 

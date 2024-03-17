@@ -126,7 +126,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
         String retryCount = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.RETRY_COUNT);
 
-        ConnectionConfiguration connectionConfig = new ConnectionConfiguration();
+        ConnectionConfiguration connectionConfig = new ConnectionConfiguration(msgContext);
         if (sftpPoolConnectionAgedTimeout != null) {
             try {
                 connectionConfig.setPoolConnectionAgedTimeout(Long.parseLong(sftpPoolConnectionAgedTimeout));

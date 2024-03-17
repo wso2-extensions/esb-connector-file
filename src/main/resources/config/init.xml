@@ -49,6 +49,12 @@
 	<parameter name="privateKeyPassword" description="Passphrase of the private key"/>
 	<parameter name="setAvoidPermission" description="Sets whether to avoid file permission check."/>
 	<parameter name="sftpPoolConnectionAgedTimeout" description="Interval to close connections in the connection pool in seconds"/>
+	<parameter name="maxActiveConnections" description="The maximum number of objects (including both idle and active/borrowed) that can exist within the pool at the same time."/>
+	<parameter name="maxIdleConnections" description="The maximum number of objects that can remain idle in the pool, awaiting to be borrowed. Excess idle objects may be removed"/>
+	<parameter name="maxWaitTime" description="The maximum amount of time that the borrowObject() method should block before throwing an exception when the pool is exhausted and no objects are available"/>
+	<parameter name="evictionCheckInterval" description="The time interval between runs of the idle object evictor thread"/>
+	<parameter name="minEvictionTime" description="The minimum amount of time an object must sit idle in the pool before it is eligible for eviction by the idle object evictor "/>
+	<parameter name="exhaustedAction" description="Determines the action to take when the borrowObject() method is called, but the pool is exhausted"/>
 	<sequence>
 		<property name="name" expression="$func:name"/>
 		<class name="org.wso2.carbon.connector.operations.FileConfig" />
