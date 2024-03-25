@@ -75,5 +75,9 @@
             <file>write.xml</file>
             <description>Create a file or write content to a file.</description>
         </component>
+        <component name="fetchContent" >
+            <file>fetchDirectoryContent.xml</file>
+            <description>Fetch file content in a folder in to list of base64 encoded stream.</description>
+        </component>
     </subComponents>
 </component>

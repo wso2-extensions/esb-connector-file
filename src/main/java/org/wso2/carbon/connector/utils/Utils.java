@@ -36,6 +36,10 @@ import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Base64;
 import java.util.regex.Matcher;
 
 import javax.xml.stream.XMLStreamException;
@@ -200,6 +204,22 @@ public class Utils {
             return defaultVal;
         } else {
             return value;
+        }
+    }
+
+    public static String readStream(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream byteArrayOutputStream = null;
+        try {
+            byteArrayOutputStream = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = inputStream.read(buffer)) != -1) {
+                byteArrayOutputStream.write(buffer, 0, len);
+            }
+            byte[] fileInBytes = byteArrayOutputStream.toByteArray();
+            return Base64.getEncoder().encodeToString(fileInBytes);
+        } finally {
+            byteArrayOutputStream.close();
         }
     }
 
