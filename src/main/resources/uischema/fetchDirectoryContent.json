@@ -104,7 +104,7 @@
                     "displayName": "Property Name",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
-                    "required": "false",
+                    "required": "true",
                     "helpTip": "Name of property to add the list of base64 encoded files operation result"
                   }
                 }
