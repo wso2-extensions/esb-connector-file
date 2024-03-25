@@ -1,0 +1,118 @@
+{
+  "connectorName": "file",
+  "operationName": "fetchDirectoryContent",
+  "title": "Fetch file content in a folder in to list of base64 encoded stream",
+  "help": "<h1>Fetch Directory Content</h1><b>Fetch Directory Content.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+  "elements": [
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "configRef",
+              "displayName": "File Connection",
+              "inputType": "connection",
+              "allowedConnectionTypes": [
+                "LOCAL",
+                "FTP",
+                "FTPS",
+                "SFTP"
+              ],
+              "defaultType": "connection.local",
+              "defaultValue": "",
+              "required": "true",
+              "helpTip": "File connection to be used"
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "directoryPath",
+                    "displayName": "Directory Path",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "The path to the directory to list files"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "matchingPattern",
+                    "displayName": "Matching Pattern",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "*.*",
+                    "required": "false",
+                    "helpTip": "Pattern to match when listing files"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "recursive",
+                    "displayName": "List Files In Sub-Directories",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "false",
+                    "helpTip": "Whether to list files in sub-directories"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Advanced",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sortingAttribute",
+                    "displayName": "File Sort Attribute",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Name", "Size", "LastModifiedTime"],
+                    "defaultValue": "Name",
+                    "required": "true",
+                    "helpTip": "Files will be listed as per attribute."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "sortingOrder",
+                    "displayName": "Sort Order",
+                    "inputType": "comboOrExpression",
+                    "comboValues": ["Ascending", "Descending"],
+                    "defaultValue": "Ascending",
+                    "required": "false",
+                    "helpTip": "Order you need to sort in ascending or descending order"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "resultPropertyName",
+                    "displayName": "Property Name",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Name of property to add the list of base64 encoded files operation result"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
