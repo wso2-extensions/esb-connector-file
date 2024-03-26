@@ -106,9 +106,7 @@ public class ListFiles extends AbstractConnector {
             if (StringUtils.isEmpty(responseFormat)) {
                 responseFormat = HIERARCHICAL_FORMAT;
             }
-            if (StringUtils.isEmpty(fileMatchingPattern)) {
-                fileMatchingPattern = Const.MATCH_ALL_REGEX;
-            }
+
             String recursiveStr = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, RECURSIVE_PARAM);
             recursive = Boolean.parseBoolean(recursiveStr);
@@ -122,9 +120,10 @@ public class ListFiles extends AbstractConnector {
             if (folder.exists()) {
 
                 if (folder.isFolder()) {
-
+                    //Added debug logs to track the flow and identify bottlenecks
                     OMElement fileListEle = listFilesInFolder(folder, fileMatchingPattern,
                             recursive, responseFormat, sortingAttribute, sortingOrder);
+                    log.debug(Const.CONNECTOR_NAME + ": " + OPERATION_NAME + " operation completed.");
                     FileOperationResult result = new FileOperationResult(
                             OPERATION_NAME,
                             true,
@@ -286,13 +285,25 @@ public class ListFiles extends AbstractConnector {
      */
     private FileObject[] getFilesAndFolders(FileObject folder, String pattern) throws FileSystemException {
 
-        FileFilter fileFilter = new SimpleFileFiler(pattern);
-        FileFilterSelector fileFilterSelector = new FileFilterSelector(fileFilter);
-        ArrayList<FileObject> matchingFilesAndFolders =
-                new ArrayList<>(Arrays.asList(folder.findFiles(fileFilterSelector)));
+        ArrayList<FileObject> matchingFilesAndFolders;
+        log.debug(Const.CONNECTOR_NAME + ": Start listing matching files and folders.");
+        if (StringUtils.isEmpty(pattern)) {
+            matchingFilesAndFolders = new ArrayList<>(Arrays.asList(folder.getChildren()));
+            log.debug(Const.CONNECTOR_NAME + ": Pattern is empty , Children count : "
+                    + matchingFilesAndFolders.size());
+        } else {
+            FileFilter fileFilter = new SimpleFileFiler(pattern);
+            FileFilterSelector fileFilterSelector = new FileFilterSelector(fileFilter);
+            matchingFilesAndFolders =
+                    new ArrayList<>(Arrays.asList(folder.findFiles(fileFilterSelector)));
+            log.debug(Const.CONNECTOR_NAME + ": Pattern is : " + pattern + " : children count : "
+                    + matchingFilesAndFolders.size());
+        }
         //when a pattern exists folder.findFiles does not return folders
         if (!StringUtils.isEmpty(pattern)) {
             FileObject[] children = folder.getChildren();
+            log.debug(Const.CONNECTOR_NAME + ": Start traversing to add folders, children count : "
+                    + children.length );
             for (FileObject child : children) {
                 if (child.isFolder() && !matchingFilesAndFolders.contains(child)) {
                     matchingFilesAndFolders.add(child);
