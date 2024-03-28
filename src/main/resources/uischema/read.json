@@ -119,7 +119,7 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
-                    "enableCondition":  ["OR",{"readMode":"Complete File"}, {"readMode":"Starting From Line"},{"readMode":"Up To Line"},{"readMode":"Between Lines"},{"readMode":"Specific Line"}],
+                    "enableCondition":  ["NOT",{"readMode":"Metadata Only"}],
                     "helpTip": "MIME type of the message generated. If not provided it will try to interpret."
                   }
                 },
@@ -131,7 +131,7 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "UTF-8",
                     "required": "false",
-                    "enableCondition":  ["OR",{"readMode":"Complete File"}, {"readMode":"Starting From Line"},{"readMode":"Up To Line"},{"readMode":"Between Lines"},{"readMode":"Specific Line"}],
+                    "enableCondition":  ["NOT",{"readMode":"Metadata Only"}],
                     "helpTip": "Encoding of the message generated."
                   }
                 },
@@ -143,7 +143,6 @@
                     "inputType": "booleanOrExpression",
                     "defaultValue": "false",
                     "required": "true",
-                    "enableCondition":  ["OR",{"readMode":"Complete File"}, {"readMode":"Starting From Line"},{"readMode":"Up To Line"},{"readMode":"Between Lines"},{"readMode":"Specific Line"}],
                     "helpTip": "Read the file in streaming manner."
                   }
                 },
