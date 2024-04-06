@@ -40,6 +40,7 @@ import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.SimpleFileSelector;
+import org.wso2.carbon.connector.utils.Const;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -70,134 +71,179 @@ public class CopyFiles extends AbstractConnector {
         String renameTo;
         FileObject sourceFile = null;
         FileSelector fileSelector;
+        int maxRetries;
+        int retryDelay;
+        int attempt = 0;
+        boolean successOperation = false;
 
         FileSystemHandler fileSystemHandlerConnection = null;
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String connectionName = Utils.getConnectionName(messageContext);
         String connectorName = Const.CONNECTOR_NAME;
+        //read max retries and retry delay
         try {
-
-            fileSystemHandlerConnection = (FileSystemHandler) handler
-                    .getConnection(Const.CONNECTOR_NAME, connectionName);
-            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
-            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
-
-            //read inputs
-            sourcePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, SOURCE_PATH);
-            targetPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, TARGET_PATH);
-            sourceFilePattern = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, SOURCE_FILE_PATTERN_PARAM);
-            includeParent = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, INCLUDE_PARENT_PARAM));
-            overwrite = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, OVERWRITE_PARAM));
-            renameTo = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, RENAME_TO_PARAM);
-
-            sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourcePath;
-            targetPath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetPath;
-
-            if (StringUtils.isNotEmpty(sourceFilePattern)) {
-                fileSelector = new SimpleFileSelector(sourceFilePattern);
-            } else {
-                fileSelector = Selectors.SELECT_ALL;
+            maxRetries = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                    Const.MAX_RETRY_PARAM));
+            retryDelay = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                    Const.RETRY_DELAY_PARAM));
+            if (log.isDebugEnabled()) {
+                log.debug("Max retries: " + maxRetries + " Retry delay: " + retryDelay);
             }
+        } catch (Exception e) {
+            maxRetries = 0;
+            retryDelay = 0;
+        }
+        while (attempt <= maxRetries && !successOperation) {
+            try {
 
-            //execute copy
-            sourceFile = fsManager.resolveFile(sourcePath, fso);
+                fileSystemHandlerConnection = (FileSystemHandler) handler
+                        .getConnection(Const.CONNECTOR_NAME, connectionName);
+                FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+                FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+                //read inputs
+                sourcePath = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, SOURCE_PATH);
+                targetPath = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, TARGET_PATH);
+                sourceFilePattern = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, SOURCE_FILE_PATTERN_PARAM);
+                includeParent = Boolean.parseBoolean((String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, INCLUDE_PARENT_PARAM));
+                overwrite = Boolean.parseBoolean((String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, OVERWRITE_PARAM));
+                renameTo = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, RENAME_TO_PARAM);
 
-            if (sourceFile.exists()) {
+                sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourcePath;
+                targetPath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetPath;
 
-                if (sourceFile.isFile()) {
-
-                    String targetFilePath;
-
-                    //check if we have given a new name
-                    if (StringUtils.isNotEmpty(renameTo)) {
-                        targetFilePath = targetPath + Const.FILE_SEPARATOR
-                                + renameTo;
-                    } else {
-                        targetFilePath = targetPath + Const.FILE_SEPARATOR
-                                + sourceFile.getName().getBaseName();
-                    }
-
-                    FileObject targetFile = fsManager.resolveFile(targetFilePath, fso);
-                    boolean success = copyFile(sourceFile, fileSelector, targetFile, overwrite);
-                    FileOperationResult result;
-                    if (success) {
-                        result = new FileOperationResult(
-                                OPERATION_NAME,
-                                true);
-                        Utils.setResultAsPayload(messageContext, result);
-                    } else {
-                        throw new FileAlreadyExistsException("Destination file already "
-                                + "exists and overwrite not allowed");
-                    }
-
+                if (log.isDebugEnabled()) {
+                    log.debug("Copying file/folder from " + sourcePath + " to " + targetPath);
+                }
+                if (StringUtils.isNotEmpty(sourceFilePattern)) {
+                    fileSelector = new SimpleFileSelector(sourceFilePattern);
                 } else {
-                    //in case of folder
-                    if (includeParent) {
+                    fileSelector = Selectors.SELECT_ALL;
+                }
+
+                //execute copy
+                sourceFile = fsManager.resolveFile(sourcePath, fso);
+                if (sourceFile.exists()) {
+
+                    if (sourceFile.isFile()) {
+
+                        String targetFilePath;
+
+                        //check if we have given a new name
                         if (StringUtils.isNotEmpty(renameTo)) {
-                            targetPath = targetPath + Const.FILE_SEPARATOR + renameTo;
+                            targetFilePath = targetPath + Const.FILE_SEPARATOR
+                                    + renameTo;
                         } else {
-                            String sourceParentFolderName = sourceFile.getName().getBaseName();
-                            targetPath = targetPath + Const.FILE_SEPARATOR + sourceParentFolderName;
+                            targetFilePath = targetPath + Const.FILE_SEPARATOR
+                                    + sourceFile.getName().getBaseName();
+                        }
+
+                        FileObject targetFile = fsManager.resolveFile(targetFilePath, fso);
+                        boolean success = copyFile(sourceFile, fileSelector, targetFile, overwrite);
+                        FileOperationResult result;
+                        if (success) {
+                            result = new FileOperationResult(
+                                    OPERATION_NAME,
+                                    true);
+                            Utils.setResultAsPayload(messageContext, result);
+                        } else {
+                            throw new FileAlreadyExistsException("Destination file already "
+                                    + "exists and overwrite not allowed");
+                        }
+
+                    } else {
+                        //in case of folder
+                        if (includeParent) {
+                            if (StringUtils.isNotEmpty(renameTo)) {
+                                targetPath = targetPath + Const.FILE_SEPARATOR + renameTo;
+                            } else {
+                                String sourceParentFolderName = sourceFile.getName().getBaseName();
+                                targetPath = targetPath + Const.FILE_SEPARATOR + sourceParentFolderName;
+                            }
+                        }
+
+                        FileObject targetFile = fsManager.resolveFile(targetPath, fso);
+
+                        boolean success = copyFolder(sourceFile, fileSelector, targetFile, overwrite);
+                        FileOperationResult result;
+                        if (success) {
+                            result = new FileOperationResult(
+                                    OPERATION_NAME,
+                                    true);
+                            Utils.setResultAsPayload(messageContext, result);
+                        } else {
+                            throw new FileAlreadyExistsException("Folder or one or more "
+                                    + "sub-directories already exists and overwrite not allowed");
                         }
                     }
 
-                    FileObject targetFile = fsManager.resolveFile(targetPath, fso);
+                } else {
+                    throw new IllegalPathException("File/Folder does not exist : " + sourcePath);
+                }
+                successOperation = true;
+            } catch (InvalidConfigurationException e) {
 
-                    boolean success = copyFolder(sourceFile, fileSelector, targetFile, overwrite);
-                    FileOperationResult result;
-                    if (success) {
-                        result = new FileOperationResult(
-                                OPERATION_NAME,
-                                true);
-                        Utils.setResultAsPayload(messageContext, result);
-                    } else {
-                        throw new FileAlreadyExistsException("Folder or one or more "
-                                + "sub-directories already exists and overwrite not allowed");
+                String errorDetail = ERROR_MESSAGE + sourcePath;
+                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+            } catch (FileSystemException e) {
+                log.error(e);
+                if (attempt >= maxRetries - 1) {
+                    String errorDetail = ERROR_MESSAGE + sourcePath;
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                }
+                // Log the retry attempt
+                log.warn(Const.CONNECTOR_NAME + ":Error while copying file/folder "
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt
+                        + "out of " + maxRetries);
+                attempt++;
+                try {
+                    Thread.sleep(retryDelay); // Wait before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // Restore interrupted status
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath);
+                }
+            } catch (FileAlreadyExistsException e) {
+                String errorDetail = ERROR_MESSAGE + sourcePath;
+                handleError(messageContext, e, Error.FILE_ALREADY_EXISTS, errorDetail);
+            } catch (IllegalPathException e) {
+                String errorDetail = ERROR_MESSAGE + sourcePath;
+                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
+            } catch (Exception e) {
+                log.error("Exception while copying file/folder " + sourcePath + ". Error: " + e.getMessage());
+                if (attempt >= maxRetries - 1) {
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, ERROR_MESSAGE + sourcePath);
+                }
+                // Log the retry attempt
+                log.warn(Const.CONNECTOR_NAME + ":Error while copying file/folder "
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt
+                        + "out of " + maxRetries);
+                attempt++;
+                try {
+                    Thread.sleep(retryDelay); // Wait before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // Restore interrupted status
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath);
+                }
+            } finally {
+
+                if (sourceFile != null) {
+                    try {
+                        sourceFile.close();
+                    } catch (FileSystemException e) {
+                        log.error(Const.CONNECTOR_NAME
+                                + ":Error while closing file object"
+                                + sourcePath);
                     }
                 }
-
-            } else {
-                throw new IllegalPathException("File/Folder does not exist : " + sourcePath);
-            }
-
-        } catch (InvalidConfigurationException e) {
-
-            String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
-
-        } catch (FileSystemException e) {
-
-            String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
-
-        } catch (FileAlreadyExistsException e) {
-
-            String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.FILE_ALREADY_EXISTS, errorDetail);
-
-        } catch (IllegalPathException e) {
-            String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
-        } finally {
-
-            if (sourceFile != null) {
-                try {
-                    sourceFile.close();
-                } catch (FileSystemException e) {
-                    log.error(Const.CONNECTOR_NAME
-                            + ":Error while closing file object"
-                            + sourcePath);
-                }
-            }
-            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
-                if (fileSystemHandlerConnection != null) {
-                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+                if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                    if (fileSystemHandlerConnection != null) {
+                        handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+                    }
                 }
             }
         }

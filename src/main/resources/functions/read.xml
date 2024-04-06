@@ -29,6 +29,8 @@
     <parameter name="resultPropertyName" description="Name of property to add operation result."/>
     <parameter name="enableStreaming" description="Read the file in streaming manner. No message interpretation"/>
     <parameter name="enableLock" description="Whether to lock the file when reading"/>
+    <parameter name="maxRetries" description="The maximum number of retry attempts in case of a failure."/>
+    <parameter name="retryDelay" description="The delay between retry attempts in milliseconds."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.ReadFile" />
     </sequence>

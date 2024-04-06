@@ -156,6 +156,28 @@
                     "required": "true",
                     "helpTip": "Whether to lock the file when reading"
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "maxRetries",
+                    "displayName": "Max Retries",
+                    "inputType": "integerOrExpression",
+                    "defaultValue": "0",
+                    "required": "false",
+                    "helpTip": "The maximum number of retries to be done in case of a failure."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "retryDelay",
+                    "displayName": "Retry Interval",
+                    "inputType": "integerOrExpression",
+                    "defaultValue": "0",
+                    "required": "false",
+                    "helpTip": "The time interval between retries in milliseconds."
+                  }
                 }
               ]
             }

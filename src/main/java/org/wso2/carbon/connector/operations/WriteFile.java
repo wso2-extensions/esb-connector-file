@@ -96,91 +96,141 @@ public class WriteFile extends AbstractConnector {
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String connectionName = Utils.getConnectionName(messageContext);
         String connectorName = Const.CONNECTOR_NAME;
+        int maxRetries;
+        int retryDelay;
+        int attempt = 0;
+        boolean successOperation = false;
+        //read max retries and retry delay
         try {
-
-            Config config = readAndValidateInputs(messageContext);
-            targetFilePath = config.targetFilePath;
-            fileSystemHandlerConnection = Utils.getFileSystemHandler(connectionName);
-
-            //if compress is enabled we need to resolve a zip file
-            targetFilePath = getModifiedFilePathForCompress(targetFilePath, messageContext);
-
-            targetFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetFilePath;
-
-            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
-            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
-            targetFile = fsManager.resolveFile(targetFilePath, fso);
-
-            fileLockManager = fileSystemHandlerConnection.getFileLockManager();
-
-            if (targetFile.isFolder()) {
-                throw new IllegalPathException("Path does not point to a file " + targetFilePath);
+            maxRetries = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                    Const.MAX_RETRY_PARAM));
+            retryDelay = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                    Const.RETRY_DELAY_PARAM));
+            if (log.isDebugEnabled()) {
+                log.debug("Max retries: " + maxRetries + " Retry delay: " + retryDelay);
             }
+        } catch (Exception e) {
+            maxRetries = 0;
+            retryDelay = 0;
+        }
+        while (attempt <= maxRetries && !successOperation) {
+            try {
+                Config config = readAndValidateInputs(messageContext);
+                targetFilePath = config.targetFilePath;
+                fileSystemHandlerConnection = Utils.getFileSystemHandler(connectionName);
 
-            //lock the file if enabled
-            if (config.enableLocking) {
-                lockAcquired = fileLockManager.tryAndAcquireLock(targetFilePath, Const.DEFAULT_LOCK_TIMEOUT);
-                if (!lockAcquired) {
-                    throw new FileLockException("Failed to acquire lock for file "
-                            + targetFilePath + ". Another process maybe processing it. ");
+                //if compress is enabled we need to resolve a zip file
+                targetFilePath = getModifiedFilePathForCompress(targetFilePath, messageContext);
+
+                targetFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetFilePath;
+
+                FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+                FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+                targetFile = fsManager.resolveFile(targetFilePath, fso);
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Write file attempt " + attempt + " of " + maxRetries + " for file " + targetFilePath);
                 }
-            }
+                fileLockManager = fileSystemHandlerConnection.getFileLockManager();
 
-            int byteCountWritten;
+                if (targetFile.isFolder()) {
+                    throw new IllegalPathException("Path does not point to a file " + targetFilePath);
+                }
 
-            byteCountWritten = (int) writeToFile(targetFile, messageContext, config);
-            if (!targetFile.getURL().toString().startsWith(Const.FTP_PROTOCOL_PREFIX) && config.updateLastModified) {
-                targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
-            }
-            result = new FileOperationResult(
-                    OPERATION_NAME,
-                    true,
-                    byteCountWritten);
+                //lock the file if enabled
+                if (config.enableLocking) {
+                    lockAcquired = fileLockManager.tryAndAcquireLock(targetFilePath, Const.DEFAULT_LOCK_TIMEOUT);
+                    if (!lockAcquired) {
+                        throw new FileLockException("Failed to acquire lock for file "
+                                + targetFilePath + ". Another process maybe processing it. ");
+                    }
+                }
+
+                int byteCountWritten;
+
+                byteCountWritten = (int) writeToFile(targetFile, messageContext, config);
+                if (!targetFile.getURL().toString().startsWith(Const.FTP_PROTOCOL_PREFIX) && config.updateLastModified) {
+                    targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
+                }
+                result = new FileOperationResult(
+                        OPERATION_NAME,
+                        true,
+                        byteCountWritten);
 
 
-            if (config.includeResultTo.equals(Const.MESSAGE_BODY)) {
-                Utils.setResultAsPayload(messageContext, result);
-            } else if (config.includeResultTo.equals(Const.MESSAGE_PROPERTY)) {
-                OMElement resultEle = Utils.generateOperationResult(messageContext, result);
-                messageContext.setProperty(config.resultPropertyName, resultEle);
-            }
+                if (config.includeResultTo.equals(Const.MESSAGE_BODY)) {
+                    Utils.setResultAsPayload(messageContext, result);
+                } else if (config.includeResultTo.equals(Const.MESSAGE_PROPERTY)) {
+                    OMElement resultEle = Utils.generateOperationResult(messageContext, result);
+                    messageContext.setProperty(config.resultPropertyName, resultEle);
+                }
+                successOperation = true;
+            } catch (InvalidConfigurationException e) {
 
-        } catch (InvalidConfigurationException e) {
+                String errorDetail = ERROR_MESSAGE + targetFilePath;
+                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
-            String errorDetail = ERROR_MESSAGE + targetFilePath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+            } catch (IllegalPathException e) {
 
-        } catch (IllegalPathException e) {
+                String errorDetail = ERROR_MESSAGE + targetFilePath;
+                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
 
-            String errorDetail = ERROR_MESSAGE + targetFilePath;
-            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
-
-        } catch (FileOperationException | IOException e) { //FileSystemException also handled here
-
-            String errorDetail = ERROR_MESSAGE + targetFilePath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
-
-        } catch (FileLockException e) {
-            String errorDetail = ERROR_MESSAGE + targetFilePath;
-            handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
-        } finally {
-            if (targetFile != null) {
+            } catch (FileOperationException | IOException e) { //FileSystemException also handled here
+                log.error(e);
+                if (attempt >= maxRetries - 1) {
+                    String errorDetail = ERROR_MESSAGE + targetFilePath;
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                }
+                // Log the retry attempt
+                log.warn(Const.CONNECTOR_NAME + ":Error while write "
+                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt
+                        + "out of " + maxRetries);
+                attempt++;
                 try {
-                    targetFile.close();
-                } catch (FileSystemException e) {
-                    log.error(Const.CONNECTOR_NAME
-                            + ":Error while closing folder object while reading files in "
-                            + targetFile);
+                    Thread.sleep(retryDelay); // Wait before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // Restore interrupted status
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + targetFilePath);
                 }
-            }
-            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
-                if (fileSystemHandlerConnection != null) {
-                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+            } catch (FileLockException e) {
+                String errorDetail = ERROR_MESSAGE + targetFilePath;
+                handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
+            } catch (Exception e) {
+                log.error(e);
+                if (attempt >= maxRetries - 1) {
+                    String errorDetail = ERROR_MESSAGE + targetFilePath;
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
                 }
-            }
+                // Log the retry attempt
+                log.warn(Const.CONNECTOR_NAME + ":Error while write "
+                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt
+                        + "out of " + maxRetries);
+                attempt++;
+                try {
+                    Thread.sleep(retryDelay); // Wait before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // Restore interrupted status
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + targetFilePath);
+                }
+            } finally {
+                if (targetFile != null) {
+                    try {
+                        targetFile.close();
+                    } catch (FileSystemException e) {
+                        log.error(Const.CONNECTOR_NAME
+                                + ":Error while closing folder object while reading files in "
+                                + targetFile);
+                    }
+                }
+                if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                    if (fileSystemHandlerConnection != null) {
+                        handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+                    }
+                }
 
-            if (fileLockManager != null && lockAcquired) {
-                fileLockManager.releaseLock(targetFilePath);
+                if (fileLockManager != null && lockAcquired) {
+                    fileLockManager.releaseLock(targetFilePath);
+                }
             }
         }
     }
