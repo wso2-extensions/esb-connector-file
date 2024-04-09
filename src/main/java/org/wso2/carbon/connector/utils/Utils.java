@@ -25,6 +25,8 @@ import org.apache.axiom.soap.SOAPBody;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemException;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
@@ -304,5 +306,18 @@ public class Utils {
             return maskUrl;
         }
         return url;
+    }
+
+    public static void closeFileSystem(FileObject fileObject) {
+        try {
+            //Close the File system if it is not already closed
+            if (fileObject != null && fileObject.getParent() != null && fileObject.getParent().getFileSystem() != null) {
+                fileObject.getParent().getFileSystem().getFileSystemManager().closeFileSystem(fileObject.getFileSystem());
+            }
+            fileObject.close();
+        } catch (FileSystemException warn) {
+            String message = "Error on closing the file: " + fileObject.getName().getPath();
+            log.warn(message, warn);
+        }
     }
 }

@@ -186,14 +186,15 @@ public class ReadFile extends AbstractConnector {
 
             } catch (FileOperationException | IOException e) { //FileSystemException also handled here
                 log.error(e);
+                Utils.closeFileSystem(fileObject);
                 if (attempt >= maxRetries - 1) {
                     String errorDetail = ERROR_MESSAGE + sourcePath;
                     handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while read "
-                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt
-                        + "out of " + maxRetries);
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + " out of " + maxRetries);
                 attempt++;
                 try {
                     Thread.sleep(retryDelay); // Wait before retrying
@@ -208,14 +209,15 @@ public class ReadFile extends AbstractConnector {
 
             } catch (Exception e) {
                 log.error(e);
+                Utils.closeFileSystem(fileObject);
                 if (attempt >= maxRetries - 1) {
                     String errorDetail = ERROR_MESSAGE + sourcePath;
                     handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while read "
-                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt
-                        + "out of " + maxRetries);
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + " out of " + maxRetries);
                 attempt++;
                 try {
                     Thread.sleep(retryDelay); // Wait before retrying

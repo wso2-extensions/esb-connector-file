@@ -40,7 +40,6 @@ import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.SimpleFileSelector;
-import org.wso2.carbon.connector.utils.Const;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -192,14 +191,15 @@ public class CopyFiles extends AbstractConnector {
                 handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
             } catch (FileSystemException e) {
                 log.error(e);
+                Utils.closeFileSystem(sourceFile);
                 if (attempt >= maxRetries - 1) {
                     String errorDetail = ERROR_MESSAGE + sourcePath;
                     handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while copying file/folder "
-                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt
-                        + "out of " + maxRetries);
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + " out of " + maxRetries);
                 attempt++;
                 try {
                     Thread.sleep(retryDelay); // Wait before retrying
@@ -215,13 +215,14 @@ public class CopyFiles extends AbstractConnector {
                 handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
             } catch (Exception e) {
                 log.error("Exception while copying file/folder " + sourcePath + ". Error: " + e.getMessage());
+                Utils.closeFileSystem(sourceFile);
                 if (attempt >= maxRetries - 1) {
                     handleError(messageContext, e, Error.RETRY_EXHAUSTED, ERROR_MESSAGE + sourcePath);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while copying file/folder "
-                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt
-                        + "out of " + maxRetries);
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt + 1
+                        + " out of " + maxRetries);
                 attempt++;
                 try {
                     Thread.sleep(retryDelay); // Wait before retrying
@@ -332,5 +333,4 @@ public class CopyFiles extends AbstractConnector {
         Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
         handleException(errorDetail, e, msgCtx);
     }
-
 }

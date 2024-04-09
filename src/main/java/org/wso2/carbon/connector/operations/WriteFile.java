@@ -177,14 +177,15 @@ public class WriteFile extends AbstractConnector {
 
             } catch (FileOperationException | IOException e) { //FileSystemException also handled here
                 log.error(e);
+                Utils.closeFileSystem(targetFile);
                 if (attempt >= maxRetries - 1) {
                     String errorDetail = ERROR_MESSAGE + targetFilePath;
                     handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while write "
-                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt
-                        + "out of " + maxRetries);
+                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + " out of " + maxRetries);
                 attempt++;
                 try {
                     Thread.sleep(retryDelay); // Wait before retrying
@@ -197,14 +198,15 @@ public class WriteFile extends AbstractConnector {
                 handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
             } catch (Exception e) {
                 log.error(e);
+                Utils.closeFileSystem(targetFile);
                 if (attempt >= maxRetries - 1) {
                     String errorDetail = ERROR_MESSAGE + targetFilePath;
                     handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while write "
-                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt
-                        + "out of " + maxRetries);
+                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + " out of " + maxRetries);
                 attempt++;
                 try {
                     Thread.sleep(retryDelay); // Wait before retrying
@@ -367,12 +369,17 @@ public class WriteFile extends AbstractConnector {
                     throw new FileOperationException("Target file already exists. Path = "
                             + targetFile.getURL());
                 } else {
-                    targetFile.createFile();
+                    // Create a temporary file with .tmp extension
+                    FileObject tempFile = targetFile.getFileSystem().getFileSystemManager().resolveFile(targetFile.getParent(),
+                            targetFile.getName().getBaseName() + ".tmp");
+                    tempFile.createFile();
                     if (contentToWriteIsProvided) {
-                        writtenBytesCount = performContentWrite(targetFile, config);
+                        writtenBytesCount = performContentWrite(tempFile, config);
                     } else {
-                        writtenBytesCount = performBodyWrite(targetFile, msgCtx, false, config);
+                        writtenBytesCount = performBodyWrite(tempFile, msgCtx, false, config);
                     }
+                    // Rename temporary file to original file
+                    tempFile.moveTo(targetFile);
                 }
                 break;
             case OVERWRITE:
