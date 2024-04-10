@@ -97,6 +97,28 @@
                     "required": "false",
                     "helpTip": "The new name for the copied file. If not provided, the original file name is kept."
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "maxRetries",
+                    "displayName": "Max Retries",
+                    "inputType": "integerOrExpression",
+                    "defaultValue": "0",
+                    "required": "false",
+                    "helpTip": "The maximum number of retries to be done in case of a failure."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "retryDelay",
+                    "displayName": "Retry Interval",
+                    "inputType": "integerOrExpression",
+                    "defaultValue": "0",
+                    "required": "false",
+                    "helpTip": "The time interval between retries in milliseconds."
+                  }
                 }
               ]
             }

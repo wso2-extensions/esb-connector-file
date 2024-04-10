@@ -114,4 +114,7 @@ public final class Const {
     public static final String CONNECTOR_LIBRARY_PACKAGE_TYPE = "org.wso2.carbon.connector";
     public static final String LOCAL_FILE_LOCK_SCHEME = "Local";
     public static final String CLUSTER_FILE_LOCK_SCHEME = "Cluster";
+
+    public static final String MAX_RETRY_PARAM = "maxRetries";
+    public static final String RETRY_DELAY_PARAM = "retryDelay";
 }

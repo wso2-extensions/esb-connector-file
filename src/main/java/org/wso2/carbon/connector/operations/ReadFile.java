@@ -41,6 +41,7 @@ import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
+import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
@@ -99,94 +100,149 @@ public class ReadFile extends AbstractConnector {
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String connectionName = Utils.getConnectionName(messageContext);
         String connectorName = Const.CONNECTOR_NAME;
+        int maxRetries;
+        int retryDelay;
+        int attempt = 0;
+        boolean successOperation = false;
+        //read max retries and retry delay
         try {
-            Config config = readAndValidateInputs(messageContext);
-
-            fileSystemHandlerConnection = Utils.getFileSystemHandler(connectionName);
-            String workingDirRelativePAth = config.path;
-            sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + config.path;
-
-            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
-            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
-            fileObject = fsManager.resolveFile(sourcePath, fso);
-
-            fileLockManager = fileSystemHandlerConnection.getFileLockManager();
-
-            if (!fileObject.exists()) {
-                throw new IllegalPathException("File or folder not found: " + sourcePath);
-            }
-
-            if (fileObject.isFolder()) {
-                //select file to read
-                fileObject = selectFileToRead(fileObject, config.filePattern);
-                workingDirRelativePAth = workingDirRelativePAth + Const.FILE_SEPARATOR
-                        + fileObject.getName().getBaseName();
-                sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + workingDirRelativePAth;
-            }
-
-            //lock the file if enabled
-            if (config.enableLock) {
-                lockAcquired = fileLockManager.tryAndAcquireLock(sourcePath, Const.DEFAULT_LOCK_TIMEOUT);
-                if (!lockAcquired) {
-                    throw new FileLockException("Failed to acquire lock for file "
-                            + sourcePath + ". Another process maybe processing it. ");
-                }
-            }
-
-            readFileMetadata(fileObject, messageContext, workingDirRelativePAth);
-
-            //if we need to read metadata only, no need to touch content
-            if (Objects.equals(config.readMode, FileReadMode.METADATA_ONLY)) {
-                result = new FileOperationResult(OPERATION_NAME, true);
-                Utils.setResultAsPayload(messageContext, result);
-                return;
-            }
-
+            maxRetries = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                    Const.MAX_RETRY_PARAM));
+            retryDelay = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                    Const.RETRY_DELAY_PARAM));
             if (log.isDebugEnabled()) {
-                log.debug("FileConnector:read  - preparing to read file content " + sourcePath
-                        + " of Content-type : " + config.contentType);
+                log.debug("Max retries: " + maxRetries + " Retry delay: " + retryDelay);
             }
+        } catch (Exception e) {
+            maxRetries = 0;
+            retryDelay = 0;
+        }
+        while (attempt <= maxRetries && !successOperation) {
+            try {
+                if (log.isDebugEnabled()) {
+                    log.debug("FileConnector:read  - reading file from " + connectionName);
+                }
+                Config config = readAndValidateInputs(messageContext);
 
-            readFileContent(fileObject, messageContext, config);
+                fileSystemHandlerConnection = Utils.getFileSystemHandler(connectionName);
+                String workingDirRelativePAth = config.path;
+                sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + config.path;
 
-            //TODO:MTOM Support?
+                FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+                FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+                fileObject = fsManager.resolveFile(sourcePath, fso);
+
+                fileLockManager = fileSystemHandlerConnection.getFileLockManager();
+
+                if (!fileObject.exists()) {
+                    throw new IllegalPathException("File or folder not found: " + sourcePath);
+                }
+
+                if (fileObject.isFolder()) {
+                    //select file to read
+                    fileObject = selectFileToRead(fileObject, config.filePattern);
+                    workingDirRelativePAth = workingDirRelativePAth + Const.FILE_SEPARATOR
+                            + fileObject.getName().getBaseName();
+                    sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + workingDirRelativePAth;
+                }
+
+                //lock the file if enabled
+                if (config.enableLock) {
+                    lockAcquired = fileLockManager.tryAndAcquireLock(sourcePath, Const.DEFAULT_LOCK_TIMEOUT);
+                    if (!lockAcquired) {
+                        throw new FileLockException("Failed to acquire lock for file "
+                                + sourcePath + ". Another process maybe processing it. ");
+                    }
+                }
+
+                readFileMetadata(fileObject, messageContext, workingDirRelativePAth);
+
+                //if we need to read metadata only, no need to touch content
+                if (Objects.equals(config.readMode, FileReadMode.METADATA_ONLY)) {
+                    result = new FileOperationResult(OPERATION_NAME, true);
+                    Utils.setResultAsPayload(messageContext, result);
+                    return;
+                }
+
+                if (log.isDebugEnabled()) {
+                    log.debug("FileConnector:read  - preparing to read file content " + sourcePath
+                            + " of Content-type : " + config.contentType);
+                }
+
+                readFileContent(fileObject, messageContext, config);
+                successOperation = true;
+                //TODO:MTOM Support?
 
 
-        } catch (InvalidConfigurationException e) {
+            } catch (InvalidConfigurationException e) {
 
-            String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+                String errorDetail = ERROR_MESSAGE + sourcePath;
+                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
-        } catch (IllegalPathException e) {
+            } catch (IllegalPathException e) {
 
-            String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
+                String errorDetail = ERROR_MESSAGE + sourcePath;
+                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
 
-        } catch (FileOperationException | IOException e) { //FileSystemException also handled here
-            String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
-
-        } catch (FileLockException e) {
-            String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
-
-        } finally {
-            if (fileObject != null) {
+            } catch (FileOperationException | IOException e) { //FileSystemException also handled here
+                log.error(e);
+                Utils.closeFileSystem(fileObject);
+                if (attempt >= maxRetries - 1) {
+                    String errorDetail = ERROR_MESSAGE + sourcePath;
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                }
+                // Log the retry attempt
+                log.warn(Const.CONNECTOR_NAME + ":Error while read "
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + " out of " + maxRetries);
+                attempt++;
                 try {
-                    fileObject.close();
-                } catch (FileSystemException e) {
-                    log.error(Const.CONNECTOR_NAME
-                            + ":Error while closing folder object while reading files in "
-                            + fileObject);
+                    Thread.sleep(retryDelay); // Wait before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // Restore interrupted status
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath);
                 }
-            }
-            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
-                if (fileSystemHandlerConnection != null) {
-                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+
+            } catch (FileLockException e) {
+                String errorDetail = ERROR_MESSAGE + sourcePath;
+                handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
+
+            } catch (Exception e) {
+                log.error(e);
+                Utils.closeFileSystem(fileObject);
+                if (attempt >= maxRetries - 1) {
+                    String errorDetail = ERROR_MESSAGE + sourcePath;
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
                 }
-            }
-            if (fileLockManager != null && lockAcquired) {
-                fileLockManager.releaseLock(sourcePath);
+                // Log the retry attempt
+                log.warn(Const.CONNECTOR_NAME + ":Error while read "
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + " out of " + maxRetries);
+                attempt++;
+                try {
+                    Thread.sleep(retryDelay); // Wait before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // Restore interrupted status
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath);
+                }
+            } finally {
+                if (fileObject != null) {
+                    try {
+                        fileObject.close();
+                    } catch (FileSystemException e) {
+                        log.error(Const.CONNECTOR_NAME
+                                + ":Error while closing folder object while reading files in "
+                                + fileObject);
+                    }
+                }
+                if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                    if (fileSystemHandlerConnection != null) {
+                        handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+                    }
+                }
+                if (fileLockManager != null && lockAcquired) {
+                    fileLockManager.releaseLock(sourcePath);
+                }
             }
         }
     }

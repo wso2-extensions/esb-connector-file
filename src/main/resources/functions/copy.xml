@@ -23,6 +23,8 @@
     <parameter name="includeParent" description="Whether to copy including parent folder or only content inside"/>
     <parameter name="overwrite" description="Whether or not to overwrite the file if the target destination already exists."/>
     <parameter name="renameTo" description="The new name for the copied file."/>
+    <parameter name="maxRetries" description="The maximum number of retry attempts in case of a failure."/>
+    <parameter name="retryDelay" description="The delay between retry attempts in milliseconds."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.CopyFiles" />
     </sequence>
