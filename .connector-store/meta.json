@@ -1,0 +1,13 @@
+{
+    "name": "File ",
+    "owner": "WSO2",
+    "category": "Developer Tools",
+    "documentationUrl": "https://apim.docs.wso2.com/en/latest/reference/connectors/file-connector/file-connector-overview/",
+    "description": "The File connector allows you to connect to Local and remote (using protocols FTP, FTPS, SFTP) file systems and perform file related operations. The file connector uses the Apache Commons VFS I/O functionalities to execute operations. (Note: You need to have U2 updated versions after 25 th JUL 2023 up to MI-1.2.0 to MI-4.2.0)",
+    "status": "Active",
+    "labels": [
+        "DevTools",
+        "Technology"
+    ],
+    "releases": []
+}
