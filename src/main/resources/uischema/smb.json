@@ -1,0 +1,146 @@
+{
+  "connectorName": "file",
+  "connectionName": "SMB2",
+  "title": "SMB Connection Config",
+  "help": "<h1>File Connector</h1> <b>The file connector supports Local, SMB, FTP, FTPS and SFTP protocols for handling files</b>",
+  "elements": [
+    {
+      "type": "attribute",
+      "value": {
+        "name": "connectionName",
+        "displayName": "Connection Name",
+        "inputType": "string",
+        "defaultValue": "FILE_CONNECTION_1",
+        "required": "true",
+        "helpTip": "The name for the file connection",
+        "validation": "nameWithoutSpecialCharactors"
+      }
+    },
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "General",
+        "elements": [
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Basic",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "host",
+                    "displayName": "Host",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "Host name of the SMB server"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "port",
+                    "displayName": "Port",
+                    "inputType": "string",
+                    "defaultValue": "445",
+                    "required": "true",
+                    "helpTip": "The port number of the SMB server"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "username",
+                    "displayName": "Username",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Username used to connect with the SMB server"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "password",
+                    "displayName": "Password",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Password to connect with the SMB server"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "maxActiveConnections",
+                    "displayName": "maxActiveConnections",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": " The maximum number of objects (including both idle and active/borrowed) that can exist within the pool at the same time"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "maxIdleConnections",
+                    "displayName": "maxIdleConnections",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The maximum number of objects that can remain idle in the pool"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "maxWaitTime",
+                    "displayName": "maxWaitTime",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The maximum amount of time that the borrowObject() method should block"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "evictionCheckInterval",
+                    "displayName": "evictionCheckInterval",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The time interval between runs of the idle object evictor thread"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "minEvictionTime",
+                    "displayName": "minEvictionTime",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "The minimum amount of time an object must sit idle in the pool before it is eligible for eviction by the idle object evictor "
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "exhaustedAction",
+                    "displayName": "exhaustedAction",
+                    "inputType": "string",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Determines the action to take when the borrowObject() method is called, but the pool is exhausted"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -68,6 +68,8 @@ public final class Const {
     public static final String FTP_PROTOCOL_PREFIX = "ftp://";
     public static final String FTPS_PROTOCOL_PREFIX = "ftps://";
     public static final String SFTP_PROTOCOL_PREFIX = "sftp://";
+    public static final String SMB_PROTOCOL_PREFIX = "smb://";
+    public static final String SMB2_PROTOCOL_PREFIX = "smb2://";
     //FILE.Separator is not needed for VFS. Windows also support /
     public static final String FILE_SEPARATOR = "/";
 

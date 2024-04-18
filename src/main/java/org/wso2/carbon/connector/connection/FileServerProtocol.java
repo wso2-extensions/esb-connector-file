@@ -27,7 +27,10 @@ public enum FileServerProtocol {
     LOCAL("LOCAL", false),
     FTP("FTP", false),
     FTPS("FTPS", true),
-    SFTP("SFTP", true);
+    SFTP("SFTP", true),
+    SMB2("SMB2", true),
+    SMB("SMB", true);
+
 
     private final String name;
     private final boolean secure;

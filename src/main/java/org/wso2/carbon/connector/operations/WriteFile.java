@@ -369,17 +369,23 @@ public class WriteFile extends AbstractConnector {
                     throw new FileOperationException("Target file already exists. Path = "
                             + targetFile.getURL());
                 } else {
-                    // Create a temporary file with .tmp extension
-                    FileObject tempFile = targetFile.getFileSystem().getFileSystemManager().resolveFile(targetFile.getParent(),
-                            targetFile.getName().getBaseName() + ".tmp");
-                    tempFile.createFile();
-                    if (contentToWriteIsProvided) {
-                        writtenBytesCount = performContentWrite(tempFile, config);
-                    } else {
-                        writtenBytesCount = performBodyWrite(tempFile, msgCtx, false, config);
+                    try (FileObject tempFile = targetFile.getFileSystem().getFileSystemManager().resolveFile(
+                            targetFile.getParent(), targetFile.getName().getBaseName() + ".tmp")) {
+
+                        // Create a temporary file with .tmp extension
+                        tempFile.createFile();
+
+                        // Write content to the temporary file based on a condition
+                        if (contentToWriteIsProvided) {
+                            writtenBytesCount = performContentWrite(tempFile, config);
+                        } else {
+                            writtenBytesCount = performBodyWrite(tempFile, msgCtx, false, config);
+                        }
+
+                        // Rename temporary file to original file
+                        tempFile.moveTo(targetFile);
+
                     }
-                    // Rename temporary file to original file
-                    tempFile.moveTo(targetFile);
                 }
                 break;
             case OVERWRITE:

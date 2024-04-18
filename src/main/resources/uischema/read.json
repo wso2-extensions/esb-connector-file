@@ -19,7 +19,8 @@
                 "LOCAL",
                 "FTP",
                 "FTPS",
-                "SFTP"
+                "SFTP",
+                "SMB2"
               ],
               "defaultType": "connection.local",
               "defaultValue": "",

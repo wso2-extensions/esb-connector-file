@@ -24,7 +24,7 @@ import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 /**
  * Configurations common to any remote file server.
  */
-public abstract class RemoteServerConfig {
+public class RemoteServerConfig {
 
     //Protocol associated with this connection
     private String protocol;

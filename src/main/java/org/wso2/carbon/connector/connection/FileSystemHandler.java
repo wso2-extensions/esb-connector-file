@@ -98,6 +98,12 @@ public class FileSystemHandler implements Connection {
             case SFTP:
                 fileSystemSetup = new SFTPFileSystemSetup();
                 break;
+            case SMB:
+                fileSystemSetup = new SMBFileSystemSetup();
+                break;
+            case SMB2:
+                fileSystemSetup = new SMB2FileSystemSetup();
+                break;
             default:
                 throw new IllegalStateException("Unexpected protocol value: " + fsConfig.getProtocol());
         }
