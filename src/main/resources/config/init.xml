@@ -19,7 +19,7 @@
 <template name="init" onError="fault" xmlns="http://ws.apache.org/ns/synapse">
 	<!--common params-->
 	<parameter name="name" description="Unique name the connection is identified by"/>
-	<parameter name="connectionType" description="Protocol to communicate with file system. Possible values 'LOCAL', 'FTP', 'FTPS', 'SFTP'"/>
+	<parameter name="connectionType" description="Protocol to communicate with file system. Possible values 'LOCAL', 'SMB2', 'FTP', 'FTPS', 'SFTP'"/>
 	<parameter name="workingDir" description="Working directory. File paths in operations should be given w.r.t this folder"/>
 	<parameter name="fileLockScheme" description="File locking behaviour to use. Local or Cluster" />
 	<parameter name="maxFailureRetryCount" description="Max retry count upon file operation failure"/>

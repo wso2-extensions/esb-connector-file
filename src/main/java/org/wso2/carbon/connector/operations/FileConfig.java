@@ -24,6 +24,7 @@ import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.core.SynapseEnvironment;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.connection.SFTPConnectionFactory;
+import org.wso2.carbon.connector.connection.SMBConnectionFactory;
 import org.wso2.carbon.connector.core.AbstractConnector;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
@@ -78,6 +79,15 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
                 } catch (NoSuchMethodError e) {
                     handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName,
                             new SFTPConnectionFactory(configuration), configuration.getConfiguration());
+                }
+            } else if ("SMB".equalsIgnoreCase(configuration.getProtocol().getName())
+                    || "SMB2".equalsIgnoreCase(configuration.getProtocol().getName())) {
+                try {
+                    handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName,
+                            new SMBConnectionFactory(configuration), configuration.getConfiguration(), messageContext);
+                } catch (NoSuchMethodError e) {
+                    handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName,
+                            new SMBConnectionFactory(configuration), configuration.getConfiguration());
                 }
             } else if (!handler.checkIfConnectionExists(connectorName, tenantSpecificConnectionName)) {
                 FileSystemHandler fileSystemHandler = new FileSystemHandler(configuration);
@@ -158,7 +168,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
     private RemoteServerConfig getRemoteServerConfig(MessageContext msgContext, ConnectionConfiguration configuration)
             throws InvalidConfigurationException {
 
-        RemoteServerConfig remoteServerConfig;
+        RemoteServerConfig remoteServerConfig = null;
 
         switch (configuration.getProtocol()) {
             case FTP:
@@ -177,6 +187,12 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
                 remoteServerConfig = new SFTPConnectionConfig();
                 setCommonRemoteServerConfigs(msgContext, remoteServerConfig);
                 setSFTPConnectionConfigsFromContext(msgContext, (SFTPConnectionConfig) remoteServerConfig);
+                configuration.setRemoteServerConfig(remoteServerConfig);
+                break;
+            case SMB:
+            case SMB2:
+                remoteServerConfig = new RemoteServerConfig();
+                setCommonRemoteServerConfigs(msgContext, remoteServerConfig);
                 configuration.setRemoteServerConfig(remoteServerConfig);
                 break;
             default:
