@@ -88,84 +88,117 @@ public class ListFiles extends AbstractConnector {
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String connectionName = Utils.getConnectionName(messageContext);
         String connectorName = Const.CONNECTOR_NAME;
-
+        int maxRetries;
+        int retryDelay;
+        int attempt = 0;
+        boolean successOperation = false;
+        //read max retries and retry delay
         try {
-
-            fileSystemHandlerConnection = (FileSystemHandler) handler
-                    .getConnection(Const.CONNECTOR_NAME, connectionName);
-            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
-            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
-
-            //read inputs
-            folderPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, Const.DIRECTORY_PATH);
-            fileMatchingPattern = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, MATCHING_PATTERN);
-            responseFormat = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, RESPONSE_FORMAT_PARAM);
-            if (StringUtils.isEmpty(responseFormat)) {
-                responseFormat = HIERARCHICAL_FORMAT;
+            maxRetries = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                    Const.MAX_RETRY_PARAM));
+            retryDelay = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                    Const.RETRY_DELAY_PARAM));
+            if (log.isDebugEnabled()) {
+                log.debug("Max retries: " + maxRetries + " Retry delay: " + retryDelay);
             }
+        } catch (Exception e) {
+            maxRetries = 0;
+            retryDelay = 0;
+        }
+        while (attempt <= maxRetries && !successOperation) {
+            try {
 
-            String recursiveStr = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, RECURSIVE_PARAM);
-            recursive = Boolean.parseBoolean(recursiveStr);
+                fileSystemHandlerConnection = (FileSystemHandler) handler
+                        .getConnection(Const.CONNECTOR_NAME, connectionName);
+                FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+                FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
 
-            String sortingAttribute = Utils.lookUpStringParam(messageContext, SORT_ATTRIB_PARAM, DEFAULT_SORT_ATTRIB);
-            String sortingOrder  = Utils.lookUpStringParam(messageContext, SORT_ORDER_PARAM, DEFAULT_SORT_ORDER);
+                //read inputs
+                folderPath = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, Const.DIRECTORY_PATH);
+                fileMatchingPattern = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, MATCHING_PATTERN);
+                responseFormat = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, RESPONSE_FORMAT_PARAM);
+                if (StringUtils.isEmpty(responseFormat)) {
+                    responseFormat = HIERARCHICAL_FORMAT;
+                }
 
-            folderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPath;
-            folder = fsManager.resolveFile(folderPath, fso);
+                String recursiveStr = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, RECURSIVE_PARAM);
+                recursive = Boolean.parseBoolean(recursiveStr);
 
-            if (folder.exists()) {
+                String sortingAttribute = Utils.lookUpStringParam(messageContext, SORT_ATTRIB_PARAM, DEFAULT_SORT_ATTRIB);
+                String sortingOrder = Utils.lookUpStringParam(messageContext, SORT_ORDER_PARAM, DEFAULT_SORT_ORDER);
 
-                if (folder.isFolder()) {
-                    //Added debug logs to track the flow and identify bottlenecks
-                    OMElement fileListEle = listFilesInFolder(folder, fileMatchingPattern,
-                            recursive, responseFormat, sortingAttribute, sortingOrder);
-                    log.debug(Const.CONNECTOR_NAME + ": " + OPERATION_NAME + " operation completed.");
-                    FileOperationResult result = new FileOperationResult(
-                            OPERATION_NAME,
-                            true,
-                            fileListEle);
-                    Utils.setResultAsPayload(messageContext, result);
+                folderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPath;
+                folder = fsManager.resolveFile(folderPath, fso);
+
+                if (folder.exists()) {
+
+                    if (folder.isFolder()) {
+                        //Added debug logs to track the flow and identify bottlenecks
+                        OMElement fileListEle = listFilesInFolder(folder, fileMatchingPattern,
+                                recursive, responseFormat, sortingAttribute, sortingOrder);
+                        log.debug(Const.CONNECTOR_NAME + ": " + OPERATION_NAME + " operation completed.");
+                        FileOperationResult result = new FileOperationResult(
+                                OPERATION_NAME,
+                                true,
+                                fileListEle);
+                        Utils.setResultAsPayload(messageContext, result);
+                        successOperation = true;
+                    } else {
+                        throw new FileOperationException("Folder is expected.");
+                    }
 
                 } else {
-                    throw new FileOperationException("Folder is expected.");
+                    throw new IllegalPathException("Folder does not exist.");
                 }
 
-            } else {
-                throw new IllegalPathException("Folder does not exist.");
-            }
+            } catch (InvalidConfigurationException e) {
 
-        } catch (InvalidConfigurationException e) {
+                String errorDetail = ERROR_MESSAGE + folderPath;
+                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
-            String errorDetail = ERROR_MESSAGE + folderPath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+            } catch (IllegalPathException e) {
 
-        } catch (FileSystemException e) {
+                String errorDetail = ERROR_MESSAGE + folderPath;
+                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
 
-            String errorDetail = ERROR_MESSAGE + folderPath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
+            } catch (Exception e) {
 
-        } catch (IllegalPathException e) {
-
-            String errorDetail = ERROR_MESSAGE + folderPath;
-            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
-        } finally {
-
-            if (folder != null) {
+                String errorDetail = ERROR_MESSAGE + folderPath;
+                log.error(errorDetail, e);
+                Utils.closeFileSystem(folder);
+                if (attempt >= maxRetries - 1) {
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                }
+                // Log the retry attempt
+                log.warn(Const.CONNECTOR_NAME + ":Error while write "
+                        + folderPath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + " out of " + maxRetries);
+                attempt++;
                 try {
-                    folder.close();
-                } catch (FileSystemException e) {
-                    log.error(Const.CONNECTOR_NAME
-                            + ":Error while closing file object while creating directory "
-                            + folder);
+                    Thread.sleep(retryDelay); // Wait before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // Restore interrupted status
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + folderPath);
                 }
-            }
-            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
-                if (fileSystemHandlerConnection != null) {
-                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+            } finally {
+
+                if (folder != null) {
+                    try {
+                        folder.close();
+                    } catch (FileSystemException e) {
+                        log.error(Const.CONNECTOR_NAME
+                                + ":Error while closing file object while creating directory "
+                                + folder);
+                    }
+                }
+                if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                    if (fileSystemHandlerConnection != null) {
+                        handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+                    }
                 }
             }
         }

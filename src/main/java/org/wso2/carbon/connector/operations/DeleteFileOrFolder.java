@@ -62,79 +62,117 @@ public class DeleteFileOrFolder extends AbstractConnector {
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String connectionName = Utils.getConnectionName(messageContext);
         String connectorName = Const.CONNECTOR_NAME;
+        int maxRetries;
+        int retryDelay;
+        int attempt = 0;
+        boolean successOperation = false;
+        //read max retries and retry delay
         try {
-
-            fileSystemHandlerConnection = (FileSystemHandler) handler
-                    .getConnection(Const.CONNECTOR_NAME, connectionName);
-            fileMatchingPattern = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, MATCHING_PATTERN_PARAM);
-            fileOrFolderPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, Const.FILE_OR_DIRECTORY_PATH);
-            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
-            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
-            fileOrFolderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + fileOrFolderPath;
-            fileObjectToDelete = fsManager.resolveFile(fileOrFolderPath, fso);
-
-            //Deletes this file. Does nothing if this file does not exist
-            if (fileObjectToDelete.isFile()) {
-                isOperationSuccessful = fileObjectToDelete.delete();
-                result = new FileOperationResult(
-                        OPERATION_NAME,
-                        isOperationSuccessful);
+            maxRetries = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                    Const.MAX_RETRY_PARAM));
+            retryDelay = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
+                    Const.RETRY_DELAY_PARAM));
+            if (log.isDebugEnabled()) {
+                log.debug("Max retries: " + maxRetries + " Retry delay: " + retryDelay);
             }
+        } catch (Exception e) {
+            maxRetries = 0;
+            retryDelay = 0;
+        }
+        while (attempt <= maxRetries && !successOperation) {
+            try {
 
-            if (fileObjectToDelete.isFolder()) {
-                int numberOfDeletedFiles;
-                if (StringUtils.isNotEmpty(fileMatchingPattern)) {
-                    FileFilter fileFilter = new SimpleFileFiler(fileMatchingPattern);
-                    FileFilterSelector fileFilterSelector = new FileFilterSelector(fileFilter);
-                    /*
-                     * Deletes all descendants of this file that
-                     * match a selector. Does nothing if this
-                     * file does not exist.
-                     */
-                    numberOfDeletedFiles = fileObjectToDelete.delete(fileFilterSelector);
-                } else {
-                    //Deletes this file and all children.
-                    numberOfDeletedFiles = fileObjectToDelete.deleteAll();
+                fileSystemHandlerConnection = (FileSystemHandler) handler
+                        .getConnection(Const.CONNECTOR_NAME, connectionName);
+                fileMatchingPattern = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, MATCHING_PATTERN_PARAM);
+                fileOrFolderPath = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, Const.FILE_OR_DIRECTORY_PATH);
+                FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
+                FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+                fileOrFolderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + fileOrFolderPath;
+                fileObjectToDelete = fsManager.resolveFile(fileOrFolderPath, fso);
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Delete file/folder attempt " + attempt + " of " + maxRetries + " for file/folder "
+                            + fileOrFolderPath);
                 }
-                isOperationSuccessful = true;
-                OMElement numOfDeletedFilesEle = Utils.
-                        createOMElement(NUM_OF_DELETED_FILES_ELE,
-                                Integer.toString(numberOfDeletedFiles));
-                result = new FileOperationResult(
-                        OPERATION_NAME,
-                        isOperationSuccessful,
-                        numOfDeletedFilesEle);
-            }
 
-            Utils.setResultAsPayload(messageContext, result);
+                //Deletes this file. Does nothing if this file does not exist
+                if (fileObjectToDelete.isFile()) {
+                    isOperationSuccessful = fileObjectToDelete.delete();
+                    result = new FileOperationResult(
+                            OPERATION_NAME,
+                            isOperationSuccessful);
+                }
 
-        } catch (InvalidConfigurationException e) {
+                if (fileObjectToDelete.isFolder()) {
+                    int numberOfDeletedFiles;
+                    if (StringUtils.isNotEmpty(fileMatchingPattern)) {
+                        FileFilter fileFilter = new SimpleFileFiler(fileMatchingPattern);
+                        FileFilterSelector fileFilterSelector = new FileFilterSelector(fileFilter);
+                        /*
+                         * Deletes all descendants of this file that
+                         * match a selector. Does nothing if this
+                         * file does not exist.
+                         */
+                        numberOfDeletedFiles = fileObjectToDelete.delete(fileFilterSelector);
+                    } else {
+                        //Deletes this file and all children.
+                        numberOfDeletedFiles = fileObjectToDelete.deleteAll();
+                    }
+                    isOperationSuccessful = true;
+                    OMElement numOfDeletedFilesEle = Utils.
+                            createOMElement(NUM_OF_DELETED_FILES_ELE,
+                                    Integer.toString(numberOfDeletedFiles));
+                    result = new FileOperationResult(
+                            OPERATION_NAME,
+                            isOperationSuccessful,
+                            numOfDeletedFilesEle);
+                }
 
-            String errorDetail = ERROR_MESSAGE + fileOrFolderPath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+                Utils.setResultAsPayload(messageContext, result);
+                successOperation = true;
+            } catch (InvalidConfigurationException e) {
 
-        } catch (FileSystemException e) {
+                String errorDetail = ERROR_MESSAGE + fileOrFolderPath;
+                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
 
-            String errorDetail = ERROR_MESSAGE + fileOrFolderPath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
+            } catch (Exception e) {
 
-        } finally {
-
-            if (fileObjectToDelete != null) {
+                String errorDetail = ERROR_MESSAGE + fileOrFolderPath;
+                log.error(errorDetail, e);
+                Utils.closeFileSystem(fileObjectToDelete);
+                if (attempt >= maxRetries - 1) {
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                }
+                // Log the retry attempt
+                log.warn(Const.CONNECTOR_NAME + ":Error while write "
+                        + fileOrFolderPath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + " out of " + maxRetries);
+                attempt++;
                 try {
-                    fileObjectToDelete.close();
-                } catch (FileSystemException e) {
-                    log.error(Const.CONNECTOR_NAME
-                            + ":Error while closing file object while creating directory "
-                            + fileObjectToDelete);
+                    Thread.sleep(retryDelay); // Wait before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // Restore interrupted status
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + fileOrFolderPath);
                 }
-            }
+            } finally {
 
-            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
-                if (fileSystemHandlerConnection != null) {
-                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+                if (fileObjectToDelete != null) {
+                    try {
+                        fileObjectToDelete.close();
+                    } catch (FileSystemException e) {
+                        log.error(Const.CONNECTOR_NAME
+                                + ":Error while closing file object while creating directory "
+                                + fileObjectToDelete);
+                    }
+                }
+
+                if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
+                    if (fileSystemHandlerConnection != null) {
+                        handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+                    }
                 }
             }
         }

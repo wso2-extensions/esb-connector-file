@@ -208,10 +208,10 @@ public class ReadFile extends AbstractConnector {
                 handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
 
             } catch (Exception e) {
-                log.error(e);
+                String errorDetail = ERROR_MESSAGE + sourcePath;
+                log.error(errorDetail, e);
                 Utils.closeFileSystem(fileObject);
                 if (attempt >= maxRetries - 1) {
-                    String errorDetail = ERROR_MESSAGE + sourcePath;
                     handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
                 }
                 // Log the retry attempt
