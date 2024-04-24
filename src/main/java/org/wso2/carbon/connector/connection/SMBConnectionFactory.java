@@ -17,6 +17,8 @@
  */
 package org.wso2.carbon.connector.connection;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
@@ -25,6 +27,7 @@ import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 
 public class SMBConnectionFactory implements ConnectionFactory  {
     private ConnectionConfiguration connectionConfiguration;
+    private static final Log log = LogFactory.getLog(SMBConnectionFactory.class);
     public SMBConnectionFactory(ConnectionConfiguration connectionConfiguration) {
         this.connectionConfiguration = connectionConfiguration;
     }
@@ -54,6 +57,7 @@ public class SMBConnectionFactory implements ConnectionFactory  {
                 return fileObject.exists(); // This throws an exception if the connection is not valid
             }
         } catch (Throwable e) {
+            log.error("Error while validating the connection", e);
             return false;
         }
     }
