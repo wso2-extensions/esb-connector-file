@@ -176,10 +176,10 @@ public class WriteFile extends AbstractConnector {
                 handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
 
             } catch (FileOperationException | IOException e) { //FileSystemException also handled here
-                log.error(e);
+                String errorDetail = ERROR_MESSAGE + targetFilePath;
+                log.error(errorDetail, e);
                 Utils.closeFileSystem(targetFile);
                 if (attempt >= maxRetries - 1) {
-                    String errorDetail = ERROR_MESSAGE + targetFilePath;
                     handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
                 }
                 // Log the retry attempt
@@ -197,10 +197,10 @@ public class WriteFile extends AbstractConnector {
                 String errorDetail = ERROR_MESSAGE + targetFilePath;
                 handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
             } catch (Exception e) {
-                log.error(e);
+                String errorDetail = ERROR_MESSAGE + targetFilePath;
+                log.error(errorDetail, e);
                 Utils.closeFileSystem(targetFile);
                 if (attempt >= maxRetries - 1) {
-                    String errorDetail = ERROR_MESSAGE + targetFilePath;
                     handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
                 }
                 // Log the retry attempt
