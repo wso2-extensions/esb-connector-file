@@ -175,7 +175,7 @@ public class ListFiles extends AbstractConnector {
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while write "
-                        + folderPath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + folderPath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
                         + " out of " + maxRetries);
                 attempt++;
                 try {

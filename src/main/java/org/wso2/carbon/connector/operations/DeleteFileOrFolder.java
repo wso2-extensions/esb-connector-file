@@ -148,7 +148,7 @@ public class DeleteFileOrFolder extends AbstractConnector {
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while write "
-                        + fileOrFolderPath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + fileOrFolderPath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
                         + " out of " + maxRetries);
                 attempt++;
                 try {

@@ -184,7 +184,7 @@ public class WriteFile extends AbstractConnector {
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while write "
-                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
                         + " out of " + maxRetries);
                 attempt++;
                 try {
@@ -205,7 +205,7 @@ public class WriteFile extends AbstractConnector {
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while write "
-                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
                         + " out of " + maxRetries);
                 attempt++;
                 try {

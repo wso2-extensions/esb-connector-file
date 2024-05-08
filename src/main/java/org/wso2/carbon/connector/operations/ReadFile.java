@@ -193,7 +193,7 @@ public class ReadFile extends AbstractConnector {
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while read "
-                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
                         + " out of " + maxRetries);
                 attempt++;
                 try {
@@ -216,7 +216,7 @@ public class ReadFile extends AbstractConnector {
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while read "
-                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
                         + " out of " + maxRetries);
                 attempt++;
                 try {
