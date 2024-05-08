@@ -198,7 +198,7 @@ public class CopyFiles extends AbstractConnector {
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while copying file/folder "
-                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt +1
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
                         + " out of " + maxRetries);
                 attempt++;
                 try {
@@ -221,7 +221,7 @@ public class CopyFiles extends AbstractConnector {
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while copying file/folder "
-                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + attempt + 1
+                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
                         + " out of " + maxRetries);
                 attempt++;
                 try {
