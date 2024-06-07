@@ -22,7 +22,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.carbon.esb.connector</groupId>
     <artifactId>org.wso2.carbon.esb.connector.file</artifactId>
-    <version>4.0.28</version>
+    <version>4.0.29</version>
     <packaging>jar</packaging>
     <name>WSO2 Carbon - Connector For esb-connector-file</name>
     <url>http://wso2.org</url>
@@ -30,7 +30,7 @@
     <properties>
         <connector.name>file</connector.name>
 <!--        <commons.vfs.version>2.6.0</commons.vfs.version>-->
-        <commons.vfs.version>2.2.0-wso2v9.3</commons.vfs.version>
+        <commons.vfs.version>2.2.0-wso2v18</commons.vfs.version>
         <integration.base.version>1.0.2</integration.base.version>
         <product.ei.version>6.1.1</product.ei.version>
         <carbon.kernel.version>4.4.17</carbon.kernel.version>
@@ -222,7 +222,7 @@
                         <id>email-library</id>
                         <phase>compile</phase>
                         <goals>
-                            <goal>attached</goal>
+                            <goal>single</goal>
                         </goals>
                         <configuration>
                             <finalName>${connector.name}-connector-${version}</finalName>
