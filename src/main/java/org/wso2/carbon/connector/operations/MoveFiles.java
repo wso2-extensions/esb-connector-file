@@ -57,6 +57,9 @@ public class MoveFiles extends AbstractConnector {
     private static final String RENAME_TO_PARAM = "renameTo";
     private static final String FILE_PATTERN_PARAM = "filePattern";
     private static final String OPERATION_NAME = "moveFiles";
+    private static final String IS_SOURCE_MOUNTED = "isSourceMounted";
+    private static final String IS_TARGET_MOUNTED = "isTargetMounted";
+
     private static final String ERROR_MESSAGE = "Error while performing file:move for file/folder ";
 
     private FileSystemOptions fso;
@@ -72,6 +75,8 @@ public class MoveFiles extends AbstractConnector {
         boolean overwrite;
         String renameTo;
         String filePattern;
+        boolean isSourceMounted = false;
+        boolean isTargetMounted = false;
         FileObject sourceFile = null;
         FileSystemHandler fileSystemHandlerConnection = null;
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
@@ -102,6 +107,12 @@ public class MoveFiles extends AbstractConnector {
             sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourcePath;
             targetPath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetPath;
 
+            // check if the source and target files are mounted.
+            isSourceMounted = Boolean.parseBoolean((String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, IS_SOURCE_MOUNTED));
+            isTargetMounted = Boolean.parseBoolean((String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, IS_TARGET_MOUNTED));
+
             //execute copy
             sourceFile = fsManager.resolveFile(sourcePath, fso);
 
@@ -121,6 +132,11 @@ public class MoveFiles extends AbstractConnector {
                     }
 
                     FileObject targetFile = fsManager.resolveFile(targetFilePath, fso);
+
+                    // Set the isMounted flag to to avoid errors in mounted volumes.
+                    targetFile.setIsMounted(isTargetMounted);
+                    sourceFile.setIsMounted(isSourceMounted);
+
                     boolean success = moveFile(sourceFile, createNonExistingParents, targetFile, overwrite);
                     FileOperationResult result;
                     if (success) {

@@ -109,6 +109,28 @@
                     "required": "false",
                     "helpTip": "The pattern (regex) of the files to be moved."
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "isSourceMounted",
+                    "displayName": "Is Source Mounted",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Whether the source path is a mounted path or not."
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "isTargetMounted",
+                    "displayName": "Is Target Mounted",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Whether the target path is a mounted path or not."
+                  }
                 }
               ]
             }

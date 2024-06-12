@@ -24,6 +24,8 @@
     <parameter name="overwrite" description="Whether or not to overwrite the file if the target destination already exists."/>
     <parameter name="renameTo" description="The new name for the moved file."/>
     <parameter name="filePattern" description="The pattern (regex) of the files to be moved."/>
+    <parameter name="isSourceMounted" description="Whether the source path is a mounted path or not."/>
+    <parameter name="isTargetMounted" description="Whether the target path is a mounted path or not."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.MoveFiles" />
     </sequence>
