@@ -123,20 +123,10 @@ public class GlobalFileLock implements FileLock {
         try {
             hostName = InetAddress.getLocalHost().getHostName();
             hostAddress = InetAddress.getLocalHost().getHostAddress();
-            java.lang.management.RuntimeMXBean runtime =
-                    java.lang.management.ManagementFactory.getRuntimeMXBean();
-            java.lang.reflect.Field jvm = runtime.getClass().getDeclaredField("jvm");
-            jvm.setAccessible(true);
-            sun.management.VMManagement mgmt =
-                    (sun.management.VMManagement) jvm.get(runtime);
-            java.lang.reflect.Method pid_method =
-                    mgmt.getClass().getDeclaredMethod("getProcessId");
-            pid_method.setAccessible(true);
-
-            int pid = (Integer) pid_method.invoke(mgmt);
-            processId = Integer.toString(pid);
+            long pid = ProcessHandle.current().pid();
+            processId = String.valueOf(pid);
         } catch (Exception e) {
-            log.error("[FileConnector] Error while getting information to write to lock file.");
+            log.error("[FileConnector] Error while getting information to write to lock file.", e);
         }
         String lockFileContent = hostName +
                 Const.NEW_LINE +

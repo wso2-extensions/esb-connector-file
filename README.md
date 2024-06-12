@@ -36,6 +36,7 @@ The File [Connector](https://docs.wso2.com/display/EI650/Working+with+Connectors
 |  [2.0.0](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-2.0.0)        |    ESB 4.8.1 |
 |  [1.0.0](https://github.com/wso2-extensions/esb-connector-file/tree/org.wso2.carbon.connector.fileconnector-1.0.0)        |    ESB 4.8.1 |
 
+Requires JDK 1.9+
 
 ## Documentation
 
