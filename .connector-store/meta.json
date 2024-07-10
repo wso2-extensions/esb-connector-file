@@ -19,6 +19,17 @@
                 "MI 4.2.0"
             ],
             "isHidden": false
+        },
+        {
+            "tagName": "v3.0.6",
+            "products": [
+                "EI 7.1.0",
+                "EI 6.6.0",
+                "MI 4.0.0",
+                "MI 4.1.0",
+                "MI 4.2.0"
+            ],
+            "isHidden": false
         }
     ]
 }
