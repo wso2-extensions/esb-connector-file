@@ -28,6 +28,7 @@
 	<parameter name="port" description="The port number of the file server"/>
 	<parameter name="username" description="Username used to connect with the file server"/>
 	<parameter name="password" description="Password to connect with the file server"/>
+	<parameter name="encodePassword" description="Enable this to encode the password if it has special characters"/>
 	<parameter name="userDirIsRoot" description="Whether to treat the user directory as the root directory"/>
 	<!--FTP/FTPS params-->
 	<parameter name="isPassive" description="True if to enter into passive mode"/>

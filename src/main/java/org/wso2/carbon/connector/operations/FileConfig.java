@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.connector.operations;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.synapse.ManagedLifecycle;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.config.SynapseConfiguration;
@@ -40,6 +41,8 @@ import org.wso2.carbon.connector.pojo.SFTPConnectionConfig;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 
 /**
  * Initializes the file connection based on provided configs
@@ -215,14 +218,25 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
                 lookupTemplateParamater(msgContext, Const.USERNAME);
         String password = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.PASSWORD);
+        String passwordEncodingRequired = (String) ConnectorUtils.
+                lookupTemplateParamater(msgContext, Const.ENCODE_PASSWORD);
         String userDirIsRoot = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.USERDIR_IS_ROOT);
+
+        log.info("passwordEncodingRequired: " + passwordEncodingRequired);
 
         remoteServerConfig.setProtocol(protocol);
         remoteServerConfig.setHost(host);
         remoteServerConfig.setPort(port);
         remoteServerConfig.setUsername(userName);
-        remoteServerConfig.setPassword(password);
+        try {
+            if (Boolean.parseBoolean(passwordEncodingRequired)) {
+                password = encodePassword(password);
+            }
+            remoteServerConfig.setPassword(password);
+        } catch (UnsupportedEncodingException e) {
+            handleException("Error while encoding password", e, msgContext);
+        }
         remoteServerConfig.setUserDirIsRoot(userDirIsRoot);
     }
 
@@ -299,5 +313,13 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
     private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
         Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
         handleException(errorDetail, e, msgCtx);
+    }
+
+    public static String encodePassword(String password) throws UnsupportedEncodingException {
+        String encodedPassword = null;
+        if (StringUtils.isNotEmpty(password)) {
+            encodedPassword = URLEncoder.encode(password, "UTF-8");
+        }
+        return URLEncoder.encode(password, "UTF-8");
     }
 }
