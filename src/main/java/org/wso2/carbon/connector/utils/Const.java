@@ -43,6 +43,7 @@ public final class Const {
     public static final String PORT = "port";
     public static final String USERNAME = "username";
     public static final String PASSWORD = "password";
+    public static final String ENCODE_PASSWORD = "encodePassword";
     public static final String USERDIR_IS_ROOT = "userDirIsRoot";
 
     public static final String IS_PASSIVE = "isPassive";
