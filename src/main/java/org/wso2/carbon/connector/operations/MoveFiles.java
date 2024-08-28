@@ -134,8 +134,13 @@ public class MoveFiles extends AbstractConnector {
                     FileObject targetFile = fsManager.resolveFile(targetFilePath, fso);
 
                     // Set the isMounted flag to to avoid errors in mounted volumes.
-                    targetFile.setIsMounted(isTargetMounted);
-                    sourceFile.setIsMounted(isSourceMounted);
+                    try {
+                        targetFile.setIsMounted(isTargetMounted);
+                        sourceFile.setIsMounted(isSourceMounted);
+                    } catch (NoSuchMethodError e) {
+                        log.debug("The method setIsMounted is not available in the current version of VFS library. "
+                                + "Please upgrade the VFS library");
+                    }
 
                     boolean success = moveFile(sourceFile, createNonExistingParents, targetFile, overwrite);
                     FileOperationResult result;
