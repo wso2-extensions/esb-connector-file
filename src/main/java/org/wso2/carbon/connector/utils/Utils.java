@@ -311,10 +311,13 @@ public class Utils {
     public static void closeFileSystem(FileObject fileObject) {
         try {
             //Close the File system if it is not already closed
-            if (fileObject != null && fileObject.getParent() != null && fileObject.getParent().getFileSystem() != null) {
-                fileObject.getParent().getFileSystem().getFileSystemManager().closeFileSystem(fileObject.getFileSystem());
+            if (fileObject != null) {
+                if (fileObject.getParent() != null && fileObject.getParent().getFileSystem() != null) {
+                    fileObject.getParent().getFileSystem().getFileSystemManager()
+                            .closeFileSystem(fileObject.getFileSystem());
+                }
+                fileObject.close();
             }
-            fileObject.close();
         } catch (FileSystemException warn) {
             String message = "Error on closing the file: " + fileObject.getName().getPath();
             log.warn(message, warn);
