@@ -596,8 +596,8 @@ public class ReadFile extends AbstractConnector {
                     msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
                 }
             } else {
-                log.error("FileConnector:read - selected builder for streaming should be DataSourceMessageBuilder. "
-                        + "Maybe it is not registered to the contentType of this message");
+                log.error("FileConnector:read - Failed to process document. There is no message builder class " +
+                        "available of type DataSourceMessageBuilder that supports the contentType: " + contentType);
                 throw new FileOperationException("Required builder for streaming not found");
             }
         } catch (AxisFault e) {
