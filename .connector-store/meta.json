@@ -8,7 +8,7 @@
     "mavenArtifactId": "org.wso2.carbon.esb.connector.file",
     "description": "The File connector allows you to connect to Local and remote (using protocols FTP, FTPS, SFTP) file systems and perform file related operations. The file connector uses the Apache Commons VFS I/O functionalities to execute operations. (Note: You need to have U2 updated versions after 25 th JUL 2023 up to MI-1.2.0 to MI-4.2.0)\n\n",
     "status": "Active",
-    "connectorRank": 1,
+    "rank": 1,
     "type": "Connector",
     "labels": [
         "storage"
