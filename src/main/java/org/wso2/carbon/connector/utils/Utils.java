@@ -30,6 +30,8 @@ import org.apache.commons.vfs2.FileSystemException;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
+import org.apache.synapse.data.connector.ConnectorResponse;
+import org.apache.synapse.data.connector.DefaultConnectorResponse;
 import org.apache.synapse.transport.passthru.PassThroughConstants;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.ConnectException;
@@ -267,7 +269,7 @@ public class Utils {
     public static void setError(String operationName, MessageContext msgCtx, Exception e,
                                 Error error, String errorDetail) {
         FileOperationResult result = new FileOperationResult(operationName, false, error, e.getMessage());
-        Utils.setResultAsPayload(msgCtx, result);
+        Utils.setResultAsPayload(msgCtx, result, null);
     }
 
     /**
@@ -276,11 +278,17 @@ public class Utils {
      * @param msgContext MessageContext to set payload
      * @param result     Operation result
      */
-    public static void setResultAsPayload(MessageContext msgContext, FileOperationResult result) {
+    public static void setResultAsPayload(MessageContext msgContext, FileOperationResult result,
+                                          String responseVariable) {
 
         OMElement resultElement = generateOperationResult(msgContext, result);
         if (result.getResultEle() != null) {
             resultElement.addChild(result.getResultEle());
+        }
+        if (StringUtils.isNotEmpty(responseVariable)) {
+            ConnectorResponse response = new DefaultConnectorResponse();
+            response.setPayload(resultElement);
+            msgContext.setVariable(responseVariable, response);
         }
         SOAPBody soapBody = msgContext.getEnvelope().getBody();
         //Detaching first element (soapBody.getFirstElement().detach()) will be done by following method anyway.

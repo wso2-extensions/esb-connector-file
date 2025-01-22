@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
   ~ Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
   ~
@@ -15,7 +16,6 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-
 <template xmlns="http://ws.apache.org/ns/synapse" name="copy">
     <parameter name="sourcePath" description="The path to the file to be copied."/>
     <parameter name="targetPath" description="The target directory where to copy the file."/>
@@ -25,7 +25,9 @@
     <parameter name="renameTo" description="The new name for the copied file."/>
     <parameter name="maxRetries" description="The maximum number of retry attempts in case of a failure."/>
     <parameter name="retryDelay" description="The delay between retry attempts in milliseconds."/>
+    <parameter name="responseVariable" description="The name of the variable to which the response should be stored."/>
+    <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
     <sequence>
-        <class name="org.wso2.carbon.connector.operations.CopyFiles" />
+        <class name="org.wso2.carbon.connector.operations.CopyFiles"/>
     </sequence>
 </template>

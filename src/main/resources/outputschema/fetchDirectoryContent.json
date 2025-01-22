@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Output Schema for fetchDirectoryContent Operation",
+    "description": "Output schema for the fetchDirectoryContent operation in the connector.",
+    "properties": {
+        "payload": {
+            "type": "object",
+            "description": "The main response payload from the fetchDirectoryContent operation."
+        },
+        "attributes": {
+            "type": "object",
+            "description": "Metadata about the fetchDirectoryContent operation.",
+            "properties": {},
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "payload",
+        "attributes"
+    ],
+    "additionalProperties": false
+}

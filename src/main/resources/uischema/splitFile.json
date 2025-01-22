@@ -69,7 +69,11 @@
                     "name": "splitMode",
                     "displayName": "Split Mode",
                     "inputType": "comboOrExpression",
-                    "comboValues": ["Chunk Size", "Line Count", "XPATH Expression"],
+                    "comboValues": [
+                      "Chunk Size",
+                      "Line Count",
+                      "XPATH Expression"
+                    ],
                     "defaultValue": "Chunk Size",
                     "required": "true",
                     "helpTip": "The chunk size in bytes to split the file."
@@ -82,7 +86,11 @@
                     "displayName": "Chunk Size (# of bytes)",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
-                    "enableCondition": [{"splitMode":"Chunk Size"}],
+                    "enableCondition": [
+                      {
+                        "splitMode": "Chunk Size"
+                      }
+                    ],
                     "required": "false",
                     "helpTip": "The chunk size in bytes to split the file."
                   }
@@ -94,7 +102,11 @@
                     "displayName": "Line Count",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
-                    "enableCondition": [{"splitMode":"Line Count"}],
+                    "enableCondition": [
+                      {
+                        "splitMode": "Line Count"
+                      }
+                    ],
                     "required": "false",
                     "helpTip": "The number of lines per file."
                   }
@@ -106,12 +118,46 @@
                     "displayName": "XPATH Expression",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
-                    "enableCondition": [{"splitMode":"XPATH Expression"}],
+                    "enableCondition": [
+                      {
+                        "splitMode": "XPATH Expression"
+                      }
+                    ],
                     "required": "false",
                     "helpTip": "The XPATH expression used to split file."
                   }
                 }
               ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "Response",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "responseVariable",
+              "displayName": "Response Variable Name",
+              "inputType": "string",
+              "deriveResponseVariable": true,
+              "required": "true",
+              "helpTip": "Name of the variable to which the output of the operation should be assigned"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "overwriteBody",
+              "displayName": "Overwrite Message Body",
+              "inputType": "checkbox",
+              "defaultValue": "false",
+              "helpTip": "Replace the Message Body in Message Context with the response of the operation (This will remove the payload from the above variable).",
+              "required": "false"
             }
           }
         ]

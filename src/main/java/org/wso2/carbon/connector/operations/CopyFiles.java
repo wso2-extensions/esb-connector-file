@@ -149,7 +149,8 @@ public class CopyFiles extends AbstractConnector {
                             result = new FileOperationResult(
                                     OPERATION_NAME,
                                     true);
-                            Utils.setResultAsPayload(messageContext, result);
+                            Utils.setResultAsPayload(messageContext, result, Utils.
+                                    lookUpStringParam(messageContext, Const.RESPONSE_VARIABLE, Const.EMPTY_STRING));
                         } else {
                             throw new FileAlreadyExistsException("Destination file already "
                                     + "exists and overwrite not allowed");
@@ -174,7 +175,8 @@ public class CopyFiles extends AbstractConnector {
                             result = new FileOperationResult(
                                     OPERATION_NAME,
                                     true);
-                            Utils.setResultAsPayload(messageContext, result);
+                            Utils.setResultAsPayload(messageContext, result, Utils.
+                                    lookUpStringParam(messageContext, Const.RESPONSE_VARIABLE, Const.EMPTY_STRING));
                         } else {
                             throw new FileAlreadyExistsException("Folder or one or more "
                                     + "sub-directories already exists and overwrite not allowed");

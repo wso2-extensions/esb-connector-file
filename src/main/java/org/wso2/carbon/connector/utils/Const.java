@@ -120,4 +120,6 @@ public final class Const {
 
     public static final String MAX_RETRY_PARAM = "maxRetries";
     public static final String RETRY_DELAY_PARAM = "retryDelay";
+
+    public static final String RESPONSE_VARIABLE = "responseVariable";
 }

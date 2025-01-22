@@ -52,7 +52,12 @@
                     "inputType": "textAreaOrExpression",
                     "defaultValue": "",
                     "required": "false",
-                    "enableCondition":  ["NOT",{"enableStreaming":"true"}],
+                    "enableCondition": [
+                      "NOT",
+                      {
+                        "enableStreaming": "true"
+                      }
+                    ],
                     "helpTip": "Static content or expression to receive content. If not given what is message body will get written."
                   }
                 },
@@ -62,9 +67,21 @@
                     "name": "mimeType",
                     "displayName": "MIME Type",
                     "inputType": "comboOrExpression",
-                    "comboValues": ["Automatic","text/plain", "application/xml", "application/binary", "application/json", "text/xml"],
+                    "comboValues": [
+                      "Automatic",
+                      "text/plain",
+                      "application/xml",
+                      "application/binary",
+                      "application/json",
+                      "text/xml"
+                    ],
                     "defaultValue": "Automatic",
-                    "enableCondition":  ["NOT",{"enableStreaming":"true"}],
+                    "enableCondition": [
+                      "NOT",
+                      {
+                        "enableStreaming": "true"
+                      }
+                    ],
                     "required": "true",
                     "helpTip": "MIME Type of the message. When formatting message for writing this will be used."
                   }
@@ -75,7 +92,11 @@
                     "name": "writeMode",
                     "displayName": "Write Mode",
                     "inputType": "comboOrExpression",
-                    "comboValues": ["Overwrite", "Append", "Create New"],
+                    "comboValues": [
+                      "Overwrite",
+                      "Append",
+                      "Create New"
+                    ],
                     "defaultValue": "Overwrite",
                     "required": "true",
                     "helpTip": "Write mode to use - overwrite, append or create new."
@@ -89,7 +110,11 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "0",
                     "required": "false",
-                    "enableCondition":  [{"writeMode":"Append"}],
+                    "enableCondition": [
+                      {
+                        "writeMode": "Append"
+                      }
+                    ],
                     "helpTip": "Position to append the content. Only used when WriteMode is APPEND."
                   }
                 }
@@ -120,7 +145,15 @@
                     "inputType": "booleanOrExpression",
                     "defaultValue": "false",
                     "required": "false",
-                    "enableCondition":  ["OR",{"writeMode":"Create New"}, {"writeMode":"Overwrite"}],
+                    "enableCondition": [
+                      "OR",
+                      {
+                        "writeMode": "Create New"
+                      },
+                      {
+                        "writeMode": "Overwrite"
+                      }
+                    ],
                     "helpTip": "Whether to compress as a zip and write. Available only when WriteMode is Create New or OverWrite."
                   }
                 },
@@ -132,7 +165,12 @@
                     "inputType": "booleanOrExpression",
                     "defaultValue": "false",
                     "required": "false",
-                    "enableCondition":  ["NOT",{"enableStreaming":"true"}],
+                    "enableCondition": [
+                      "NOT",
+                      {
+                        "enableStreaming": "true"
+                      }
+                    ],
                     "helpTip": "Whether to append a new line character the the end of written content."
                   }
                 },
@@ -205,7 +243,10 @@
                     "name": "includeResultTo",
                     "displayName": "Add Result To",
                     "inputType": "comboOrExpression",
-                    "comboValues": ["Message Body","Message Property"],
+                    "comboValues": [
+                      "Message Body",
+                      "Message Property"
+                    ],
                     "defaultValue": "Message Body",
                     "required": "true",
                     "helpTip": "Specify where to place operation result. Setting to a property will not change current payload at message body."
@@ -219,11 +260,45 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
-                    "enableCondition": [{"includeResultTo":"Message Property"}],
+                    "enableCondition": [
+                      {
+                        "includeResultTo": "Message Property"
+                      }
+                    ],
                     "helpTip": "Name of property to add operation result"
                   }
                 }
               ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "Response",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "responseVariable",
+              "displayName": "Response Variable Name",
+              "inputType": "string",
+              "deriveResponseVariable": true,
+              "required": "true",
+              "helpTip": "Name of the variable to which the output of the operation should be assigned"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "overwriteBody",
+              "displayName": "Overwrite Message Body",
+              "inputType": "checkbox",
+              "defaultValue": "false",
+              "helpTip": "Replace the Message Body in Message Context with the response of the operation (This will remove the payload from the above variable).",
+              "required": "false"
             }
           }
         ]

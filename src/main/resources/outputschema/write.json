@@ -1,0 +1,28 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Output Schema for write Operation",
+    "description": "Output schema for the write operation in the connector.",
+    "properties": {
+        "payload": {
+            "type": "object",
+            "description": "The main response payload from the write operation."
+        },
+        "attributes": {
+            "type": "object",
+            "description": "Metadata about the write operation.",
+            "properties": {
+                "MESSAGE_TYPE": {
+                    "type": "string",
+                    "description": "The type of the message."
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "payload",
+        "attributes"
+    ],
+    "additionalProperties": false
+}

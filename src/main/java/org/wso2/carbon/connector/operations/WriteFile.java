@@ -83,6 +83,7 @@ public class WriteFile extends AbstractConnector {
     private static final String APPEND_POSITION_PARAM = "appendPosition";
     private static final String OPERATION_NAME = "write";
     private static final String ERROR_MESSAGE = "Error while performing file:write for file ";
+    private static final String TARGET_VARIABLE = "responseVariable";
 
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
@@ -157,13 +158,7 @@ public class WriteFile extends AbstractConnector {
                         true,
                         byteCountWritten);
 
-
-                if (config.includeResultTo.equals(Const.MESSAGE_BODY)) {
-                    Utils.setResultAsPayload(messageContext, result);
-                } else if (config.includeResultTo.equals(Const.MESSAGE_PROPERTY)) {
-                    OMElement resultEle = Utils.generateOperationResult(messageContext, result);
-                    messageContext.setProperty(config.resultPropertyName, resultEle);
-                }
+                Utils.setResultAsPayload(messageContext, result, config.responseVariable);
                 successOperation = true;
             } catch (InvalidConfigurationException e) {
 
@@ -258,7 +253,7 @@ public class WriteFile extends AbstractConnector {
         config.enableStreaming = Utils.lookUpBooleanParam(msgCtx, ENABLE_STREAMING_PARAM, false);
         String appendPosition = Utils.lookUpStringParam(msgCtx, APPEND_POSITION_PARAM, String.valueOf(Integer.MAX_VALUE));
         config.appendPosition = Integer.parseInt(appendPosition);
-
+        config.responseVariable = Utils.lookUpStringParam(msgCtx, Const.RESPONSE_VARIABLE, Const.EMPTY_STRING);
         config.fileNameWithExtension = config.targetFilePath.
                 substring(config.targetFilePath.lastIndexOf(Const.FILE_SEPARATOR) + 1);
 
@@ -281,6 +276,7 @@ public class WriteFile extends AbstractConnector {
         boolean enableStreaming = false;
         int appendPosition = Integer.MAX_VALUE;
         boolean updateLastModified = true;
+        String responseVariable;
     }
 
     /**

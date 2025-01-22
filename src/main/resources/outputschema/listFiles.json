@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Output Schema for listFiles Operation",
+    "description": "Output schema for the listFiles operation in the connector.",
+    "properties": {
+        "payload": {
+            "type": "object",
+            "description": "The main response payload from the listFiles operation."
+        },
+        "attributes": {
+            "type": "object",
+            "description": "Metadata about the listFiles operation.",
+            "properties": {},
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "payload",
+        "attributes"
+    ],
+    "additionalProperties": false
+}
