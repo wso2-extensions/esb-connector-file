@@ -16,13 +16,11 @@
    specific language governing permissions and limitations
    under the License.
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.wso2.carbon.esb.connector</groupId>
-    <artifactId>org.wso2.carbon.esb.connector.file</artifactId>
-    <version>4.0.32</version>
+    <groupId>org.wso2.integration.connector</groupId>
+    <artifactId>mi-connector-file</artifactId>
+    <version>4.0.34-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>WSO2 Carbon - Connector For esb-connector-file</name>
     <url>http://wso2.org</url>
@@ -213,8 +211,21 @@
             <version>${hierynomus.smbj.version}</version>
         </dependency>
     </dependencies>
+    <scm>
+        <connection>scm:git:https://github.com/wso2-extensions/esb-connector-file</connection>
+        <url>https://github.com/wso2-extensions/esb-connector-file.git</url>
+        <developerConnection>scm:git:https://github.com/wso2-extensions/esb-connector-file</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <configuration>
+                    <tagNameFormat>@{project.version}</tagNameFormat>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

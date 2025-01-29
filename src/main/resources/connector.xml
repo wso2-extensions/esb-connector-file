@@ -22,5 +22,6 @@
         <dependency component="functions" />
         <description>WSO2 file connector library</description>
     </component>
+    <displayName>File</displayName>
     <icon>icon/icon-small.gif</icon>
 </connector>
