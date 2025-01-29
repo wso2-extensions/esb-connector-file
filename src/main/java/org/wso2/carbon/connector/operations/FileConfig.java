@@ -138,6 +138,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
 
         String retryCount = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.RETRY_COUNT);
+        String enableEncryption = (String) ConnectorUtils.lookupTemplateParamater(msgContext, Const.ENABLE_ENCRYPTION);
 
         ConnectionConfiguration connectionConfig = new ConnectionConfiguration(msgContext);
         if (sftpPoolConnectionAgedTimeout != null) {
@@ -160,6 +161,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
         connectionConfig.setWorkingDir(workingDir);
         connectionConfig.setClusterLockingEnabled(fileLockScheme);
         connectionConfig.setMaxFailureRetryCount(maxFailureRetryCount);
+        connectionConfig.setEnableEncryption(enableEncryption);
 
         if (connectionConfig.isRemote()) {
             connectionConfig.setRemoteServerConfig(getRemoteServerConfig(msgContext, connectionConfig));

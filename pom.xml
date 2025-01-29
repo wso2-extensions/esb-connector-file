@@ -22,7 +22,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.carbon.esb.connector</groupId>
     <artifactId>org.wso2.carbon.esb.connector.file</artifactId>
-    <version>4.0.32</version>
+    <version>4.0.33</version>
     <packaging>jar</packaging>
     <name>WSO2 Carbon - Connector For esb-connector-file</name>
     <url>http://wso2.org</url>
@@ -46,6 +46,7 @@
         <rampart.apache.version>1.6.1-wso2v18</rampart.apache.version>
         <rampart.wso2.version>1.6.1.wso2v18</rampart.wso2.version>
         <skip-tests>true</skip-tests>
+        <hierynomus.smbj.version>0.11.3</hierynomus.smbj.version>
     </properties>
 
     <dependencies>
@@ -62,6 +63,11 @@
         <dependency>
             <groupId>org.wso2.org.apache.commons</groupId>
             <artifactId>commons-vfs2</artifactId>
+            <version>${commons.vfs.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.org.apache.commons</groupId>
+            <artifactId>commons-vfs2-sandbox</artifactId>
             <version>${commons.vfs.version}</version>
         </dependency>
         <dependency>
@@ -200,6 +206,11 @@
             <artifactId>integration-base</artifactId>
             <version>${integration.base.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.hierynomus</groupId>
+            <artifactId>smbj</artifactId>
+            <version>${hierynomus.smbj.version}</version>
         </dependency>
     </dependencies>
     <build>

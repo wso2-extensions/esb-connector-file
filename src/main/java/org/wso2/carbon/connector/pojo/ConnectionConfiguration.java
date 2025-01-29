@@ -56,6 +56,10 @@ public class ConnectionConfiguration {
     private boolean isRemote = false;
 
     private long poolConnectionAgedTimeout;
+    /**
+     * True if encryption needs to be enabled when connecting to a file share
+     */
+    private boolean isEncryptionEnabled =  false;
 
     public ConnectionConfiguration(MessageContext messageContext) {
 
@@ -230,4 +234,20 @@ public class ConnectionConfiguration {
         this.configuration.setRetryCount(retryCount);
     }
 
+    public boolean isEncryptionEnabled() {
+        return isEncryptionEnabled;
+    }
+
+    public void setEnableEncryption(String enableEncryption) throws InvalidConfigurationException {
+
+        if (StringUtils.isNotEmpty(enableEncryption)) {
+            if ("true".equalsIgnoreCase(enableEncryption) || "false".equalsIgnoreCase(enableEncryption)) {
+                this.isEncryptionEnabled = Boolean.parseBoolean(enableEncryption);
+            } else {
+                throw new InvalidConfigurationException("Parameter 'enableEncryption' must be 'true' or 'false'.");
+            }
+        } else {
+            this.isEncryptionEnabled = false;
+        }
+    }
 }

@@ -84,6 +84,17 @@
                 {
                   "type": "attribute",
                   "value": {
+                    "name": "enableEncryption",
+                    "displayName": "EnableEncryption",
+                    "inputType": "booleanOrExpression",
+                    "defaultValue": "false",
+                    "required": "false",
+                    "helpTip": "Enable this to enable encryption when connecting to a file share that enforces encryption"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
                     "name": "maxActiveConnections",
                     "displayName": "maxActiveConnections",
                     "inputType": "string",
