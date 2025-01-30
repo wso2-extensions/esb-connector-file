@@ -56,9 +56,7 @@ public class ConnectionConfiguration {
     private boolean isRemote = false;
 
     private long poolConnectionAgedTimeout;
-    /**
-     * True if encryption needs to be enabled when connecting to a file share
-     */
+
     private boolean isEncryptionEnabled =  false;
 
     public ConnectionConfiguration(MessageContext messageContext) {
