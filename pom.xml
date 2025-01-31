@@ -28,7 +28,7 @@
     <properties>
         <connector.name>file</connector.name>
 <!--        <commons.vfs.version>2.6.0</commons.vfs.version>-->
-        <commons.vfs.version>2.2.0-wso2v18</commons.vfs.version>
+        <commons.vfs.version>2.2.0-wso2v20</commons.vfs.version>
         <integration.base.version>1.0.2</integration.base.version>
         <product.ei.version>6.1.1</product.ei.version>
         <carbon.kernel.version>4.4.17</carbon.kernel.version>
@@ -44,6 +44,7 @@
         <rampart.apache.version>1.6.1-wso2v18</rampart.apache.version>
         <rampart.wso2.version>1.6.1.wso2v18</rampart.wso2.version>
         <skip-tests>true</skip-tests>
+        <hierynomus.smbj.version>0.11.3</hierynomus.smbj.version>
     </properties>
 
     <dependencies>
@@ -60,6 +61,11 @@
         <dependency>
             <groupId>org.wso2.org.apache.commons</groupId>
             <artifactId>commons-vfs2</artifactId>
+            <version>${commons.vfs.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.org.apache.commons</groupId>
+            <artifactId>commons-vfs2-sandbox</artifactId>
             <version>${commons.vfs.version}</version>
         </dependency>
         <dependency>
@@ -198,6 +204,11 @@
             <artifactId>integration-base</artifactId>
             <version>${integration.base.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.hierynomus</groupId>
+            <artifactId>smbj</artifactId>
+            <version>${hierynomus.smbj.version}</version>
         </dependency>
     </dependencies>
     <scm>

@@ -57,6 +57,8 @@ public class ConnectionConfiguration {
 
     private long poolConnectionAgedTimeout;
 
+    private boolean isEncryptionEnabled =  false;
+
     public ConnectionConfiguration(MessageContext messageContext) {
 
         this.configuration = ConnectorUtils.getPoolConfiguration(messageContext);
@@ -230,4 +232,20 @@ public class ConnectionConfiguration {
         this.configuration.setRetryCount(retryCount);
     }
 
+    public boolean isEncryptionEnabled() {
+        return isEncryptionEnabled;
+    }
+
+    public void setEnableEncryption(String enableEncryption) throws InvalidConfigurationException {
+
+        if (StringUtils.isNotEmpty(enableEncryption)) {
+            if ("true".equalsIgnoreCase(enableEncryption) || "false".equalsIgnoreCase(enableEncryption)) {
+                this.isEncryptionEnabled = Boolean.parseBoolean(enableEncryption);
+            } else {
+                throw new InvalidConfigurationException("Parameter 'enableEncryption' must be 'true' or 'false'.");
+            }
+        } else {
+            this.isEncryptionEnabled = false;
+        }
+    }
 }

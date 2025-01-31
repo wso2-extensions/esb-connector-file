@@ -30,6 +30,8 @@
 	<parameter name="password" description="Password to connect with the file server"/>
 	<parameter name="encodePassword" description="Enable this to encode the password if it has special characters"/>
 	<parameter name="userDirIsRoot" description="Whether to treat the user directory as the root directory"/>
+	<!--SMB2  params-->
+	<parameter name="enableEncryption" description="Whether to enable encryption for secure communication with the file servers that enforce encryption."/>
 	<!--FTP/FTPS params-->
 	<parameter name="isPassive" description="True if to enter into passive mode"/>
 	<parameter name="ftpConnectionTimeout" description="Timeout in milisec for initial control connection"/>
