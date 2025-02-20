@@ -140,27 +140,27 @@ public class FileSorter {
 
     class TimeStampAscComparator implements Comparator<FileObject> {
         public int compare(FileObject o1, FileObject o2) {
-            long lDiff = 0L;
             try {
-                lDiff = o1.getContent().getLastModifiedTime()
-                        - o2.getContent().getLastModifiedTime();
+                long time1 = o1.getContent().getLastModifiedTime();
+                long time2 = o2.getContent().getLastModifiedTime();
+                return Long.compare(time1, time2);
             } catch (FileSystemException e) {
                 log.warn(LOG_PREFIX + "Unable to compare lastmodified timestamp of the two files.", e);
             }
-            return (int) lDiff;
+            return 0;
         }
     }
 
     class TimeStampDesComparator implements Comparator<FileObject> {
         public int compare(FileObject o1, FileObject o2) {
-            long lDiff = 0L;
             try {
-                lDiff = o2.getContent().getLastModifiedTime()
-                        - o1.getContent().getLastModifiedTime();
+                long time1 = o1.getContent().getLastModifiedTime();
+                long time2 = o2.getContent().getLastModifiedTime();
+                return Long.compare(time2, time1);
             } catch (FileSystemException e) {
                 log.warn(LOG_PREFIX + "Unable to compare lastModified timestamp of the two files.", e);
             }
-            return (int) lDiff;
+            return 0;
         }
     }
 
