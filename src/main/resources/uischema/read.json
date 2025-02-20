@@ -61,10 +61,21 @@
                     "name": "readMode",
                     "displayName": "Read Mode",
                     "inputType": "comboOrExpression",
-                    "comboValues": ["Complete File", "Starting From Line", "Up To Line", "Between Lines", "Specific Line", "Metadata Only"],
+                    "comboValues": [
+                      "Complete File",
+                      "Starting From Line",
+                      "Up To Line",
+                      "Between Lines",
+                      "Specific Line",
+                      "Metadata Only"
+                    ],
                     "defaultValue": "Complete File",
                     "required": "true",
-                    "enableCondition": [{"enableStreaming":"false"}],
+                    "enableCondition": [
+                      {
+                        "enableStreaming": "false"
+                      }
+                    ],
                     "helpTip": "Read mode to use. "
                   }
                 },
@@ -76,7 +87,15 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "0",
                     "required": "true",
-                    "enableCondition":  ["OR",{"readMode":"Starting From Line"}, {"readMode":"Between Lines"}],
+                    "enableCondition": [
+                      "OR",
+                      {
+                        "readMode": "Starting From Line"
+                      },
+                      {
+                        "readMode": "Between Lines"
+                      }
+                    ],
                     "helpTip": "Read file starting from this line."
                   }
                 },
@@ -88,7 +107,15 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "0",
                     "required": "true",
-                    "enableCondition":  ["OR",{"readMode":"Up To Line"}, {"readMode":"Between Lines"}],
+                    "enableCondition": [
+                      "OR",
+                      {
+                        "readMode": "Up To Line"
+                      },
+                      {
+                        "readMode": "Between Lines"
+                      }
+                    ],
                     "helpTip": "Read file up to this line."
                   }
                 },
@@ -100,7 +127,11 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "0",
                     "required": "true",
-                    "enableCondition": [{"readMode":"Specific Line"}],
+                    "enableCondition": [
+                      {
+                        "readMode": "Specific Line"
+                      }
+                    ],
                     "helpTip": "Specific line number to read"
                   }
                 }
@@ -120,7 +151,12 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
-                    "enableCondition":  ["NOT",{"readMode":"Metadata Only"}],
+                    "enableCondition": [
+                      "NOT",
+                      {
+                        "readMode": "Metadata Only"
+                      }
+                    ],
                     "helpTip": "MIME type of the message generated. If not provided it will try to interpret."
                   }
                 },
@@ -132,7 +168,12 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "UTF-8",
                     "required": "false",
-                    "enableCondition":  ["NOT",{"readMode":"Metadata Only"}],
+                    "enableCondition": [
+                      "NOT",
+                      {
+                        "readMode": "Metadata Only"
+                      }
+                    ],
                     "helpTip": "Encoding of the message generated."
                   }
                 },
@@ -194,7 +235,10 @@
                     "name": "includeResultTo",
                     "displayName": "Add Result To",
                     "inputType": "comboOrExpression",
-                    "comboValues": ["Message Body","Message Property"],
+                    "comboValues": [
+                      "Message Body",
+                      "Message Property"
+                    ],
                     "defaultValue": "Message Body",
                     "required": "true",
                     "helpTip": "Specify where to place operation result. Setting to a property will not change current payload at message body."
@@ -208,11 +252,45 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
-                    "enableCondition": [{"includeResultTo":"Message Property"}],
+                    "enableCondition": [
+                      {
+                        "includeResultTo": "Message Property"
+                      }
+                    ],
                     "helpTip": "Name of property to add operation result"
                   }
                 }
               ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "Response",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "responseVariable",
+              "displayName": "Response Variable Name",
+              "inputType": "string",
+              "deriveResponseVariable": true,
+              "required": "true",
+              "helpTip": "Name of the variable to which the output of the operation should be assigned"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "overwriteBody",
+              "displayName": "Overwrite Message Body",
+              "inputType": "checkbox",
+              "defaultValue": "false",
+              "helpTip": "Replace the Message Body in Message Context with the response of the operation (This will remove the payload from the above variable).",
+              "required": "false"
             }
           }
         ]

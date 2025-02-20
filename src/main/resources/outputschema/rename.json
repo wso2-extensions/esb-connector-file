@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Output Schema for rename Operation",
+    "description": "Output schema for the rename operation in the connector.",
+    "properties": {
+        "payload": {
+            "type": "object",
+            "description": "The main response payload from the rename operation."
+        },
+        "attributes": {
+            "type": "object",
+            "description": "Metadata about the rename operation.",
+            "properties": {},
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "payload",
+        "attributes"
+    ],
+    "additionalProperties": false
+}

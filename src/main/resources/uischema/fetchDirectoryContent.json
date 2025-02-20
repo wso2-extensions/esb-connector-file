@@ -80,7 +80,11 @@
                     "name": "sortingAttribute",
                     "displayName": "File Sort Attribute",
                     "inputType": "comboOrExpression",
-                    "comboValues": ["Name", "Size", "LastModifiedTime"],
+                    "comboValues": [
+                      "Name",
+                      "Size",
+                      "LastModifiedTime"
+                    ],
                     "defaultValue": "Name",
                     "required": "true",
                     "helpTip": "Files will be listed as per attribute."
@@ -92,7 +96,10 @@
                     "name": "sortingOrder",
                     "displayName": "Sort Order",
                     "inputType": "comboOrExpression",
-                    "comboValues": ["Ascending", "Descending"],
+                    "comboValues": [
+                      "Ascending",
+                      "Descending"
+                    ],
                     "defaultValue": "Ascending",
                     "required": "false",
                     "helpTip": "Order you need to sort in ascending or descending order"
@@ -110,6 +117,36 @@
                   }
                 }
               ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "attributeGroup",
+      "value": {
+        "groupName": "Response",
+        "elements": [
+          {
+            "type": "attribute",
+            "value": {
+              "name": "responseVariable",
+              "displayName": "Response Variable Name",
+              "inputType": "string",
+              "deriveResponseVariable": true,
+              "required": "true",
+              "helpTip": "Name of the variable to which the output of the operation should be assigned"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "overwriteBody",
+              "displayName": "Overwrite Message Body",
+              "inputType": "checkbox",
+              "defaultValue": "false",
+              "helpTip": "Replace the Message Body in Message Context with the response of the operation (This will remove the payload from the above variable).",
+              "required": "false"
             }
           }
         ]

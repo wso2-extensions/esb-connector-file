@@ -131,7 +131,8 @@ public class DeleteFileOrFolder extends AbstractConnector {
                             numOfDeletedFilesEle);
                 }
 
-                Utils.setResultAsPayload(messageContext, result);
+                Utils.setResultAsPayload(messageContext, result, Utils.
+                        lookUpStringParam(messageContext, Const.RESPONSE_VARIABLE, Const.EMPTY_STRING));
                 successOperation = true;
             } catch (InvalidConfigurationException e) {
 

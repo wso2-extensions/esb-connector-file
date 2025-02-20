@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
   ~ Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
   ~
@@ -15,17 +16,18 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-
 <template xmlns="http://ws.apache.org/ns/synapse" name="listFiles">
     <parameter name="directoryPath" description="The path to the directory to list files"/>
     <parameter name="matchingPattern" description="Pattern to match when listing files"/>
     <parameter name="recursive" description="List files in sub-directories"/>
-    <parameter name="responseFormat" description="Format to list the files in response" />
-    <parameter name="sortingAttribute" description="Sort files when listing" />
+    <parameter name="responseFormat" description="Format to list the files in response"/>
+    <parameter name="sortingAttribute" description="Sort files when listing"/>
     <parameter name="sortingOrder" description="File sorting order"/>
     <parameter name="maxRetries" description="The maximum number of retry attempts in case of a failure."/>
     <parameter name="retryDelay" description="The delay between retry attempts in milliseconds."/>
+    <parameter name="responseVariable" description="The name of the variable to which the response should be stored."/>
+    <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
     <sequence>
-        <class name="org.wso2.carbon.connector.operations.ListFiles" />
+        <class name="org.wso2.carbon.connector.operations.ListFiles"/>
     </sequence>
 </template>

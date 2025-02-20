@@ -133,7 +133,8 @@ public class MergeFiles extends AbstractConnector {
             result = new FileOperationResult(OPERATION_NAME,
                     true,
                     fileMergeDetailEle);
-            Utils.setResultAsPayload(messageContext, result);
+            Utils.setResultAsPayload(messageContext, result, Utils.
+                    lookUpStringParam(messageContext, Const.RESPONSE_VARIABLE, Const.EMPTY_STRING));
 
         } catch (InvalidConfigurationException e) {
 

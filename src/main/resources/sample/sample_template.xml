@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
    Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 
@@ -17,10 +18,12 @@
 -->
 <template xmlns="http://ws.apache.org/ns/synapse" name="sample_template">
         <parameter name="generated_param"/>
-        <sequence>
+    <parameter name="responseVariable" description="The name of the variable to which the response should be stored."/>
+    <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
+    <sequence>
             	<log level="full">
-			<property name="*******template_param********" expression="$func:generated_param" />
+			<property name="*******template_param********" expression="$func:generated_param"/>
 		</log>
-		<class name="org.wso2.carbon.connector.esb-connector-fileConnector" />
+		<class name="org.wso2.carbon.connector.esb-connector-fileConnector"/>
         </sequence>
 </template>

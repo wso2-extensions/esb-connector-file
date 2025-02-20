@@ -145,7 +145,8 @@ public class ListFiles extends AbstractConnector {
                                 OPERATION_NAME,
                                 true,
                                 fileListEle);
-                        Utils.setResultAsPayload(messageContext, result);
+                        Utils.setResultAsPayload(messageContext, result, Utils.
+                                lookUpStringParam(messageContext, Const.RESPONSE_VARIABLE, Const.EMPTY_STRING));
                         successOperation = true;
                     } else {
                         throw new FileOperationException("Folder is expected.");
