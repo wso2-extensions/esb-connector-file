@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -36,6 +37,8 @@ public class FileLockStore {
     private static final long DEFAULT_EXPIRY_CHECK_INTERVAL = 15000;
     private final ConcurrentHashMap<String, FileLock> lockMap = new ConcurrentHashMap<>(5);
     private Timer expiryTimer = new java.util.Timer();
+
+    private TimerTask timerTask;
 
     FileLockStore() {
         scheduleExpiry();
@@ -58,6 +61,10 @@ public class FileLockStore {
             tryReleaseLock(fileLock);
             iter.remove();
         }
+        if (timerTask != null) {
+            timerTask.cancel();
+        }
+        expiryTimer.cancel();
     }
 
     private boolean isLockExpired(FileLock lock) {
@@ -91,7 +98,7 @@ public class FileLockStore {
      */
     private void scheduleExpiry() {
         expiryTimer.scheduleAtFixedRate(
-                new java.util.TimerTask() {
+                timerTask = new java.util.TimerTask() {
                     @Override
                     public void run() {
                         if(log.isDebugEnabled()) {
