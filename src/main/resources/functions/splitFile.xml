@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
   ~ Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
   ~
@@ -15,7 +16,6 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-
 <template xmlns="http://ws.apache.org/ns/synapse" name="splitFile">
     <parameter name="sourceFilePath" description="Path to the file to split"/>
     <parameter name="targetDirectory" description="Folder to place split files"/>
@@ -23,7 +23,9 @@
     <parameter name="chunkSize" description="The chunk size in bytes to split the file"/>
     <parameter name="lineCount" description="The number of lines per file"/>
     <parameter name="xpathExpression" description="XPATH expression used to split xml file"/>
+    <parameter name="responseVariable" description="The name of the variable to which the response should be stored."/>
+    <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
     <sequence>
-        <class name="org.wso2.carbon.connector.operations.SplitFile" />
+        <class name="org.wso2.carbon.connector.operations.SplitFile"/>
     </sequence>
 </template>

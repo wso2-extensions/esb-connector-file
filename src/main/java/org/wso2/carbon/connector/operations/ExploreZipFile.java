@@ -109,7 +109,8 @@ public class ExploreZipFile extends AbstractConnector {
             result = new FileOperationResult(OPERATION_NAME,
                     true,
                     zipFileContentEle);
-            Utils.setResultAsPayload(messageContext, result);
+            Utils.setResultAsPayload(messageContext, result, Utils.
+                    lookUpStringParam(messageContext, Const.RESPONSE_VARIABLE, Const.EMPTY_STRING));
 
 
         } catch (InvalidConfigurationException e) {

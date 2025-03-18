@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Output Schema for compress Operation",
+    "description": "Output schema for the compress operation in the connector.",
+    "properties": {
+        "payload": {
+            "type": "object",
+            "description": "The main response payload from the compress operation."
+        },
+        "attributes": {
+            "type": "object",
+            "description": "Metadata about the compress operation.",
+            "properties": {},
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "payload",
+        "attributes"
+    ],
+    "additionalProperties": false
+}

@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
   ~ Copyright (c) 2024, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
   ~
@@ -15,15 +16,16 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-
 <template xmlns="http://ws.apache.org/ns/synapse" name="fetchDirectoryContent">
     <parameter name="directoryPath" description="The path to the directory to list files"/>
     <parameter name="matchingPattern" description="Pattern to match when listing files"/>
     <parameter name="recursive" description="List files in sub-directories"/>
-    <parameter name="sortingAttribute" description="Sort files when listing" />
+    <parameter name="sortingAttribute" description="Sort files when listing"/>
     <parameter name="sortingOrder" description="File sorting order"/>
     <parameter name="resultPropertyName" description="Name of property to add the list of base64 encoded files operation result."/>
+    <parameter name="responseVariable" description="The name of the variable to which the response should be stored."/>
+    <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
     <sequence>
-        <class name="org.wso2.carbon.connector.operations.FetchContentToList" />
+        <class name="org.wso2.carbon.connector.operations.FetchContentToList"/>
     </sequence>
 </template>

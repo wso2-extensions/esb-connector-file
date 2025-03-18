@@ -100,23 +100,8 @@ public class CheckFileExist extends AbstractConnector {
                     true,
                     fileExistsEle);
 
-            String injectOperationResultAt = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, INCLUDE_RESULT_AT_PARAM);
-
-            if (injectOperationResultAt.equals(Const.MESSAGE_BODY)) {
-                Utils.setResultAsPayload(messageContext, result);
-            } else if (injectOperationResultAt.equals(Const.MESSAGE_PROPERTY)) {
-                String resultPropertyName = (String) ConnectorUtils.
-                        lookupTemplateParamater(messageContext, RESULT_PROPERTY_NAME_PARAM);
-                if (StringUtils.isNotEmpty(resultPropertyName)) {
-                    messageContext.setProperty(resultPropertyName, operationResult);
-                } else {
-                    throw new InvalidConfigurationException("Property name to set operation result is required");
-                }
-            } else {
-                throw new InvalidConfigurationException("Parameter 'includeResultAt' is mandatory");
-            }
-
+            Utils.setResultAsPayload(messageContext, result,
+                    Utils.lookUpStringParam(messageContext, Const.RESPONSE_VARIABLE, Const.EMPTY_STRING));
 
         } catch (InvalidConfigurationException e) {
 

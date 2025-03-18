@@ -110,7 +110,8 @@ public class RenameFiles extends AbstractConnector {
                 throw new IllegalPathException("File or folder does not exist " + fileOrFolderPath);
             }
 
-            Utils.setResultAsPayload(messageContext, result);
+            Utils.setResultAsPayload(messageContext, result, Utils.
+                    lookUpStringParam(messageContext, Const.RESPONSE_VARIABLE, Const.EMPTY_STRING));
 
         } catch (InvalidConfigurationException e) {
 
