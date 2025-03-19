@@ -79,6 +79,8 @@ public class CopyFiles extends AbstractConnector {
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String connectionName = Utils.getConnectionName(messageContext);
         String connectorName = Const.CONNECTOR_NAME;
+        String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
+                (messageContext, Const.DISK_SHARE_ACCESS_MASK);
         //read max retries and retry delay
         try {
             maxRetries = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
@@ -99,6 +101,7 @@ public class CopyFiles extends AbstractConnector {
                         .getConnection(Const.CONNECTOR_NAME, connectionName);
                 FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
                 FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+                Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
                 //read inputs
                 sourcePath = (String) ConnectorUtils.
                         lookupTemplateParamater(messageContext, SOURCE_PATH);
@@ -243,6 +246,7 @@ public class CopyFiles extends AbstractConnector {
                 }
                 if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
                     if (fileSystemHandlerConnection != null) {
+                        Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
                         handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                     }
                 }

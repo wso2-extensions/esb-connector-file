@@ -23,6 +23,7 @@
     <parameter name="sortingAttribute" description="Sort files when listing" />
     <parameter name="sortingOrder" description="File sorting order"/>
     <parameter name="resultPropertyName" description="Name of property to add the list of base64 encoded files operation result."/>
+    <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.FetchContentToList" />
     </sequence>

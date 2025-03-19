@@ -73,6 +73,8 @@ public class CompressFiles extends AbstractConnector {
         String connectionName = Utils.getConnectionName(messageContext);
         String connectorName = Const.CONNECTOR_NAME;
         try {
+            String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
+                    (messageContext, Const.DISK_SHARE_ACCESS_MASK);
 
             sourceFilePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SOURCE_DIRECTORY_PATH);
@@ -96,6 +98,7 @@ public class CompressFiles extends AbstractConnector {
 
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+            Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
             fileToCompress = fsManager.resolveFile(sourceFilePath, fso);
 
             if (!fileToCompress.exists()) {
@@ -144,6 +147,7 @@ public class CompressFiles extends AbstractConnector {
             }
             if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
                 if (fileSystemHandlerConnection != null) {
+                    Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
                     handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }

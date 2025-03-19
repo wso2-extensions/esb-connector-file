@@ -20,6 +20,7 @@
     <parameter name="path" description="The path to the file or folder to be renamed"/>
     <parameter name="renameTo" description="New name of the file or folder"/>
     <parameter name="overwrite" description="Whether or not to overwrite the file if a file with new name already exists."/>
+    <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.RenameFiles" />
     </sequence>

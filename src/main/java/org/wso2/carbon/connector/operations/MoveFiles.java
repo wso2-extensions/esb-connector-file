@@ -83,11 +83,13 @@ public class MoveFiles extends AbstractConnector {
         String connectionName = Utils.getConnectionName(messageContext);
         String connectorName = Const.CONNECTOR_NAME;
         try {
-
+            String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
+                    (messageContext, Const.DISK_SHARE_ACCESS_MASK);
             fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
             fsManager = fileSystemHandlerConnection.getFsManager();
             fso = fileSystemHandlerConnection.getFsOptions();
+            Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
 
             //read inputs
             sourcePath = (String) ConnectorUtils.
@@ -215,6 +217,7 @@ public class MoveFiles extends AbstractConnector {
             }
             if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
                 if (fileSystemHandlerConnection != null) {
+                    Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
                     handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }

@@ -53,13 +53,15 @@ public class CreateDirectory extends AbstractConnector {
         String connectionName = Utils.getConnectionName(messageContext);
         String connectorName = Const.CONNECTOR_NAME;
         try {
-
+            String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
+                    (messageContext, Const.DISK_SHARE_ACCESS_MASK);
             fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
             folderPath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, Const.DIRECTORY_PATH);
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+            Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
             folderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPath;
             folderToCreate = fsManager.resolveFile(folderPath, fso);
             //create folder if it doesn't exist
@@ -92,6 +94,7 @@ public class CreateDirectory extends AbstractConnector {
             }
             if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
                 if (fileSystemHandlerConnection != null) {
+                    Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
                     handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }

@@ -75,10 +75,13 @@ public class FetchContentToList extends AbstractConnector {
 
         try {
 
+            String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
+                    (messageContext, Const.DISK_SHARE_ACCESS_MASK);
             fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+            Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
 
             //read inputs
             folderPath = (String) ConnectorUtils.
@@ -143,6 +146,7 @@ public class FetchContentToList extends AbstractConnector {
             }
             if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
                 if (fileSystemHandlerConnection != null) {
+                    Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
                     handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }

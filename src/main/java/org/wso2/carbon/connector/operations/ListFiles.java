@@ -92,6 +92,8 @@ public class ListFiles extends AbstractConnector {
         int retryDelay;
         int attempt = 0;
         boolean successOperation = false;
+        String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
+                (messageContext, Const.DISK_SHARE_ACCESS_MASK);
         //read max retries and retry delay
         try {
             maxRetries = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
@@ -112,6 +114,7 @@ public class ListFiles extends AbstractConnector {
                         .getConnection(Const.CONNECTOR_NAME, connectionName);
                 FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
                 FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+                Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
 
                 //read inputs
                 folderPath = (String) ConnectorUtils.
@@ -197,6 +200,7 @@ public class ListFiles extends AbstractConnector {
                 }
                 if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
                     if (fileSystemHandlerConnection != null) {
+                        Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
                         handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                     }
                 }

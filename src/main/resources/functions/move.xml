@@ -26,6 +26,7 @@
     <parameter name="filePattern" description="The pattern (regex) of the files to be moved."/>
     <parameter name="isSourceMounted" description="Whether the source path is a mounted path or not."/>
     <parameter name="isTargetMounted" description="Whether the target path is a mounted path or not."/>
+    <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.MoveFiles" />
     </sequence>

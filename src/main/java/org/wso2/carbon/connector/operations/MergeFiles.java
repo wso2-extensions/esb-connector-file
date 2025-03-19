@@ -74,6 +74,8 @@ public class MergeFiles extends AbstractConnector {
         String connectorName = Const.CONNECTOR_NAME;
 
         try {
+            String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
+                    (messageContext, Const.DISK_SHARE_ACCESS_MASK);
 
             sourceDirectoryPath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SOURCE_DIRECTORY_PATH_PARAM);
@@ -91,6 +93,7 @@ public class MergeFiles extends AbstractConnector {
 
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+            Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
             sourceDir = fsManager.resolveFile(sourceDirectoryPath, fso);
             targetFile = fsManager.resolveFile(targetFilePath, fso);
 
@@ -163,6 +166,7 @@ public class MergeFiles extends AbstractConnector {
             }
             if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
                 if (fileSystemHandlerConnection != null) {
+                    Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
                     handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }

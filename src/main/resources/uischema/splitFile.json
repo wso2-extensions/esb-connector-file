@@ -54,6 +54,17 @@
                     "required": "true",
                     "helpTip": "Folder to place split files. If already exists, it will get overwritten."
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "diskShareAccessMask",
+                    "displayName": "Access mask for disk share",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "MAXIMUM",
+                    "required": "false",
+                    "helpTip": "Access mask for disk share. This is only applicable for SMB2 connection type."
+                  }
                 }
               ]
             }
