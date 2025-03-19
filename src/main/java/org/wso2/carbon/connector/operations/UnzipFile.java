@@ -66,6 +66,8 @@ public class UnzipFile extends AbstractConnector {
         String connectorName = Const.CONNECTOR_NAME;
 
         try {
+            String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
+                    (messageContext, Const.DISK_SHARE_ACCESS_MASK);
             filePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SOURCE_FILE_PATH_PARAM);
             folderPathToExtract = (String) ConnectorUtils.
@@ -79,6 +81,7 @@ public class UnzipFile extends AbstractConnector {
 
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+            Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
             compressedFile = fsManager.resolveFile(filePath, fso);
             targetFolder = fsManager.resolveFile(folderPathToExtract, fso);
 
@@ -125,6 +128,7 @@ public class UnzipFile extends AbstractConnector {
 
             if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
                 if (fileSystemHandlerConnection != null) {
+                    Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
                     handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }

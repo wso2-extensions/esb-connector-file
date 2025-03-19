@@ -131,6 +131,17 @@
                     "required": "false",
                     "helpTip": "The time interval between retries in milliseconds."
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "diskShareAccessMask",
+                    "displayName": "Access mask for disk share",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "MAXIMUM",
+                    "required": "false",
+                    "helpTip": "Access mask for disk share. This is only applicable for SMB2 connection type."
+                  }
                 }
               ]
             }

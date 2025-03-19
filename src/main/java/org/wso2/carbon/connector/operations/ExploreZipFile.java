@@ -66,6 +66,9 @@ public class ExploreZipFile extends AbstractConnector {
         String connectorName = Const.CONNECTOR_NAME;
         try {
 
+            String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
+                    (messageContext, Const.DISK_SHARE_ACCESS_MASK);
+
             filePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, ZIP_FILE_PATH);
 
@@ -79,6 +82,7 @@ public class ExploreZipFile extends AbstractConnector {
 
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+            Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
             zipFile = fsManager.resolveFile(filePath, fso);
 
             if (!zipFile.exists()) {
@@ -140,6 +144,7 @@ public class ExploreZipFile extends AbstractConnector {
             }
             if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
                 if (fileSystemHandlerConnection != null) {
+                    Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
                     handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }

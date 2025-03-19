@@ -66,6 +66,8 @@ public class DeleteFileOrFolder extends AbstractConnector {
         int retryDelay;
         int attempt = 0;
         boolean successOperation = false;
+        String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
+                (messageContext, Const.DISK_SHARE_ACCESS_MASK);
         //read max retries and retry delay
         try {
             maxRetries = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
@@ -90,6 +92,7 @@ public class DeleteFileOrFolder extends AbstractConnector {
                         lookupTemplateParamater(messageContext, Const.FILE_OR_DIRECTORY_PATH);
                 FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
                 FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+                Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
                 fileOrFolderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + fileOrFolderPath;
                 fileObjectToDelete = fsManager.resolveFile(fileOrFolderPath, fso);
 
@@ -171,6 +174,7 @@ public class DeleteFileOrFolder extends AbstractConnector {
 
                 if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
                     if (fileSystemHandlerConnection != null) {
+                        Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
                         handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                     }
                 }

@@ -21,6 +21,7 @@
     <parameter name="targetFilePath" description="Path to create merged file."/>
     <parameter name="filePattern" description="Pattern of files include in merging."/>
     <parameter name="writeMode" description="Whether to append or over write if file exists"/>
+    <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.MergeFiles" />
     </sequence>

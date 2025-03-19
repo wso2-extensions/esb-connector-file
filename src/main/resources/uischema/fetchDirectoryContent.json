@@ -108,6 +108,17 @@
                     "required": "true",
                     "helpTip": "Name of property to add the list of base64 encoded files operation result"
                   }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "diskShareAccessMask",
+                    "displayName": "Access mask for disk share",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "MAXIMUM",
+                    "required": "false",
+                    "helpTip": "Access mask for disk share. This is only applicable for SMB2 connection type."
+                  }
                 }
               ]
             }

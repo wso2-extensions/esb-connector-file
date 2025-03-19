@@ -63,6 +63,8 @@ public class CheckFileExist extends AbstractConnector {
         String connectionName = Utils.getConnectionName(messageContext);
         String connectorName = Const.CONNECTOR_NAME;
         try {
+            String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
+                    (messageContext, Const.DISK_SHARE_ACCESS_MASK);
 
             filePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, PATH_PARAM);
@@ -77,6 +79,7 @@ public class CheckFileExist extends AbstractConnector {
 
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
+            Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
             fileObject = fsManager.resolveFile(filePath, fso);
             /*
                 Temporarily reverting this fix with expensive file system resolve calls.
@@ -141,6 +144,7 @@ public class CheckFileExist extends AbstractConnector {
             }
             if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
                 if (fileSystemHandlerConnection != null) {
+                    Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
                     handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }

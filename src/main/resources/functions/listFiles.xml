@@ -25,6 +25,7 @@
     <parameter name="sortingOrder" description="File sorting order"/>
     <parameter name="maxRetries" description="The maximum number of retry attempts in case of a failure."/>
     <parameter name="retryDelay" description="The delay between retry attempts in milliseconds."/>
+    <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.ListFiles" />
     </sequence>

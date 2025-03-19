@@ -19,6 +19,7 @@
 <template xmlns="http://ws.apache.org/ns/synapse" name="unzip">
     <parameter name="sourceFilePath" description="Path to the .zip file"/>
     <parameter name="targetDirectory" description="Folder to extract"/>
+    <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.UnzipFile" />
     </sequence>
