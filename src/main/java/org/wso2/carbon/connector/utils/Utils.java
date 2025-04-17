@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.connector.utils;
 
+import com.hierynomus.msdtyp.AccessMask;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMException;
 import org.apache.axiom.om.util.AXIOMUtil;
@@ -40,13 +41,12 @@ import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
+import scala.util.parsing.combinator.testing.Str;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Base64;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 
 import javax.xml.stream.XMLStreamException;
@@ -113,24 +113,34 @@ public class Utils {
      * @param diskShareAccessMask Disk share access mask
      * @return Validated disk share access mask
      */
-    public static String validateAndGetDiskShareAccessMask(String diskShareAccessMask) {
-        // Define allowed values (case-insensitive)
-        Set<String> allowedValues = new HashSet<>();
-        allowedValues.add("READ");
-        allowedValues.add("WRITE");
-        allowedValues.add("READ_WRITE");
-        allowedValues.add("ALL");
-        allowedValues.add("MAXIMUM");
-
-        // Validate input
-        if (diskShareAccessMask == null || !allowedValues.contains(diskShareAccessMask.toUpperCase())) {
-            //set disk share access mask to max allowed to keep default behaviour
-            return "MAXIMUM";
+    public static ArrayList<String> validateAndGetDiskShareAccessMask(String diskShareAccessMask) {
+        // Prepare the set of allowed access mask values
+        Set<String> allowedValues = new HashSet<String>();
+        for (AccessMask mask : AccessMask.values()) {
+            allowedValues.add(mask.name());
         }
 
-        // Assign the validated value
-        return diskShareAccessMask.toUpperCase();
+        ArrayList<String> outDiskShareAccessMasks = new ArrayList<String>();
+
+        // Validate and collect allowed values
+        if (diskShareAccessMask != null) {
+            String[] masks = diskShareAccessMask.split(",");
+            for (int i = 0; i < masks.length; i++) {
+                String accessMask = masks[i].trim();
+                if (allowedValues.contains(accessMask)) {
+                    outDiskShareAccessMasks.add(accessMask);
+                }
+            }
+        }
+
+        // Fallback to default if nothing is valid or input was null
+        if (outDiskShareAccessMasks.isEmpty()) {
+            outDiskShareAccessMasks.add("MAXIMUM_ALLOWED");
+        }
+
+        return outDiskShareAccessMasks;
     }
+
 
     /**
      * Add disk share access mask to file system options.
@@ -143,7 +153,8 @@ public class Utils {
             try {
                 //set disk share access mask to max allowed to keep default behaviour
                 Smb2FileSystemConfigBuilder smb2ConfigBuilder = Smb2FileSystemConfigBuilder.getInstance();
-                smb2ConfigBuilder.setDiskShareAccessMask(fso, Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED);
+                smb2ConfigBuilder.setDiskShareAccessMask(fso, (ArrayList<String>) Collections.singletonList(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED));
+
             } catch (NoClassDefFoundError | NoSuchMethodError e) {
                 //ignore since using an older server version
             }
@@ -161,7 +172,7 @@ public class Utils {
     public static void addMaxAccessMaskToFSO(FileSystemOptions fso) {
         try {
             Smb2FileSystemConfigBuilder smb2ConfigBuilder = Smb2FileSystemConfigBuilder.getInstance();
-            smb2ConfigBuilder.setDiskShareAccessMask(fso, Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED);
+            smb2ConfigBuilder.setDiskShareAccessMask(fso, (ArrayList<String>) Collections.singletonList(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED));
         } catch (NoClassDefFoundError | NoSuchMethodError e) {
             //ignore since using an older server version
         }
