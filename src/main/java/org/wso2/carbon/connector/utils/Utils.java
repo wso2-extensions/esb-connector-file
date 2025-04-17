@@ -125,22 +125,26 @@ public class Utils {
         // Validate and collect allowed values
         if (diskShareAccessMask != null) {
             String[] masks = diskShareAccessMask.split(",");
-            for (int i = 0; i < masks.length; i++) {
-                String accessMask = masks[i].trim();
+            for (String mask : masks) {
+                String accessMask = mask.trim();
                 if (allowedValues.contains(accessMask)) {
                     outDiskShareAccessMasks.add(accessMask);
+                } else {
+                    log.warn("Access mask is not valid and was ignored: " + mask);
                 }
             }
         }
 
         // Fallback to default if nothing is valid or input was null
         if (outDiskShareAccessMasks.isEmpty()) {
-            outDiskShareAccessMasks.add("MAXIMUM_ALLOWED");
+            if (log.isDebugEnabled()) {
+                log.debug("Set the access mask to default MAXIMUM_ALLOWED since the access mask is not defined or the defined values are not valid.");
+            }
+            outDiskShareAccessMasks.add(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED);
         }
 
         return outDiskShareAccessMasks;
     }
-
 
     /**
      * Add disk share access mask to file system options.
