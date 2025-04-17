@@ -46,7 +46,7 @@ public final class Const {
     public static final String ENCODE_PASSWORD = "encodePassword";
     public static final String ENABLE_ENCRYPTION = "enableEncryption";
     public static final String DISK_SHARE_ACCESS_MASK = "diskShareAccessMask";
-    public static final String DISK_SHARE_ACCESS_MASK_MAX_ALLOWED = "MAXIMUM";
+    public static final String DISK_SHARE_ACCESS_MASK_MAX_ALLOWED = "MAXIMUM_ALLOWED";
     public static final String USERDIR_IS_ROOT = "userDirIsRoot";
 
     public static final String IS_PASSIVE = "isPassive";
