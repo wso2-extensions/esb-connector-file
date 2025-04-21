@@ -46,7 +46,11 @@ import scala.util.parsing.combinator.testing.Str;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 
 import javax.xml.stream.XMLStreamException;
@@ -176,7 +180,8 @@ public class Utils {
     public static void addMaxAccessMaskToFSO(FileSystemOptions fso) {
         try {
             Smb2FileSystemConfigBuilder smb2ConfigBuilder = Smb2FileSystemConfigBuilder.getInstance();
-            smb2ConfigBuilder.setDiskShareAccessMask(fso, (ArrayList<String>) Collections.singletonList(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED));
+            smb2ConfigBuilder.setDiskShareAccessMask(fso,
+                    (ArrayList<String>) Collections.singletonList(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED));
         } catch (NoClassDefFoundError | NoSuchMethodError e) {
             //ignore since using an older server version
         }
