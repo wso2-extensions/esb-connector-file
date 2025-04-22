@@ -35,13 +35,11 @@ import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.transport.passthru.PassThroughConstants;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.connection.SMBConnectionFactory;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
-import scala.util.parsing.combinator.testing.Str;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -130,7 +128,7 @@ public class Utils {
         if (diskShareAccessMask != null) {
             String[] masks = diskShareAccessMask.split(",");
             for (String mask : masks) {
-                String accessMask = mask.trim();
+                String accessMask = mask.trim().toUpperCase();
                 if (allowedValues.contains(accessMask)) {
                     outDiskShareAccessMasks.add(accessMask);
                 } else {
