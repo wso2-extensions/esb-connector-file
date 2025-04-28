@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.connector.utils;
 
+import com.hierynomus.msdtyp.AccessMask;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMException;
 import org.apache.axiom.om.util.AXIOMUtil;
@@ -34,7 +35,6 @@ import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.transport.passthru.PassThroughConstants;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.connection.SMBConnectionFactory;
 import org.wso2.carbon.connector.core.ConnectException;
 import org.wso2.carbon.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.core.util.ConnectorUtils;
@@ -44,7 +44,9 @@ import org.wso2.carbon.connector.pojo.FileOperationResult;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -113,23 +115,37 @@ public class Utils {
      * @param diskShareAccessMask Disk share access mask
      * @return Validated disk share access mask
      */
-    public static String validateAndGetDiskShareAccessMask(String diskShareAccessMask) {
-        // Define allowed values (case-insensitive)
-        Set<String> allowedValues = new HashSet<>();
-        allowedValues.add("READ");
-        allowedValues.add("WRITE");
-        allowedValues.add("READ_WRITE");
-        allowedValues.add("ALL");
-        allowedValues.add("MAXIMUM");
-
-        // Validate input
-        if (diskShareAccessMask == null || !allowedValues.contains(diskShareAccessMask.toUpperCase())) {
-            //set disk share access mask to max allowed to keep default behaviour
-            return "MAXIMUM";
+    public static ArrayList<String> validateAndGetDiskShareAccessMask(String diskShareAccessMask) {
+        // Prepare the set of allowed access mask values
+        Set<String> allowedValues = new HashSet<String>();
+        for (AccessMask mask : AccessMask.values()) {
+            allowedValues.add(mask.name());
         }
 
-        // Assign the validated value
-        return diskShareAccessMask.toUpperCase();
+        ArrayList<String> outDiskShareAccessMasks = new ArrayList<String>();
+
+        // Validate and collect allowed values
+        if (diskShareAccessMask != null) {
+            String[] masks = diskShareAccessMask.split(",");
+            for (String mask : masks) {
+                String accessMask = mask.trim().toUpperCase();
+                if (allowedValues.contains(accessMask)) {
+                    outDiskShareAccessMasks.add(accessMask);
+                } else {
+                    log.warn("Access mask is not valid and was ignored: " + mask);
+                }
+            }
+        }
+
+        // Fallback to default if nothing is valid or input was null
+        if (outDiskShareAccessMasks.isEmpty()) {
+            if (log.isDebugEnabled()) {
+                log.debug("Set the access mask to default MAXIMUM_ALLOWED since the access mask is not defined or the defined values are not valid.");
+            }
+            outDiskShareAccessMasks.add(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED);
+        }
+
+        return outDiskShareAccessMasks;
     }
 
     /**
@@ -143,7 +159,8 @@ public class Utils {
             try {
                 //set disk share access mask to max allowed to keep default behaviour
                 Smb2FileSystemConfigBuilder smb2ConfigBuilder = Smb2FileSystemConfigBuilder.getInstance();
-                smb2ConfigBuilder.setDiskShareAccessMask(fso, Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED);
+                smb2ConfigBuilder.setDiskShareAccessMask(fso, (ArrayList<String>) Collections.singletonList(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED));
+
             } catch (NoClassDefFoundError | NoSuchMethodError e) {
                 //ignore since using an older server version
             }
@@ -161,7 +178,8 @@ public class Utils {
     public static void addMaxAccessMaskToFSO(FileSystemOptions fso) {
         try {
             Smb2FileSystemConfigBuilder smb2ConfigBuilder = Smb2FileSystemConfigBuilder.getInstance();
-            smb2ConfigBuilder.setDiskShareAccessMask(fso, Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED);
+            smb2ConfigBuilder.setDiskShareAccessMask(fso,
+                    (ArrayList<String>) Collections.singletonList(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED));
         } catch (NoClassDefFoundError | NoSuchMethodError e) {
             //ignore since using an older server version
         }
