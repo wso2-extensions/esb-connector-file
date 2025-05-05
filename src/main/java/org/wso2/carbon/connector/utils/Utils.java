@@ -159,8 +159,9 @@ public class Utils {
             try {
                 //set disk share access mask to max allowed to keep default behaviour
                 Smb2FileSystemConfigBuilder smb2ConfigBuilder = Smb2FileSystemConfigBuilder.getInstance();
-                smb2ConfigBuilder.setDiskShareAccessMask(fso, (ArrayList<String>) Collections.singletonList(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED));
-
+                ArrayList<String> accessMaskList = new ArrayList<>();
+                accessMaskList.add(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED);
+                smb2ConfigBuilder.setDiskShareAccessMask(fso, accessMaskList);
             } catch (NoClassDefFoundError | NoSuchMethodError e) {
                 //ignore since using an older server version
             }
@@ -178,8 +179,9 @@ public class Utils {
     public static void addMaxAccessMaskToFSO(FileSystemOptions fso) {
         try {
             Smb2FileSystemConfigBuilder smb2ConfigBuilder = Smb2FileSystemConfigBuilder.getInstance();
-            smb2ConfigBuilder.setDiskShareAccessMask(fso,
-                    (ArrayList<String>) Collections.singletonList(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED));
+            ArrayList<String> accessMaskList = new ArrayList<>();
+            accessMaskList.add(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED);
+            smb2ConfigBuilder.setDiskShareAccessMask(fso, accessMaskList);
         } catch (NoClassDefFoundError | NoSuchMethodError e) {
             //ignore since using an older server version
         }
