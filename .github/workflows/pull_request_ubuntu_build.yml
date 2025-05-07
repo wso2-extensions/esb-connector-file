@@ -2,7 +2,7 @@ name: CI - Pull request - Ubuntu
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 jobs:
   build:
@@ -19,3 +19,5 @@ jobs:
         cache: maven
     - name: Build with Maven
       run: mvn clean install
+    - name: Upload test coverage to Codecov
+      uses: codecov/codecov-action@v4
