@@ -36,6 +36,7 @@ import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
+import org.apache.synapse.transport.passthru.PassThroughConstants;
 import org.apache.synapse.transport.passthru.util.BinaryRelayBuilder;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.core.AbstractConnector;
@@ -635,6 +636,8 @@ public class ReadFile extends AbstractConnector {
                 msgCtx.setProperty(contentPropertyName, documentElement);
             } else {
                 msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
+                ((Axis2MessageContext) msgCtx).getAxis2MessageContext().
+                        removeProperty(PassThroughConstants.NO_ENTITY_BODY);
             }
         } catch (AxisFault e) {
             throw new FileOperationException("Axis2 error while building message from Stream", e);
