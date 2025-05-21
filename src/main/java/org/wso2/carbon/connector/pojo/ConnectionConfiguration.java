@@ -21,8 +21,8 @@ package org.wso2.carbon.connector.pojo;
 import org.apache.commons.lang.StringUtils;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileServerProtocol;
-import org.wso2.carbon.connector.core.pool.Configuration;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.pool.Configuration;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.utils.Const;
 

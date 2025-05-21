@@ -18,8 +18,9 @@
 
 package org.wso2.carbon.connector.operations;
 
-import org.apache.axiom.om.OMAttribute;
-import org.apache.axiom.om.OMElement;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileFilter;
 import org.apache.commons.vfs2.FileFilterSelector;
@@ -31,10 +32,10 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.provider.local.LocalFileName;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
@@ -48,12 +49,13 @@ import org.wso2.carbon.connector.utils.SimpleFileFiler;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
 
 /**
  * Implements File listing capability
  * in a directory.
  */
-public class ListFiles extends AbstractConnector {
+public class ListFiles extends AbstractConnectorOperation {
 
     private static final String MATCHING_PATTERN = "matchingPattern";
     private static final String RECURSIVE_PARAM = "recursive";
@@ -76,7 +78,8 @@ public class ListFiles extends AbstractConnector {
     private static final String ERROR_MESSAGE = "Error while performing file:listFiles for folder ";
 
     @Override
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
 
         String folderPath = null;
         String fileMatchingPattern;
@@ -141,15 +144,21 @@ public class ListFiles extends AbstractConnector {
 
                     if (folder.isFolder()) {
                         //Added debug logs to track the flow and identify bottlenecks
-                        OMElement fileListEle = listFilesInFolder(folder, fileMatchingPattern,
+                        JsonObject fileListJson = listFilesInFolder(folder, fileMatchingPattern,
                                 recursive, responseFormat, sortingAttribute, sortingOrder);
                         log.debug(Const.CONNECTOR_NAME + ": " + OPERATION_NAME + " operation completed.");
-                        FileOperationResult result = new FileOperationResult(
-                                OPERATION_NAME,
-                                true,
-                                fileListEle);
-                        Utils.setResultAsPayload(messageContext, result);
+
+                        JsonObject resultJSON = generateOperationResult(messageContext,
+                                new FileOperationResult(OPERATION_NAME, true));
+                        if (responseFormat.equals(FLAT_FORMAT)) {
+                            resultJSON.add(FILES_ELE_NAME, fileListJson);
+                        } else if (responseFormat.equals(HIERARCHICAL_FORMAT)) {
+                            resultJSON.add(DIRECTORY_ELE_NAME, fileListJson);
+                        }
+
                         successOperation = true;
+                        handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON,
+                                null, null);
                     } else {
                         throw new FileOperationException("Folder is expected.");
                     }
@@ -161,12 +170,13 @@ public class ListFiles extends AbstractConnector {
             } catch (InvalidConfigurationException e) {
 
                 String errorDetail = ERROR_MESSAGE + folderPath;
-                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail,
+                        responseVariable, overwriteBody);
 
             } catch (IllegalPathException e) {
 
                 String errorDetail = ERROR_MESSAGE + folderPath;
-                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
+                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
 
             } catch (Exception e) {
 
@@ -174,7 +184,7 @@ public class ListFiles extends AbstractConnector {
                 log.error(errorDetail, e);
                 Utils.closeFileSystem(folder);
                 if (attempt >= maxRetries - 1) {
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while write "
@@ -185,7 +195,8 @@ public class ListFiles extends AbstractConnector {
                     Thread.sleep(retryDelay); // Wait before retrying
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + folderPath);
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + folderPath,
+                            responseVariable, overwriteBody);
                 }
             } finally {
 
@@ -216,23 +227,25 @@ public class ListFiles extends AbstractConnector {
      * @param folder           Folder to scan
      * @param pattern          Specific pattern of files to include in the listing
      * @param recursive        true, if to look into subdirectories
-     * @param responseFormat   OMElement returned is formatted depending on this
+     * @param responseFormat   JSON format is determined by this
      * @param sortingAttribute Attribute to use for file sorting
      * @param sortOrder        Sorting order to use
-     * @return OMElement with organized listing
+     * @return JsonObject with organized listing
      * @throws FileSystemException           In case of reading the directory
      * @throws InvalidConfigurationException In case issue of config issue
      */
-    private OMElement listFilesInFolder(FileObject folder, String pattern, boolean recursive,
-                                        String responseFormat, String sortingAttribute, String sortOrder)
+    private JsonObject listFilesInFolder(FileObject folder, String pattern, boolean recursive,
+                                         String responseFormat, String sortingAttribute, String sortOrder)
             throws FileSystemException, InvalidConfigurationException {
 
         if (responseFormat.equals(HIERARCHICAL_FORMAT)) {
             return listFilesInHierarchicalFormat(folder, pattern, recursive, sortingAttribute, sortOrder);
         } else if (responseFormat.equals(FLAT_FORMAT)) {
-            OMElement filesEle = Utils.createOMElement(FILES_ELE_NAME, null);
-            listFilesInFlatFormat(folder, pattern, recursive, sortingAttribute, sortOrder, filesEle);
-            return filesEle;
+            JsonObject filesObj = new JsonObject();
+            JsonArray filesArray = new JsonArray();
+            filesObj.add(FILES_ELE_NAME, filesArray);
+            listFilesInFlatFormat(folder, pattern, recursive, sortingAttribute, sortOrder, filesArray);
+            return filesObj;
         } else {
             throw new InvalidConfigurationException("Unknown responseFormat found " + responseFormat);
         }
@@ -248,33 +261,47 @@ public class ListFiles extends AbstractConnector {
      * @param recursive        true, if to look into subdirectories
      * @param sortingAttribute Attribute to use for file sorting
      * @param sortOrder        Sorting order to use
-     * @return OMElement with organized listing
+     * @return JsonObject with organized listing
      * @throws FileSystemException In case of issue reading the directory
      */
-    private OMElement listFilesInHierarchicalFormat(FileObject folder, String pattern,
-                                                    boolean recursive, String sortingAttribute,
-                                                    String sortOrder) throws FileSystemException {
+    private JsonObject listFilesInHierarchicalFormat(FileObject folder, String pattern,
+                                                     boolean recursive, String sortingAttribute,
+                                                     String sortOrder) throws FileSystemException {
 
         String containingFolderName = folder.getName().getBaseName();
-        OMElement folderEle = Utils.createOMElement(DIRECTORY_ELE_NAME, null);
-        folderEle.addAttribute(NAME_ATTRIBUTE, containingFolderName, null);
+        JsonObject folderObj = new JsonObject();
+        folderObj.addProperty(NAME_ATTRIBUTE, containingFolderName);
+
         FileObject[] filesOrFolders = getFilesAndFolders(folder, pattern);
         FileSorter fileSorter = new FileSorter(sortingAttribute, sortOrder);
         fileSorter.sort(filesOrFolders);
+
+        JsonArray filesArray = new JsonArray();
+        JsonArray directoriesArray = new JsonArray();
+
         for (FileObject fileOrFolder : filesOrFolders) {
             if (fileOrFolder.isFile()) {
-                OMElement fileEle = Utils.createOMElement(Const.FILE_ELEMENT,
-                        fileOrFolder.getName().getBaseName());
-                folderEle.addChild(fileEle);
+//                JsonObject fileObj = new JsonObject();
+//                fileObj.addProperty(FILE_NAME_ELE_NAME, fileOrFolder.getName().getBaseName());
+                filesArray.add(fileOrFolder.getName().getBaseName());
             } else {
                 if (recursive) {
-                    OMElement subFolderEle = listFilesInHierarchicalFormat(fileOrFolder, pattern, recursive,
+                    JsonObject subFolderObj = listFilesInHierarchicalFormat(fileOrFolder, pattern, recursive,
                             sortingAttribute, sortOrder);
-                    folderEle.addChild(subFolderEle);
+                    directoriesArray.add(subFolderObj);
                 }
             }
         }
-        return folderEle;
+
+        if (filesArray.size() > 0) {
+            folderObj.add(Const.FILE_ELEMENT, filesArray);
+        }
+
+        if (directoriesArray.size() > 0) {
+            folderObj.add(DIRECTORY_ELE_NAME, directoriesArray);
+        }
+
+        return folderObj;
     }
 
     /**
@@ -287,28 +314,26 @@ public class ListFiles extends AbstractConnector {
      * @param recursive        true, if to look into subdirectories
      * @param sortingAttribute Attribute to use for file sorting
      * @param sortOrder        Sorting order to use
-     * @param parentEle        Parent OMElement to include found files information in
+     * @param filesArray       JsonArray to include found files information in
      * @throws FileSystemException In case of issue reading the directory
      */
     private void listFilesInFlatFormat(FileObject folder, String pattern,
                                        boolean recursive, String sortingAttribute,
-                                       String sortOrder, OMElement parentEle) throws FileSystemException {
+                                       String sortOrder, JsonArray filesArray) throws FileSystemException {
 
         FileObject[] filesOrFolders = getFilesAndFolders(folder, pattern);
         FileSorter fileSorter = new FileSorter(sortingAttribute, sortOrder);
         fileSorter.sort(filesOrFolders);
         for (FileObject fileOrFolder : filesOrFolders) {
             if (fileOrFolder.isFile()) {
-                OMElement fileEle = Utils.createOMElement(Const.FILE_ELEMENT, null);
-                OMElement nameEle = Utils.createOMElement(FILE_NAME_ELE_NAME, fileOrFolder.getName().getBaseName());
-                OMElement pathEle = Utils.createOMElement(FILE_PATH_ELE_NAME, getFilePath(fileOrFolder.getName()));
-                fileEle.addChild(nameEle);
-                fileEle.addChild(pathEle);
-                parentEle.addChild(fileEle);
+                JsonObject fileObj = new JsonObject();
+                fileObj.addProperty(FILE_NAME_ELE_NAME, fileOrFolder.getName().getBaseName());
+                fileObj.addProperty(FILE_PATH_ELE_NAME, getFilePath(fileOrFolder.getName()));
+                filesArray.add(fileObj);
             } else {
                 if (recursive) {
                     listFilesInFlatFormat(fileOrFolder, pattern, recursive,
-                            sortingAttribute, sortOrder, parentEle);
+                            sortingAttribute, sortOrder, filesArray);
                 }
             }
         }
@@ -358,10 +383,15 @@ public class ListFiles extends AbstractConnector {
      * @param e           Exception associated
      * @param error       Error code
      * @param errorDetail Error detail
+     * @param responseVariable Response variable name
+     * @param overwriteBody Overwrite body
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
+                             String responseVariable, boolean overwriteBody) {
         errorDetail = Utils.maskURLPassword(errorDetail);
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
     }
 

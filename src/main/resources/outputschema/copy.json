@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Output Schema for copy Operation",
+    "description": "Output schema for the copy operation in the connector.",
+    "properties": {
+        "payload": {
+            "type": "object",
+            "description": "The main response payload from the copy operation.",
+            "properties": {
+                "success": {
+                    "type": "boolean",
+                    "description": "Indicates whether the operation was successful."
+                },
+                "error": {
+                    "type": "object",
+                    "description": "Error information if the operation was unsuccessful.",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "description": "Error code"
+                        },
+                        "message": {
+                            "type": "string",
+                            "description": "Error message"
+                        },
+                        "detail": {
+                            "type": "string",
+                            "description": "Additional error detail"
+                        }
+                    },
+                    "required": ["code", "message"]
+                }
+            },
+            "required": ["success"]
+        }
+    },
+    "required": [
+        "payload"
+    ],
+    "additionalProperties": false
+}

@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.connector.operations;
 
+import com.google.gson.JsonObject;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileObject;
@@ -27,10 +28,10 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.FileType;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileAlreadyExistsException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
@@ -44,10 +45,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
+
 /**
  * Implements move files operation.
  */
-public class MoveFiles extends AbstractConnector {
+public class MoveFiles extends AbstractConnectorOperation {
 
     private static final String SOURCE_PATH_PARAM = "sourcePath";
     private static final String TARGET_PATH_PARAM = "targetPath";
@@ -66,7 +69,8 @@ public class MoveFiles extends AbstractConnector {
     private FileSystemManager fsManager;
 
     @Override
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
 
         String sourcePath = null;
         String targetPath = null;
@@ -145,12 +149,11 @@ public class MoveFiles extends AbstractConnector {
                     }
 
                     boolean success = moveFile(sourceFile, createNonExistingParents, targetFile, overwrite);
-                    FileOperationResult result;
                     if (success) {
-                        result = new FileOperationResult(
-                                OPERATION_NAME,
-                                true);
-                        Utils.setResultAsPayload(messageContext, result);
+                        JsonObject resultJSON = generateOperationResult(messageContext,
+                                new FileOperationResult(OPERATION_NAME, true));
+                        handleConnectorResponse(messageContext, responseVariable, overwriteBody,
+                                resultJSON, null, null);
                     } else {
                         throw new FileAlreadyExistsException("Destination file already exists and overwrite not allowed");
                     }
@@ -174,12 +177,11 @@ public class MoveFiles extends AbstractConnector {
                     }
 
                     boolean success = moveFolder(sourceFile, targetFile, overwrite, filePattern, true);
-                    FileOperationResult result;
                     if (success) {
-                        result = new FileOperationResult(
-                                OPERATION_NAME,
-                                true);
-                        Utils.setResultAsPayload(messageContext, result);
+                        JsonObject resultJSON = generateOperationResult(messageContext,
+                                new FileOperationResult(OPERATION_NAME, true));
+                        handleConnectorResponse(messageContext, responseVariable, overwriteBody,
+                                resultJSON, null, null);
                     } else {
                         throw new FileOperationException("Error occurred while moving one or more File(s)/Folder.");
                     }
@@ -192,17 +194,17 @@ public class MoveFiles extends AbstractConnector {
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
 
         } catch (FileSystemException | FileOperationException e) {
 
             String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail, responseVariable, overwriteBody);
 
         } catch (FileAlreadyExistsException e) {
 
             String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.FILE_ALREADY_EXISTS, errorDetail);
+            handleError(messageContext, e, Error.FILE_ALREADY_EXISTS, errorDetail, responseVariable, overwriteBody);
 
         } finally {
 
@@ -361,10 +363,15 @@ public class MoveFiles extends AbstractConnector {
      * @param e           Exception associated
      * @param error       Error code
      * @param errorDetail Error detail
+     * @param responseVariable Response variable name
+     * @param overwriteBody Overwrite body
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
+                             String responseVariable, boolean overwriteBody) {
         errorDetail = Utils.maskURLPassword(errorDetail);
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
     }
 

@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
   ~ Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
   ~
@@ -15,13 +16,14 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-
 <template xmlns="http://ws.apache.org/ns/synapse" name="mergeFiles">
     <parameter name="sourceDirectoryPath" description="Path to the source folder containing files to be merged."/>
     <parameter name="targetFilePath" description="Path to create merged file."/>
     <parameter name="filePattern" description="Pattern of files include in merging."/>
     <parameter name="writeMode" description="Whether to append or over write if file exists"/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
+    <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>
+    <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.MergeFiles" />
     </sequence>

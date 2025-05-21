@@ -18,11 +18,8 @@
 
 package org.wso2.carbon.connector.utils;
 
+import com.google.gson.JsonObject;
 import com.hierynomus.msdtyp.AccessMask;
-import org.apache.axiom.om.OMElement;
-import org.apache.axiom.om.OMException;
-import org.apache.axiom.om.util.AXIOMUtil;
-import org.apache.axiom.soap.SOAPBody;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -31,13 +28,11 @@ import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.provider.smb2.Smb2FileSystemConfigBuilder;
 import org.apache.synapse.MessageContext;
-import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
-import org.apache.synapse.transport.passthru.PassThroughConstants;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 
@@ -46,12 +41,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
-
-import javax.xml.stream.XMLStreamException;
 
 import static org.apache.synapse.SynapseConstants.PASSWORD_PATTERN;
 import static org.apache.synapse.SynapseConstants.URL_PATTERN;
@@ -188,70 +180,43 @@ public class Utils {
     }
 
     /**
-     * Generate OMElement out of result config.
+     * Generates a JSON object representing the operation result
      *
-     * @param msgContext MessageContext to set relevant properties
-     * @param result     FileOperationResult config
-     * @return OMElement generated
+     * @param msgContext The message context
+     * @param result     The file operation result
+     * @return JsonObject containing the operation results
      */
-    public static OMElement generateOperationResult(MessageContext msgContext, FileOperationResult result) {
-        //Create a new payload body and add to context
+    public static JsonObject generateOperationResult(MessageContext msgContext, FileOperationResult result) {
+        // Create a new JSON payload
+        JsonObject resultJson = new JsonObject();
 
-        String resultElementName = result.getOperation() + "Result";
-        OMElement resultElement = createOMElement(resultElementName, null);
+        // Add the basic success information
+        resultJson.addProperty("success", result.isSuccessful());
 
-        OMElement statusCodeElement = createOMElement("success",
-                String.valueOf(result.isSuccessful()));
-        resultElement.addChild(statusCodeElement);
-
+        // Add written bytes information if available
         if (result.getWrittenBytes() != 0) {
-            OMElement writtenBytesEle = createOMElement("writtenBytes",
-                    String.valueOf(result.getWrittenBytes()));
-            resultElement.addChild(writtenBytesEle);
+            resultJson.addProperty("writtenBytes", result.getWrittenBytes());
         }
 
+        if (result.getResultEle() != null) {
+            resultJson.add("result", result.getResultEle());
+        }
+
+        // Add error information if present
         if (result.getError() != null) {
             setErrorPropertiesToMessage(msgContext, result.getError());
-            //set error code and detail to the message
-            OMElement errorEle = createOMElement("error", result.getError().getErrorCode());
-            OMElement errorCodeEle = createOMElement("code", result.getError().getErrorCode());
-            OMElement errorMessageEle = createOMElement("message", result.getError().getErrorDetail());
-            errorEle.addChild(errorCodeEle);
-            errorEle.addChild(errorMessageEle);
-            resultElement.addChild(errorCodeEle);
-            //set error detail
+
+            JsonObject errorJson = new JsonObject();
+            errorJson.addProperty("code", result.getError().getErrorCode());
+            errorJson.addProperty("message", result.getError().getErrorDetail());
+            // Add error detail if available
             if (StringUtils.isNotEmpty(result.getErrorMessage())) {
-                OMElement errorDetailEle = createOMElement("detail", result.getErrorMessage());
-                resultElement.addChild(errorDetailEle);
+                errorJson.addProperty("detail", result.getErrorMessage());
             }
+            resultJson.add("error", errorJson);
         }
 
-        return resultElement;
-    }
-
-    /**
-     * Create an OMElement.
-     *
-     * @param elementName Name of the element
-     * @param value       Value to be added
-     * @return OMElement or null if error
-     */
-    public static OMElement createOMElement(String elementName, String value) {
-        OMElement resultElement = null;
-        try {
-            if (StringUtils.isNotEmpty(value)) {
-                resultElement = AXIOMUtil.
-                        stringToOM("<" + elementName + ">" + value
-                                + "</" + elementName + ">");
-            } else {
-                resultElement = AXIOMUtil.
-                        stringToOM("<" + elementName
-                                + "></" + elementName + ">");
-            }
-        } catch (XMLStreamException | OMException e) {
-            log.error("FileConnector:unzip: Error while generating OMElement from element name" + elementName, e);
-        }
-        return resultElement;
+        return resultJson;
     }
 
     /**
@@ -338,41 +303,6 @@ public class Utils {
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         return (FileSystemHandler) handler
                 .getConnection(Const.CONNECTOR_NAME, connectionName);
-    }
-
-    /**
-     * Sets error to the message context
-     *
-     * @param operationName Name of connector operation
-     * @param msgCtx        Message Context to set info
-     * @param e             Exception associated
-     * @param error         Error code
-     * @param errorDetail   Error detail
-     */
-    public static void setError(String operationName, MessageContext msgCtx, Exception e,
-                                Error error, String errorDetail) {
-        FileOperationResult result = new FileOperationResult(operationName, false, error, e.getMessage());
-        Utils.setResultAsPayload(msgCtx, result);
-    }
-
-    /**
-     * Set Payload to message context as specified in provided result.
-     *
-     * @param msgContext MessageContext to set payload
-     * @param result     Operation result
-     */
-    public static void setResultAsPayload(MessageContext msgContext, FileOperationResult result) {
-
-        OMElement resultElement = generateOperationResult(msgContext, result);
-        if (result.getResultEle() != null) {
-            resultElement.addChild(result.getResultEle());
-        }
-        SOAPBody soapBody = msgContext.getEnvelope().getBody();
-        //Detaching first element (soapBody.getFirstElement().detach()) will be done by following method anyway.
-        JsonUtil.removeJsonPayload(((Axis2MessageContext) msgContext).getAxis2MessageContext());
-        ((Axis2MessageContext) msgContext).getAxis2MessageContext().
-                removeProperty(PassThroughConstants.NO_ENTITY_BODY);
-        soapBody.addChild(resultElement);
     }
 
     /**

@@ -21,62 +21,78 @@
     <subComponents>
         <component name="createDirectory" >
             <file>createDirectory.xml</file>
+            <displayName>Create Directory</displayName>
             <description>Creates a new directory on directory path.</description>
         </component>
         <component name="listFiles" >
             <file>listFiles.xml</file>
+            <displayName>List Files</displayName>
             <description>Lists all the files in the directory path that match a matcher.</description>
         </component>
         <component name="delete" >
             <file>delete.xml</file>
+            <displayName>Delete</displayName>
             <description>Deletes the file specified by the path.</description>
         </component>
         <component name="copy" >
             <file>copy.xml</file>
+            <displayName>Copy</displayName>
             <description>Copies the file or folder specified by sourcePath into targetPath.</description>
         </component>
         <component name="move" >
             <file>move.xml</file>
+            <displayName>Move</displayName>
             <description>Moves the file or folder specified by sourcePath into targetPath.</description>
         </component>
         <component name="rename" >
             <file>rename.xml</file>
+            <displayName>Rename</displayName>
             <description>Rename the file to the new name specified.</description>
         </component>
         <component name="unzip" >
             <file>unzip.xml</file>
+            <displayName>Unzip</displayName>
             <description>Unzip file to target directory.</description>
         </component>
         <component name="splitFile" >
             <file>splitFile.xml</file>
+            <displayName>Split File</displayName>
             <description>Split a file into multiple smaller files.</description>
         </component>
         <component name="mergeFiles" >
             <file>mergeFiles.xml</file>
+            <displayName>Merge Files</displayName>
             <description>Merge multiple files in a folder to a single file.</description>
         </component>
         <component name="checkExist" >
             <file>checkExist.xml</file>
+            <displayName>Check Exist</displayName>
             <description>Check if a file or directory exists.</description>
         </component>
         <component name="exploreZipFile" >
             <file>exploreZipFile.xml</file>
+            <displayName>Explore Zip File</displayName>
             <description>List Items In ZIP File Without Extracting.</description>
         </component>
         <component name="compress" >
             <file>compress.xml</file>
+            <displayName>Compress</displayName>
             <description>Compress file or folder.</description>
         </component>
         <component name="read" >
             <file>read.xml</file>
+            <displayName>Read</displayName>
             <description>Read a specific file or a file in a folder.</description>
         </component>
         <component name="write" >
             <file>write.xml</file>
+            <displayName>Write</displayName>
             <description>Create a file or write content to a file.</description>
         </component>
         <component name="fetchDirectoryContent" >
             <file>fetchDirectoryContent.xml</file>
+            <hidden>true</hidden>
+            <displayName>Fetch Directory Content</displayName>
             <description>Fetch file content in a folder in to list of base64 encoded stream.</description>
         </component>
     </subComponents>

@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.connector.operations;
 
-import org.apache.axiom.om.OMElement;
+import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileFilter;
 import org.apache.commons.vfs2.FileFilterSelector;
@@ -28,10 +28,10 @@ import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
@@ -39,10 +39,12 @@ import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.SimpleFileFiler;
 
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
+
 /**
  * Implements delete file or folder operation
  */
-public class DeleteFileOrFolder extends AbstractConnector {
+public class DeleteFileOrFolder extends AbstractConnectorOperation {
 
     private static final String MATCHING_PATTERN_PARAM = "matchingPattern";
     private static final String NUM_OF_DELETED_FILES_ELE = "numOfDeletedFiles";
@@ -50,13 +52,13 @@ public class DeleteFileOrFolder extends AbstractConnector {
     private static final String ERROR_MESSAGE = "Error while performing file:delete for file/folder ";
 
     @Override
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
 
         String fileOrFolderPath = null;
         FileObject fileObjectToDelete = null;
         String fileMatchingPattern;
         boolean isOperationSuccessful;
-        FileOperationResult result = null;
 
         FileSystemHandler fileSystemHandlerConnection = null;
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
@@ -104,9 +106,9 @@ public class DeleteFileOrFolder extends AbstractConnector {
                 //Deletes this file. Does nothing if this file does not exist
                 if (fileObjectToDelete.isFile()) {
                     isOperationSuccessful = fileObjectToDelete.delete();
-                    result = new FileOperationResult(
-                            OPERATION_NAME,
-                            isOperationSuccessful);
+                    JsonObject resultJSON = generateOperationResult(messageContext,
+                            new FileOperationResult(OPERATION_NAME, isOperationSuccessful));
+                    handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
                 }
 
                 if (fileObjectToDelete.isFolder()) {
@@ -125,21 +127,16 @@ public class DeleteFileOrFolder extends AbstractConnector {
                         numberOfDeletedFiles = fileObjectToDelete.deleteAll();
                     }
                     isOperationSuccessful = true;
-                    OMElement numOfDeletedFilesEle = Utils.
-                            createOMElement(NUM_OF_DELETED_FILES_ELE,
-                                    Integer.toString(numberOfDeletedFiles));
-                    result = new FileOperationResult(
-                            OPERATION_NAME,
-                            isOperationSuccessful,
-                            numOfDeletedFilesEle);
+                    JsonObject resultJSON = generateOperationResult(messageContext,
+                            new FileOperationResult(OPERATION_NAME, isOperationSuccessful));
+                    resultJSON.addProperty(NUM_OF_DELETED_FILES_ELE, numberOfDeletedFiles);
+                    handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
                 }
-
-                Utils.setResultAsPayload(messageContext, result);
                 successOperation = true;
             } catch (InvalidConfigurationException e) {
 
                 String errorDetail = ERROR_MESSAGE + fileOrFolderPath;
-                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
 
             } catch (Exception e) {
 
@@ -147,7 +144,7 @@ public class DeleteFileOrFolder extends AbstractConnector {
                 log.error(errorDetail, e);
                 Utils.closeFileSystem(fileObjectToDelete);
                 if (attempt >= maxRetries - 1) {
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while write "
@@ -158,7 +155,8 @@ public class DeleteFileOrFolder extends AbstractConnector {
                     Thread.sleep(retryDelay); // Wait before retrying
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + fileOrFolderPath);
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + fileOrFolderPath,
+                            responseVariable, overwriteBody);
                 }
             } finally {
 
@@ -189,10 +187,15 @@ public class DeleteFileOrFolder extends AbstractConnector {
      * @param e           Exception associated
      * @param error       Error code
      * @param errorDetail Error detail
+     * @param responseVariable Response variable name
+     * @param overwriteBody Overwrite body
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
+                             String responseVariable, boolean overwriteBody) {
         errorDetail = Utils.maskURLPassword(errorDetail);
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
     }
 }

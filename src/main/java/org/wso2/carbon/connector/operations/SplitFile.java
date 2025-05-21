@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.connector.operations;
 
-import org.apache.axiom.om.OMElement;
+import com.google.gson.JsonObject;
 import org.apache.commons.io.input.AutoCloseInputStream;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileObject;
@@ -33,10 +33,10 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
@@ -71,10 +71,12 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
+
 /**
  * Implements Split file operation
  */
-public class SplitFile extends AbstractConnector {
+public class SplitFile extends AbstractConnectorOperation {
 
     private static final int ENTITY_EXPANSION_LIMIT = 0;
     private static final String SOURCE_FILE_PATH_PARAM = "sourceFilePath";
@@ -88,8 +90,8 @@ public class SplitFile extends AbstractConnector {
     private static final String OPERATION_NAME = "splitFile";
     private static final String ERROR_MESSAGE = "Error while performing file:split for file ";
 
-    @Override
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
 
         String sourceFilePath = null;
         FileObject fileToSplit = null;
@@ -193,27 +195,25 @@ public class SplitFile extends AbstractConnector {
                     break;
             }
 
-            OMElement splitFileCountEle = Utils.
-                    createOMElement(NUMBER_OF_SPLITS_ELE_NAME, Integer.toString(splitFileCount));
-            result = new FileOperationResult(OPERATION_NAME,
-                    true,
-                    splitFileCountEle);
-            Utils.setResultAsPayload(messageContext, result);
+            JsonObject resultJSON = generateOperationResult(messageContext,
+                    new FileOperationResult(OPERATION_NAME, true));
+            resultJSON.addProperty(NUMBER_OF_SPLITS_ELE_NAME, splitFileCount);
+            handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
 
         } catch (IllegalPathException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
+            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
 
         } catch (FileOperationException | IOException e) {       //FileSystemException also handled here
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail, responseVariable, overwriteBody);
 
         } finally {
             if (fileToSplit != null) {
@@ -545,12 +545,15 @@ public class SplitFile extends AbstractConnector {
      * @param e           Exception associated
      * @param error       Error code
      * @param errorDetail Error detail
+     * @param responseVariable Response variable name
+     * @param overwriteBody Overwrite body
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
+                             String responseVariable, boolean overwriteBody) {
         errorDetail = Utils.maskURLPassword(errorDetail);
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
     }
-
-
 }

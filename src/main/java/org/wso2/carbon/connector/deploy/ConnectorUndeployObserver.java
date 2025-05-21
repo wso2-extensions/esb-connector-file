@@ -22,7 +22,7 @@ package org.wso2.carbon.connector.deploy;
 import org.apache.synapse.config.AbstractSynapseObserver;
 import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.libraries.model.Library;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.utils.Const;
 
 import java.io.File;

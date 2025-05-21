@@ -22,7 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
-import org.wso2.carbon.connector.core.pool.ConnectionFactory;
+import org.wso2.integration.connector.core.pool.ConnectionFactory;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 
 public class SFTPConnectionFactory implements ConnectionFactory  {
