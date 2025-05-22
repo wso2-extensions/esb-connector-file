@@ -1,234 +1,272 @@
 {
-  "connectorName": "file",
-  "operationName": "read",
-  "title": "Read a file or files in a directory",
-  "help": "<h1>Read Files</h1><b>Read a File.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
-  "elements": [
-    {
-      "type": "attributeGroup",
-      "value": {
-        "groupName": "General",
-        "elements": [
-          {
-            "type": "attribute",
-            "value": {
-              "name": "configRef",
-              "displayName": "File Connection",
-              "inputType": "connection",
-              "allowedConnectionTypes": [
-                "LOCAL",
-                "FTP",
-                "FTPS",
-                "SFTP",
-                "SMB2"
-              ],
-              "defaultType": "connection.local",
-              "defaultValue": "",
-              "required": "true",
-              "helpTip": "File connection to be used"
-            }
-          },
-          {
+    "connectorName": "file",
+    "operationName": "read",
+    "title": "Read a file or files in a directory",
+    "help": "<h1>Read Files</h1><b>Read a File.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+    "elements": [
+        {
             "type": "attributeGroup",
             "value": {
-              "groupName": "Basic",
-              "elements": [
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "path",
-                    "displayName": "File/Directory Path",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "true",
-                    "helpTip": "Path to the file or folder to read."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "filePattern",
-                    "displayName": "File Pattern",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "File pattern to match when choosing files to read in a folder. Not applicable when reading a file."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "readMode",
-                    "displayName": "Read Mode",
-                    "inputType": "comboOrExpression",
-                    "comboValues": ["Complete File", "Starting From Line", "Up To Line", "Between Lines", "Specific Line", "Metadata Only"],
-                    "defaultValue": "Complete File",
-                    "required": "true",
-                    "enableCondition": [{"enableStreaming":"false"}],
-                    "helpTip": "Read mode to use. "
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "startLineNum",
-                    "displayName": "Start Line Number",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "0",
-                    "required": "true",
-                    "enableCondition":  ["OR",{"readMode":"Starting From Line"}, {"readMode":"Between Lines"}],
-                    "helpTip": "Read file starting from this line."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "endLineNum",
-                    "displayName": "End Line Number",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "0",
-                    "required": "true",
-                    "enableCondition":  ["OR",{"readMode":"Up To Line"}, {"readMode":"Between Lines"}],
-                    "helpTip": "Read file up to this line."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "lineNum",
-                    "displayName": "Specific Line Number",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "0",
-                    "required": "true",
-                    "enableCondition": [{"readMode":"Specific Line"}],
-                    "helpTip": "Specific line number to read"
-                  }
-                }
-              ]
+                "groupName": "General",
+                "elements": [
+                    {
+                        "type": "attribute",
+                        "value": {
+                            "name": "configRef",
+                            "displayName": "File Connection",
+                            "inputType": "connection",
+                            "allowedConnectionTypes": [
+                                "LOCAL",
+                                "FTP",
+                                "FTPS",
+                                "SFTP",
+                                "SMB2"
+                            ],
+                            "defaultType": "connection.local",
+                            "defaultValue": "",
+                            "required": "true",
+                            "helpTip": "File connection to be used"
+                        }
+                    },
+                    {
+                        "type": "attributeGroup",
+                        "value": {
+                            "groupName": "Basic",
+                            "elements": [
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "path",
+                                        "displayName": "File/Directory Path",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "true",
+                                        "helpTip": "Path to the file or folder to read."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "filePattern",
+                                        "displayName": "File Pattern",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "File pattern to match when choosing files to read in a folder. Not applicable when reading a file."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "readMode",
+                                        "displayName": "Read Mode",
+                                        "inputType": "comboOrExpression",
+                                        "comboValues": [
+                                            "Complete File",
+                                            "Starting From Line",
+                                            "Up To Line",
+                                            "Between Lines",
+                                            "Specific Line",
+                                            "Metadata Only"
+                                        ],
+                                        "defaultValue": "Complete File",
+                                        "required": "true",
+                                        "enableCondition": [
+                                            {
+                                                "enableStreaming": "false"
+                                            }
+                                        ],
+                                        "helpTip": "Read mode to use. "
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "startLineNum",
+                                        "displayName": "Start Line Number",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "0",
+                                        "required": "true",
+                                        "enableCondition": [
+                                            "OR",
+                                            {
+                                                "readMode": "Starting From Line"
+                                            },
+                                            {
+                                                "readMode": "Between Lines"
+                                            }
+                                        ],
+                                        "helpTip": "Read file starting from this line."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "endLineNum",
+                                        "displayName": "End Line Number",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "0",
+                                        "required": "true",
+                                        "enableCondition": [
+                                            "OR",
+                                            {
+                                                "readMode": "Up To Line"
+                                            },
+                                            {
+                                                "readMode": "Between Lines"
+                                            }
+                                        ],
+                                        "helpTip": "Read file up to this line."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "lineNum",
+                                        "displayName": "Specific Line Number",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "0",
+                                        "required": "true",
+                                        "enableCondition": [
+                                            {
+                                                "readMode": "Specific Line"
+                                            }
+                                        ],
+                                        "helpTip": "Specific line number to read"
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "type": "attributeGroup",
+                        "value": {
+                            "groupName": "Advanced",
+                            "elements": [
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "contentType",
+                                        "displayName": "MIME Type",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "enableCondition": [
+                                            "NOT",
+                                            {
+                                                "readMode": "Metadata Only"
+                                            }
+                                        ],
+                                        "helpTip": "MIME type of the message generated. If not provided it will try to interpret."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "encoding",
+                                        "displayName": "Encoding",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "UTF-8",
+                                        "required": "false",
+                                        "enableCondition": [
+                                            "NOT",
+                                            {
+                                                "readMode": "Metadata Only"
+                                            }
+                                        ],
+                                        "helpTip": "Encoding of the message generated."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "enableStreaming",
+                                        "displayName": "Enable Streaming",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "false",
+                                        "required": "true",
+                                        "helpTip": "Read the file in streaming manner."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "enableLock",
+                                        "displayName": "Enable Locking",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "false",
+                                        "required": "true",
+                                        "helpTip": "Whether to lock the file when reading"
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "maxRetries",
+                                        "displayName": "Max Retries",
+                                        "inputType": "integerOrExpression",
+                                        "defaultValue": "0",
+                                        "required": "false",
+                                        "helpTip": "The maximum number of retries to be done in case of a failure."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "retryDelay",
+                                        "displayName": "Retry Interval",
+                                        "inputType": "integerOrExpression",
+                                        "defaultValue": "0",
+                                        "required": "false",
+                                        "helpTip": "The time interval between retries in milliseconds."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "diskShareAccessMask",
+                                        "displayName": "Access mask values for disk share",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "MAXIMUM_ALLOWED",
+                                        "required": "false",
+                                        "helpTip": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
             }
-          },
-          {
+        },
+        {
             "type": "attributeGroup",
             "value": {
-              "groupName": "Advance",
-              "elements": [
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "contentType",
-                    "displayName": "MIME Type",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "enableCondition":  ["NOT",{"readMode":"Metadata Only"}],
-                    "helpTip": "MIME type of the message generated. If not provided it will try to interpret."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "encoding",
-                    "displayName": "Encoding",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "UTF-8",
-                    "required": "false",
-                    "enableCondition":  ["NOT",{"readMode":"Metadata Only"}],
-                    "helpTip": "Encoding of the message generated."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "enableStreaming",
-                    "displayName": "Enable Streaming",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "false",
-                    "required": "true",
-                    "helpTip": "Read the file in streaming manner."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "enableLock",
-                    "displayName": "Enable Locking",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "false",
-                    "required": "true",
-                    "helpTip": "Whether to lock the file when reading"
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "maxRetries",
-                    "displayName": "Max Retries",
-                    "inputType": "integerOrExpression",
-                    "defaultValue": "0",
-                    "required": "false",
-                    "helpTip": "The maximum number of retries to be done in case of a failure."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "retryDelay",
-                    "displayName": "Retry Interval",
-                    "inputType": "integerOrExpression",
-                    "defaultValue": "0",
-                    "required": "false",
-                    "helpTip": "The time interval between retries in milliseconds."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "diskShareAccessMask",
-                    "displayName": "Access mask values for disk share",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "MAXIMUM_ALLOWED",
-                    "required": "false",
-                    "helpTip": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
-                  }
-                }
-
-              ]
+                "groupName": "Output",
+                "elements": [
+                    {
+                        "type": "attribute",
+                        "value": {
+                            "name": "responseVariable",
+                            "displayName": "Output Variable Name",
+                            "inputType": "string",
+                            "deriveResponseVariable": "true",
+                            "required": "true",
+                            "helpTip": "Name of the variable to which the output of the operation should be assigned"
+                        }
+                    },
+                    {
+                        "type": "attribute",
+                        "value": {
+                            "name": "overwriteBody",
+                            "displayName": "Overwrite Message Body",
+                            "inputType": "checkbox",
+                            "defaultValue": "false",
+                            "helpTip": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable).",
+                            "required": "false"
+                        }
+                    }
+                ]
             }
-          },
-          {
-            "type": "attributeGroup",
-            "value": {
-              "groupName": "Operation Result",
-              "elements": [
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "includeResultTo",
-                    "displayName": "Add Result To",
-                    "inputType": "comboOrExpression",
-                    "comboValues": ["Message Body","Message Property"],
-                    "defaultValue": "Message Body",
-                    "required": "true",
-                    "helpTip": "Specify where to place operation result. Setting to a property will not change current payload at message body."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "resultPropertyName",
-                    "displayName": "Property Name",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "enableCondition": [{"includeResultTo":"Message Property"}],
-                    "helpTip": "Name of property to add operation result"
-                  }
-                }
-              ]
-            }
-          }
-        ]
-      }
-    }
-  ]
+        }
+    ]
 }

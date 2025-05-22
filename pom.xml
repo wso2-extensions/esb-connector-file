@@ -20,7 +20,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.integration.connector</groupId>
     <artifactId>mi-connector-file</artifactId>
-    <version>4.0.41-SNAPSHOT</version>
+    <version>5.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>WSO2 Carbon - Connector For esb-connector-file</name>
     <url>http://wso2.org</url>
@@ -35,7 +35,7 @@
         <automation.framework.utils.version>4.4.2</automation.framework.utils.version>
         <automation.framework.version>4.4.3</automation.framework.version>
         <emma.version>2.1.5320</emma.version>
-        <synapse.version>2.1.7-wso2v227</synapse.version>
+        <synapse.version>4.0.0-wso2v215</synapse.version>
         <carbon.mediation.version>4.7.183</carbon.mediation.version>
         <json.version>2.0.0.wso2v1</json.version>
         <org.testng.version>6.1.1</org.testng.version>
@@ -43,6 +43,7 @@
         <bouncycastle.version>1.55</bouncycastle.version>
         <rampart.apache.version>1.6.1-wso2v18</rampart.apache.version>
         <rampart.wso2.version>1.6.1.wso2v18</rampart.wso2.version>
+        <connector.core.version>0.9.2</connector.core.version>
         <skip-tests>true</skip-tests>
         <hierynomus.smbj.version>0.11.3</hierynomus.smbj.version>
     </properties>
@@ -122,9 +123,9 @@
         </dependency>
 
         <dependency>
-            <groupId>org.wso2.carbon.mediation</groupId>
-            <artifactId>org.wso2.carbon.connector.core</artifactId>
-            <version>${carbon.mediation.version}</version>
+            <groupId>org.wso2.integration.connector.core</groupId>
+            <artifactId>mi-connector-core</artifactId>
+            <version>${connector.core.version}</version>
         </dependency>
         <dependency>
             <groupId>org.wso2.carbon.mediation</groupId>
@@ -329,6 +330,24 @@
                                     <version>1.2</version>
                                     <type>jar</type>
                                     <overWrite>true</overWrite>
+                                    <outputDirectory>target/connector/dependencies</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-mi-connector-core</id>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.wso2.integration.connector.core</groupId>
+                                    <artifactId>mi-connector-core</artifactId>
+                                    <version>${connector.core.version}</version>
+                                    <type>jar</type>
+                                    <overWrite>false</overWrite>
                                     <outputDirectory>target/connector/dependencies</outputDirectory>
                                 </artifactItem>
                             </artifactItems>

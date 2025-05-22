@@ -24,9 +24,9 @@ import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
-import org.wso2.carbon.connector.core.connection.ConnectionConfig;
+import org.wso2.integration.connector.core.connection.ConnectionConfig;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
-import org.wso2.carbon.connector.core.connection.Connection;
+import org.wso2.integration.connector.core.connection.Connection;
 import org.wso2.carbon.connector.filelock.FileLockManager;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 

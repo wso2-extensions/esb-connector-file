@@ -1,65 +1,103 @@
 {
-  "connectorName": "file",
-  "operationName": "createDirectory",
-  "title": "Create Directory",
-  "help": "<h1>Create Directory</h1><b>Creates a directory at specified path.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
-  "elements": [
-    {
-      "type": "attributeGroup",
-      "value": {
-        "groupName": "General",
-        "elements": [
-          {
-            "type": "attribute",
-            "value": {
-              "name": "configRef",
-              "displayName": "File Connection",
-              "inputType": "connection",
-              "allowedConnectionTypes": [
-                "LOCAL",
-                "FTP",
-                "FTPS",
-                "SFTP",
-                "SMB2"
-              ],
-              "defaultType": "connection.local",
-              "defaultValue": "",
-              "required": "true",
-              "helpTip": "File connection to be used"
-            }
-          },
-          {
+    "connectorName": "file",
+    "operationName": "createDirectory",
+    "title": "Create Directory",
+    "help": "<h1>Create Directory</h1><b>Creates a directory at specified path.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+    "elements": [
+        {
             "type": "attributeGroup",
             "value": {
-              "groupName": "Basic",
-              "elements": [
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "directoryPath",
-                    "displayName": "Directory Path",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "true",
-                    "helpTip": "Path to new directory."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "diskShareAccessMask",
-                    "displayName": "Access mask values for disk share",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "MAXIMUM_ALLOWED",
-                    "required": "false",
-                    "helpTip": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
-                  }
-                }
-              ]
+                "groupName": "General",
+                "elements": [
+                    {
+                        "type": "attribute",
+                        "value": {
+                            "name": "configRef",
+                            "displayName": "File Connection",
+                            "inputType": "connection",
+                            "allowedConnectionTypes": [
+                                "LOCAL",
+                                "FTP",
+                                "FTPS",
+                                "SFTP",
+                                "SMB2"
+                            ],
+                            "defaultType": "connection.local",
+                            "defaultValue": "",
+                            "required": "true",
+                            "helpTip": "File connection to be used"
+                        }
+                    },
+                    {
+                        "type": "attributeGroup",
+                        "value": {
+                            "groupName": "Basic",
+                            "elements": [
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "directoryPath",
+                                        "displayName": "Directory Path",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "true",
+                                        "helpTip": "Path to new directory."
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                      "type": "attributeGroup",
+                      "value": {
+                        "groupName": "Advanced",
+                        "elements": [
+                          {
+                            "type": "attribute",
+                            "value": {
+                              "name": "diskShareAccessMask",
+                              "displayName": "Access mask values for disk share",
+                              "inputType": "stringOrExpression",
+                              "defaultValue": "MAXIMUM_ALLOWED",
+                              "required": "false",
+                              "helpTip": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                            }
+                          }
+                        ]
+                      }
+                    }
+                ]
             }
-          }
-        ]
-      }
-    }
-  ]
+        },
+        {
+            "type": "attributeGroup",
+            "value": {
+                "groupName": "Output",
+                "elements": [
+                    {
+                        "type": "attribute",
+                        "value": {
+                            "name": "responseVariable",
+                            "displayName": "Output Variable Name",
+                            "inputType": "string",
+                            "deriveResponseVariable": "true",
+                            "required": "true",
+                            "helpTip": "Name of the variable to which the output of the operation should be assigned"
+                        }
+                    },
+                    {
+                        "type": "attribute",
+                        "value": {
+                            "name": "overwriteBody",
+                            "displayName": "Overwrite Message Body",
+                            "inputType": "checkbox",
+                            "defaultValue": "false",
+                            "helpTip": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable).",
+                            "required": "false"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
 }

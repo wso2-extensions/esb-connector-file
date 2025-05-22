@@ -18,6 +18,8 @@
 
 package org.wso2.carbon.connector.operations;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMException;
 import org.apache.axis2.AxisFault;
@@ -35,14 +37,17 @@ import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
+import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
+import org.apache.synapse.data.connector.ConnectorResponse;
+import org.apache.synapse.data.connector.DefaultConnectorResponse;
 import org.apache.synapse.transport.passthru.PassThroughConstants;
 import org.apache.synapse.transport.passthru.util.BinaryRelayBuilder;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
@@ -63,22 +68,24 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
+
 /**
  * Implements Read File operation
  */
-public class ReadFile extends AbstractConnector {
+public class ReadFile extends AbstractConnectorOperation {
 
     private static final String PATH_PARAM = "path";
     private static final String FILE_PATTERN_PARAM = "filePattern";
     private static final String ENABLE_LOCK_PARAM = "enableLock";
     private static final String READ_MODE_PARAM = "readMode";
-    private static final String INCLUDE_RESULT_TO = "includeResultTo";
-    private static final String RESULT_PROPERTY_NAME = "resultPropertyName";
     private static final String CONTENT_TYPE_PARAM = "contentType";
     private static final String ENCODING_PARAM = "encoding";
     private static final String ENABLE_STREAMING_PARAM = "enableStreaming";
@@ -90,11 +97,11 @@ public class ReadFile extends AbstractConnector {
     private static final String ERROR_MESSAGE = "Error while performing file:read for file/directory ";
 
     @Override
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
 
         String sourcePath = null;
         FileObject fileObject = null;
-        FileOperationResult result;
         FileLockManager fileLockManager = null;
         boolean lockAcquired = false;
         FileSystemHandler fileSystemHandlerConnection = null;
@@ -159,12 +166,13 @@ public class ReadFile extends AbstractConnector {
                     }
                 }
 
-                readFileMetadata(fileObject, messageContext, workingDirRelativePAth);
+                Map<String, Object> fileAttributes = getFileProperties(workingDirRelativePAth, fileObject);
 
                 //if we need to read metadata only, no need to touch content
                 if (Objects.equals(config.readMode, FileReadMode.METADATA_ONLY)) {
-                    result = new FileOperationResult(OPERATION_NAME, true);
-                    Utils.setResultAsPayload(messageContext, result);
+                    JsonObject resultJSON = generateOperationResult(messageContext,
+                            new FileOperationResult(OPERATION_NAME, true));
+                    handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, fileAttributes);
                     return;
                 }
 
@@ -173,7 +181,7 @@ public class ReadFile extends AbstractConnector {
                             + " of Content-type : " + config.contentType);
                 }
 
-                readFileContent(fileObject, messageContext, config);
+                readFileContent(fileObject, messageContext, config, fileAttributes, responseVariable, overwriteBody);
                 successOperation = true;
                 //TODO:MTOM Support?
 
@@ -181,19 +189,19 @@ public class ReadFile extends AbstractConnector {
             } catch (InvalidConfigurationException e) {
 
                 String errorDetail = ERROR_MESSAGE + sourcePath;
-                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
 
             } catch (IllegalPathException e) {
 
                 String errorDetail = ERROR_MESSAGE + sourcePath;
-                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
+                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
 
             } catch (FileOperationException | IOException e) { //FileSystemException also handled here
                 log.error(e);
                 Utils.closeFileSystem(fileObject);
                 if (attempt >= maxRetries - 1) {
                     String errorDetail = ERROR_MESSAGE + sourcePath;
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while read "
@@ -204,19 +212,20 @@ public class ReadFile extends AbstractConnector {
                     Thread.sleep(retryDelay); // Wait before retrying
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath);
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath,
+                            responseVariable, overwriteBody);
                 }
 
             } catch (FileLockException e) {
                 String errorDetail = ERROR_MESSAGE + sourcePath;
-                handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
+                handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail, responseVariable, overwriteBody);
 
             } catch (Exception e) {
                 String errorDetail = ERROR_MESSAGE + sourcePath;
                 log.error(errorDetail, e);
                 Utils.closeFileSystem(fileObject);
                 if (attempt >= maxRetries - 1) {
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while read "
@@ -227,7 +236,8 @@ public class ReadFile extends AbstractConnector {
                     Thread.sleep(retryDelay); // Wait before retrying
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath);
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath,
+                            responseVariable, overwriteBody);
                 }
             } finally {
                 if (fileObject != null) {
@@ -257,8 +267,6 @@ public class ReadFile extends AbstractConnector {
         String filePattern;
         boolean enableLock;
         FileReadMode readMode = FileReadMode.COMPLETE_FILE;
-        String includeResultTo;
-        String resultPropertyName;
         String contentType;
         String encoding;
         boolean enableStreaming;
@@ -278,10 +286,6 @@ public class ReadFile extends AbstractConnector {
                 lookUpBooleanParam(msgCtx, ENABLE_LOCK_PARAM, false);
         config.readMode = FileReadMode.fromString(Utils.
                 lookUpStringParam(msgCtx, READ_MODE_PARAM, FileReadMode.COMPLETE_FILE.getMode()));
-        config.includeResultTo = Utils.
-                lookUpStringParam(msgCtx, INCLUDE_RESULT_TO, Const.MESSAGE_BODY);
-        config.resultPropertyName = Utils.
-                lookUpStringParam(msgCtx, RESULT_PROPERTY_NAME, Const.EMPTY_STRING);
         config.contentType = Utils.
                 lookUpStringParam(msgCtx, CONTENT_TYPE_PARAM, Const.EMPTY_STRING);
         config.encoding = Utils.
@@ -296,11 +300,6 @@ public class ReadFile extends AbstractConnector {
                 parseInt(Utils.lookUpStringParam(msgCtx, LINE_NUM_PARAM, "0"));
         config.charSet = Utils.
                 lookUpStringParam(msgCtx, CHARSET_PARAM, Const.EMPTY_STRING);
-
-        if (config.includeResultTo.equals(Const.MESSAGE_PROPERTY)
-                && StringUtils.isEmpty(config.resultPropertyName)) {
-            throw new InvalidConfigurationException("Parameter resultPropertyName is not provided");
-        }
 
         if(config.readMode == null) {
             throw new InvalidConfigurationException("Unknown file read mode");
@@ -355,13 +354,8 @@ public class ReadFile extends AbstractConnector {
         return config;
     }
 
-    private void readFileMetadata(FileObject file, MessageContext msgCtx, String workingDirRelativePAth)
-            throws FileSystemException {
-        //set metadata as context properties
-        setFileProperties(workingDirRelativePAth, file, msgCtx);
-    }
-
-    private void readFileContent(FileObject file, MessageContext msgCtx, Config config)
+    private void readFileContent(FileObject file, MessageContext msgCtx, Config config, Map<String, Object> attributes,
+                                 String responseVariable, Boolean overwriteBody)
             throws IOException, FileOperationException {
 
         if (StringUtils.isEmpty(config.contentType)) {
@@ -370,12 +364,36 @@ public class ReadFile extends AbstractConnector {
         setCharsetEncoding(config.encoding, config.contentType, msgCtx);
         //read and build file content
         if (config.enableStreaming) {
-            //here underlying stream to the file content is not closed. We keep it open
-            setStreamToSynapse(file, config.resultPropertyName, msgCtx, config.contentType);
+            if (overwriteBody != null && overwriteBody) {
+                //here underlying stream to the file content is not closed. We keep it open
+                setStreamToSynapse(file, msgCtx, config.contentType);
+            } else {
+                handleError(msgCtx, new AxisFault("The content cannot be stored in a variable while streaming is enabled"),
+                        Error.OPERATION_ERROR, "The content cannot be stored in a variable while streaming is enabled",
+                        responseVariable, false);
+            }
         } else {
             //this will close input stream automatically after building message
             try (InputStream inputStream = readFile(file, config)) {
-                buildSynapseMessage(inputStream, config.resultPropertyName, msgCtx, config.contentType);
+                OMElement documentElement =
+                        buildSynapseMessage(inputStream, msgCtx, config.contentType);
+                ConnectorResponse response = new DefaultConnectorResponse();
+                if (overwriteBody != null && overwriteBody) {
+                    msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
+                    ((Axis2MessageContext) msgCtx).getAxis2MessageContext().
+                            removeProperty(PassThroughConstants.NO_ENTITY_BODY);
+                } else {
+                    if (Const.CONTENT_TYPE_JSON.equalsIgnoreCase(config.contentType)) {
+                        org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
+                                Axis2MessageContext) msgCtx).getAxis2MessageContext();
+                        response.setPayload(JsonParser.parseString(
+                                JsonUtil.jsonPayloadToString(axis2MsgCtx)));
+                    } else {
+                        response.setPayload(documentElement.toString());
+                    }
+                }
+                response.setAttributes(attributes);
+                msgCtx.setVariable(responseVariable, response);
             }
         }
     }
@@ -387,10 +405,16 @@ public class ReadFile extends AbstractConnector {
      * @param e           Exception associated
      * @param error       Error code
      * @param errorDetail Error detail
+     * @param responseVariable Response variable name
+     * @param overwriteBody Overwrite body
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
+                             String responseVariable, boolean overwriteBody) {
+
         errorDetail = Utils.maskURLPassword(errorDetail);
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
     }
 
@@ -439,27 +463,27 @@ public class ReadFile extends AbstractConnector {
     }
 
     /**
-     * Set properties of file being read into the messageContext.
+     * Get properties of file being read into the messageContext.
      *
      * @param filePath   Path of the file being read
      * @param file       File object being read
-     * @param msgContext MessageContext associated
      * @throws FileSystemException If relevant information cannot be read from file
      */
-    private void setFileProperties(String filePath, FileObject file,
-                                   MessageContext msgContext) throws FileSystemException {
+    private Map<String, Object> getFileProperties(String filePath, FileObject file) throws FileSystemException {
 
         SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
         String lastModifiedTime = sdf.format(file.getContent().getLastModifiedTime());
-        msgContext.setProperty(Const.FILE_LAST_MODIFIED_TIME, lastModifiedTime);
-        msgContext.setProperty(Const.FILE_IS_DIR, file.isFolder());
-        msgContext.setProperty(Const.FILE_PATH, filePath);
-        msgContext.setProperty(Const.FILE_URL, file.getName().getFriendlyURI());
-        msgContext.setProperty(Const.FILE_NAME, file.getName().getBaseName());
-        msgContext.setProperty(Const.FILE_NAME_WITHOUT_EXTENSION, file.getName().
+        Map<String, Object> fileProperties = new HashMap<>();
+        fileProperties.put(Const.FILE_LAST_MODIFIED_TIME, lastModifiedTime);
+        fileProperties.put(Const.FILE_IS_DIR, String.valueOf(file.isFolder()));
+        fileProperties.put(Const.FILE_PATH, filePath);
+        fileProperties.put(Const.FILE_URL, file.getName().getFriendlyURI());
+        fileProperties.put(Const.FILE_NAME, file.getName().getBaseName());
+        fileProperties.put(Const.FILE_NAME_WITHOUT_EXTENSION, file.getName().
                 getBaseName().split("\\.")[0]);
         //The size of the file, in bytes
-        msgContext.setProperty(Const.FILE_SIZE, file.getContent().getSize());
+        fileProperties.put(Const.FILE_SIZE, String.valueOf(file.getContent().getSize()));
+        return fileProperties;
     }
 
     /**
@@ -579,12 +603,11 @@ public class ReadFile extends AbstractConnector {
      * We will not close it as it will be read by another operation.
      *
      * @param file                File to read
-     * @param contentPropertyName Property name to set content
      * @param msgCtx              MessageContext
      * @param contentType         MIME type of the message to build
      * @throws FileOperationException In case of synapse related or runtime issue
      */
-    private void setStreamToSynapse(FileObject file, String contentPropertyName, MessageContext msgCtx,
+    private void setStreamToSynapse(FileObject file, MessageContext msgCtx,
                                     String contentType) throws FileOperationException {
 
         try {
@@ -595,11 +618,7 @@ public class ReadFile extends AbstractConnector {
             if (builder instanceof DataSourceMessageBuilder) {
                 OMElement documentElement = ((DataSourceMessageBuilder) builder).
                         processDocument(dataSource, contentType, axis2MsgCtx);
-                if (StringUtils.isNotEmpty(contentPropertyName)) {
-                    msgCtx.setProperty(contentPropertyName, documentElement);
-                } else {
-                    msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
-                }
+                msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
             } else {
                 log.error("FileConnector:read - Failed to process document. There is no message builder class " +
                         "available of type DataSourceMessageBuilder that supports the contentType: " + contentType);
@@ -617,12 +636,11 @@ public class ReadFile extends AbstractConnector {
      * completely and build the complete message.
      *
      * @param inputStream         Stream to file content
-     * @param contentPropertyName Property name to set content
      * @param msgCtx              Message context
      * @param contentType         MIME type of the message
      * @throws FileOperationException In case of building the message
      */
-    private void buildSynapseMessage(InputStream inputStream, String contentPropertyName, MessageContext msgCtx,
+    private OMElement buildSynapseMessage(InputStream inputStream, MessageContext msgCtx,
                                      String contentType) throws FileOperationException {
 
         try {
@@ -632,13 +650,7 @@ public class ReadFile extends AbstractConnector {
             OMElement documentElement = builder.processDocument(inputStream, contentType, axis2MsgCtx);
             //We need this to build the complete message before closing the stream
             documentElement.toString();
-            if (StringUtils.isNotEmpty(contentPropertyName)) {
-                msgCtx.setProperty(contentPropertyName, documentElement);
-            } else {
-                msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
-                ((Axis2MessageContext) msgCtx).getAxis2MessageContext().
-                        removeProperty(PassThroughConstants.NO_ENTITY_BODY);
-            }
+            return documentElement;
         } catch (AxisFault e) {
             throw new FileOperationException("Axis2 error while building message from Stream", e);
         } catch (OMException e) {

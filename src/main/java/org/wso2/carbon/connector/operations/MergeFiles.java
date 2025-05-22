@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.connector.operations;
 
-import org.apache.axiom.om.OMElement;
+import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -26,10 +26,10 @@ import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
@@ -43,10 +43,12 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
+
 /**
  * Implements Merge Files operation.
  */
-public class MergeFiles extends AbstractConnector {
+public class MergeFiles extends AbstractConnectorOperation {
 
     private static final String SOURCE_DIRECTORY_PATH_PARAM = "sourceDirectoryPath";
     private static final String TARGET_FILE_PATH_PARAM = "targetFilePath";
@@ -59,7 +61,8 @@ public class MergeFiles extends AbstractConnector {
     private static final String ERROR_MESSAGE = "Error while performing file:merge for directory ";
 
     @Override
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
 
         String sourceDirectoryPath = null;
         FileObject sourceDir = null;
@@ -126,32 +129,28 @@ public class MergeFiles extends AbstractConnector {
                 numberOfTotalBytesWritten = mergeFileResult.getNumberOfTotalWrittenBytes();
             }
 
-            OMElement fileMergeDetailEle = Utils.createOMElement(DETAIL_ELE_NAME, null);
-            OMElement mergeFileCountEle = Utils.
-                    createOMElement(NUMBER_OF_MERGED_FILES_ELE_NAME, Integer.toString(numberOfMergedFiles));
-            OMElement totalWrittenBytesEle = Utils.
-                    createOMElement(TOTAL_WRITTEN_BYTES_ELE_NAME, Long.toString(numberOfTotalBytesWritten));
-            fileMergeDetailEle.addChild(mergeFileCountEle);
-            fileMergeDetailEle.addChild(totalWrittenBytesEle);
-            result = new FileOperationResult(OPERATION_NAME,
-                    true,
-                    fileMergeDetailEle);
-            Utils.setResultAsPayload(messageContext, result);
+            JsonObject fileMergeDetailEle = new JsonObject();
+            fileMergeDetailEle.addProperty(NUMBER_OF_MERGED_FILES_ELE_NAME, numberOfMergedFiles);
+            fileMergeDetailEle.addProperty(TOTAL_WRITTEN_BYTES_ELE_NAME, numberOfTotalBytesWritten);
+            JsonObject resultJSON = generateOperationResult(messageContext,
+                    new FileOperationResult(OPERATION_NAME, true));
+            resultJSON.add(DETAIL_ELE_NAME, fileMergeDetailEle);
+            handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
 
         } catch (FileOperationException | IOException e) {     //FileSystemException also handled here
 
             String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail, responseVariable, overwriteBody);
 
         } catch (IllegalPathException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
-            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
+            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
 
         } finally {
 
@@ -248,10 +247,15 @@ public class MergeFiles extends AbstractConnector {
      * @param e           Exception associated
      * @param error       Error code
      * @param errorDetail Error detail
+     * @param responseVariable Response variable name
+     * @param overwriteBody Overwrite body
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
+                             String responseVariable, boolean overwriteBody) {
         errorDetail = Utils.maskURLPassword(errorDetail);
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
     }
 

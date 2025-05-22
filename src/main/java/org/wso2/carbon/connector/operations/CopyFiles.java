@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.connector.operations;
 
+import com.google.gson.JsonObject;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileObject;
@@ -28,10 +29,10 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.Selectors;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileAlreadyExistsException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
@@ -44,10 +45,12 @@ import org.wso2.carbon.connector.utils.SimpleFileSelector;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
+
 /**
  * Implements copy files operation.
  */
-public class CopyFiles extends AbstractConnector {
+public class CopyFiles extends AbstractConnectorOperation {
 
     private static final String SOURCE_PATH = "sourcePath";
     private static final String TARGET_PATH = "targetPath";
@@ -60,7 +63,8 @@ public class CopyFiles extends AbstractConnector {
     private static final String ERROR_MESSAGE = "Error while performing file:copy for file/folder ";
 
     @Override
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
 
         String sourcePath = null;
         String targetPath = null;
@@ -149,10 +153,10 @@ public class CopyFiles extends AbstractConnector {
                         boolean success = copyFile(sourceFile, fileSelector, targetFile, overwrite);
                         FileOperationResult result;
                         if (success) {
-                            result = new FileOperationResult(
-                                    OPERATION_NAME,
-                                    true);
-                            Utils.setResultAsPayload(messageContext, result);
+                            JsonObject resultJSON = generateOperationResult(messageContext,
+                                    new FileOperationResult(OPERATION_NAME, true));
+                            handleConnectorResponse(messageContext, responseVariable, overwriteBody,
+                                    resultJSON, null, null);
                         } else {
                             throw new FileAlreadyExistsException("Destination file already "
                                     + "exists and overwrite not allowed");
@@ -172,12 +176,11 @@ public class CopyFiles extends AbstractConnector {
                         FileObject targetFile = fsManager.resolveFile(targetPath, fso);
 
                         boolean success = copyFolder(sourceFile, fileSelector, targetFile, overwrite);
-                        FileOperationResult result;
                         if (success) {
-                            result = new FileOperationResult(
-                                    OPERATION_NAME,
-                                    true);
-                            Utils.setResultAsPayload(messageContext, result);
+                            JsonObject resultJSON = generateOperationResult(messageContext,
+                                    new FileOperationResult(OPERATION_NAME, true));
+                            handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON,
+                                    null, null);
                         } else {
                             throw new FileAlreadyExistsException("Folder or one or more "
                                     + "sub-directories already exists and overwrite not allowed");
@@ -191,13 +194,13 @@ public class CopyFiles extends AbstractConnector {
             } catch (InvalidConfigurationException e) {
 
                 String errorDetail = ERROR_MESSAGE + sourcePath;
-                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
             } catch (FileSystemException e) {
                 log.error(e);
                 Utils.closeFileSystem(sourceFile);
                 if (attempt >= maxRetries - 1) {
                     String errorDetail = ERROR_MESSAGE + sourcePath;
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while copying file/folder "
@@ -208,19 +211,21 @@ public class CopyFiles extends AbstractConnector {
                     Thread.sleep(retryDelay); // Wait before retrying
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath);
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath,
+                            responseVariable, overwriteBody);
                 }
             } catch (FileAlreadyExistsException e) {
                 String errorDetail = ERROR_MESSAGE + sourcePath;
-                handleError(messageContext, e, Error.FILE_ALREADY_EXISTS, errorDetail);
+                handleError(messageContext, e, Error.FILE_ALREADY_EXISTS, errorDetail, responseVariable, overwriteBody);
             } catch (IllegalPathException e) {
                 String errorDetail = ERROR_MESSAGE + sourcePath;
-                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
+                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
             } catch (Exception e) {
                 log.error("Exception while copying file/folder " + sourcePath + ". Error: " + e.getMessage());
                 Utils.closeFileSystem(sourceFile);
                 if (attempt >= maxRetries - 1) {
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, ERROR_MESSAGE + sourcePath);
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, ERROR_MESSAGE + sourcePath,
+                            responseVariable, overwriteBody);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while copying file/folder "
@@ -231,7 +236,8 @@ public class CopyFiles extends AbstractConnector {
                     Thread.sleep(retryDelay); // Wait before retrying
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath);
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath,
+                            responseVariable, overwriteBody);
                 }
             } finally {
 
@@ -331,10 +337,15 @@ public class CopyFiles extends AbstractConnector {
      * @param e           Exception associated
      * @param error       Error code
      * @param errorDetail Error detail
+     * @param responseVariable Response variable name
+     * @param overwriteBody Overwrite body
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
+                             String responseVariable, boolean overwriteBody) {
         errorDetail = Utils.maskURLPassword(errorDetail);
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
     }
 }

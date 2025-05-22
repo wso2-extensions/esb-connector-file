@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
   ~ Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
   ~
@@ -15,7 +16,6 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-
 <template xmlns="http://ws.apache.org/ns/synapse" name="move">
     <parameter name="sourcePath" description="The path to the file to be moved."/>
     <parameter name="targetPath" description="The target directory where to move the file."/>
@@ -27,6 +27,8 @@
     <parameter name="isSourceMounted" description="Whether the source path is a mounted path or not."/>
     <parameter name="isTargetMounted" description="Whether the target path is a mounted path or not."/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
+    <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>
+    <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.MoveFiles" />
     </sequence>

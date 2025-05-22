@@ -103,6 +103,7 @@ public final class Const {
     public static final String SET_CHARACTER_ENCODING = "setCharacterEncoding";
     public static final String CONTENT_TYPE_BINARY = "application/binary";
     public static final String CONTENT_TYPE_TEXT = "text/plain";
+    public static final String CONTENT_TYPE_JSON = "application/json";
     public static final String MESSAGE_TYPE = "messageType";
     public static final String ZIP_FILE_EXTENSION = ".zip";
     public static final String LOCK_FILE_EXTENSION = ".lock";
@@ -123,4 +124,7 @@ public final class Const {
 
     public static final String MAX_RETRY_PARAM = "maxRetries";
     public static final String RETRY_DELAY_PARAM = "retryDelay";
+
+    public static final String FILE_CONNECTION_TEST = "FILE_CONNECTION_TEST";
+    public static final String IS_VALID_CONNECTION = "isValidConnection";
 }

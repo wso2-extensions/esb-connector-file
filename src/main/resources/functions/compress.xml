@@ -21,6 +21,8 @@
     <parameter name="targetFilePath" description="Path to the Zip file to create."/>
     <parameter name="includeSubDirectories" description="Whether to include sub-directories"/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
+    <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>
+    <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.CompressFiles" />
     </sequence>

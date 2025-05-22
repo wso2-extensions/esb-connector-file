@@ -19,7 +19,7 @@
 package org.wso2.carbon.connector.operations;
 
 
-import org.apache.axiom.om.OMElement;
+import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -27,10 +27,10 @@ import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
@@ -39,24 +39,24 @@ import org.wso2.carbon.connector.utils.Utils;
 
 import java.io.IOException;
 
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
+
 /**
  * Implements Check File Exists operation.
  */
-public class CheckFileExist extends AbstractConnector {
+public class CheckFileExist extends AbstractConnectorOperation {
 
     private static final String PATH_PARAM = "path";
-    private static final String INCLUDE_RESULT_AT_PARAM = "includeResultTo";
-    private static final String RESULT_PROPERTY_NAME_PARAM = "resultPropertyName";
     private static final String OPERATION_NAME = "checkExist";
     private static final String ERROR_MESSAGE = "Error while performing file:checkExist for file/directory ";
     private static final String FILE_EXISTS_ELE_NAME = "fileExists";
 
     @Override
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
 
         String filePath = null;
         FileObject fileObject = null;
-        FileOperationResult result;
 
         FileSystemHandler fileSystemHandlerConnection = null;
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
@@ -89,47 +89,20 @@ public class CheckFileExist extends AbstractConnector {
             //fsManager.getFilesCache().removeFile(fileObject.getParent().getFileSystem(),  fileObject.getParent().getName());
             //fileObject = fsManager.resolveFile(filePath, fso);
 
-
-            String operationResult;
-            if (fileObject.exists()) {
-                operationResult = Boolean.toString(Boolean.TRUE);
-            } else {
-                operationResult = Boolean.toString(Boolean.FALSE);
-            }
-
-            OMElement fileExistsEle = Utils.
-                    createOMElement(FILE_EXISTS_ELE_NAME, operationResult);
-            result = new FileOperationResult(OPERATION_NAME,
-                    true,
-                    fileExistsEle);
-
-            String injectOperationResultAt = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, INCLUDE_RESULT_AT_PARAM);
-
-            if (injectOperationResultAt.equals(Const.MESSAGE_BODY)) {
-                Utils.setResultAsPayload(messageContext, result);
-            } else if (injectOperationResultAt.equals(Const.MESSAGE_PROPERTY)) {
-                String resultPropertyName = (String) ConnectorUtils.
-                        lookupTemplateParamater(messageContext, RESULT_PROPERTY_NAME_PARAM);
-                if (StringUtils.isNotEmpty(resultPropertyName)) {
-                    messageContext.setProperty(resultPropertyName, operationResult);
-                } else {
-                    throw new InvalidConfigurationException("Property name to set operation result is required");
-                }
-            } else {
-                throw new InvalidConfigurationException("Parameter 'includeResultAt' is mandatory");
-            }
-
+            JsonObject resultJSON = generateOperationResult(messageContext,
+                    new FileOperationResult(OPERATION_NAME,true));
+            resultJSON.addProperty(FILE_EXISTS_ELE_NAME, fileObject.exists());
+            handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + filePath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
 
         } catch (IOException e) {       //FileSystemException also handled here
 
             String errorDetail = ERROR_MESSAGE + filePath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail, responseVariable, overwriteBody);
 
         } finally {
 
@@ -158,10 +131,16 @@ public class CheckFileExist extends AbstractConnector {
      * @param e           Exception associated
      * @param error       Error code
      * @param errorDetail Error detail
+     * @param responseVariable Response variable name
+     * @param overwriteBody Overwrite body
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
+                             String responseVariable, boolean overwriteBody) {
+
         errorDetail = Utils.maskURLPassword(errorDetail);
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
     }
 }

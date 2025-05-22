@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.connector.operations;
 
-import org.apache.axiom.om.OMElement;
+import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -27,10 +27,10 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.FileType;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
@@ -45,10 +45,12 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
+
 /**
  * Implements Compress Files operation.
  */
-public class CompressFiles extends AbstractConnector {
+public class CompressFiles extends AbstractConnectorOperation {
 
     private static final String LOG_IDENTIFIER = "[FileConnector:compress] ";
     private static final String SOURCE_DIRECTORY_PATH = "sourceDirectoryPath";
@@ -59,14 +61,14 @@ public class CompressFiles extends AbstractConnector {
     private static final String ERROR_MESSAGE = "Error while performing file:compress for file/directory ";
 
     @Override
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
 
         String sourceFilePath = null;
         FileObject fileToCompress = null;
         String targetZipFilePath = null;
         FileObject targetZipFile = null;
         boolean includeSubDirectories = true;
-        FileOperationResult result;
 
         FileSystemHandler fileSystemHandlerConnection = null;
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
@@ -111,28 +113,26 @@ public class CompressFiles extends AbstractConnector {
             }
 
             int numberOfCompressedFiles = compressFile(fileToCompress, targetZipFile, includeSubDirectories);
-            OMElement compressedFilesEle =
-                    Utils.createOMElement(NUMBER_OF_FILES_ADDED_ELEMENT,
-                            Integer.toString(numberOfCompressedFiles));
-            result = new FileOperationResult(OPERATION_NAME,
-                    true,
-                    compressedFilesEle);
-            Utils.setResultAsPayload(messageContext, result);
+
+            JsonObject resultJSON = generateOperationResult(messageContext,
+                    new FileOperationResult(OPERATION_NAME, true));
+            resultJSON.addProperty(NUMBER_OF_FILES_ADDED_ELEMENT, numberOfCompressedFiles);
+            handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
 
         } catch (IllegalPathException e) {
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
+            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
 
         } catch (IOException e) {       //FileSystemException also handled here
 
             String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail, responseVariable, overwriteBody);
 
         } finally {
 
@@ -310,10 +310,15 @@ public class CompressFiles extends AbstractConnector {
      * @param e           Exception associated
      * @param error       Error code
      * @param errorDetail Error detail
+     * @param responseVariable Response variable name
+     * @param overwriteBody Overwrite body
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
+                             String responseVariable, boolean overwriteBody) {
         errorDetail = Utils.maskURLPassword(errorDetail);
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
     }
 }

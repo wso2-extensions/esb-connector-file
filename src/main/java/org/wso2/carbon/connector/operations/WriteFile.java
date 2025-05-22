@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.connector.operations;
 
+import com.google.gson.JsonObject;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMOutputFormat;
 import org.apache.axis2.format.BinaryFormatter;
@@ -36,11 +37,13 @@ import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
+import org.apache.synapse.util.InlineExpressionUtil;
+import org.jaxen.JaxenException;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
@@ -63,16 +66,16 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
+
 /**
  * Implements Write file connector operation
  */
-public class WriteFile extends AbstractConnector {
+public class WriteFile extends AbstractConnectorOperation {
 
     private static final String FILE_PATH_PARAM = "filePath";
     private static final String ENABLE_LOCK_PARAM = "enableLock";
     private static final String UPDATE_LAST_MODIFIED_TIMESTAMP = "updateLastModified";
-    private static final String INCLUDE_RESULT_TO = "includeResultTo";
-    private static final String RESULT_PROPERTY_NAME = "resultPropertyName";
     private static final String COMPRESS_PARAM = "compress";
     private static final String WRITE_MODE_PARAM = "writeMode";
     private static final String CONTENT_OR_EXPRESSION_PARAM = "contentOrExpression";
@@ -85,7 +88,8 @@ public class WriteFile extends AbstractConnector {
     private static final String ERROR_MESSAGE = "Error while performing file:write for file ";
 
     @Override
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
 
         String targetFilePath = null;
         FileObject targetFile = null;
@@ -162,29 +166,26 @@ public class WriteFile extends AbstractConnector {
                         byteCountWritten);
 
 
-                if (config.includeResultTo.equals(Const.MESSAGE_BODY)) {
-                    Utils.setResultAsPayload(messageContext, result);
-                } else if (config.includeResultTo.equals(Const.MESSAGE_PROPERTY)) {
-                    OMElement resultEle = Utils.generateOperationResult(messageContext, result);
-                    messageContext.setProperty(config.resultPropertyName, resultEle);
-                }
+                JsonObject resultJSON = generateOperationResult(messageContext,
+                        new FileOperationResult(OPERATION_NAME, true, byteCountWritten));
+                handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
                 successOperation = true;
             } catch (InvalidConfigurationException e) {
 
                 String errorDetail = ERROR_MESSAGE + targetFilePath;
-                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
 
             } catch (IllegalPathException e) {
 
                 String errorDetail = ERROR_MESSAGE + targetFilePath;
-                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
+                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
 
             } catch (FileOperationException | IOException e) { //FileSystemException also handled here
                 String errorDetail = ERROR_MESSAGE + targetFilePath;
                 log.error(errorDetail, e);
                 Utils.closeFileSystem(targetFile);
                 if (attempt >= maxRetries - 1) {
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while write "
@@ -195,17 +196,18 @@ public class WriteFile extends AbstractConnector {
                     Thread.sleep(retryDelay); // Wait before retrying
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + targetFilePath);
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + targetFilePath,
+                            responseVariable, overwriteBody);
                 }
             } catch (FileLockException e) {
                 String errorDetail = ERROR_MESSAGE + targetFilePath;
-                handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail);
+                handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail, responseVariable, overwriteBody);
             } catch (Exception e) {
                 String errorDetail = ERROR_MESSAGE + targetFilePath;
                 log.error(errorDetail, e);
                 Utils.closeFileSystem(targetFile);
                 if (attempt >= maxRetries - 1) {
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail);
+                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
                 }
                 // Log the retry attempt
                 log.warn(Const.CONNECTOR_NAME + ":Error while write "
@@ -216,7 +218,8 @@ public class WriteFile extends AbstractConnector {
                     Thread.sleep(retryDelay); // Wait before retrying
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + targetFilePath);
+                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + targetFilePath,
+                            responseVariable, overwriteBody);
                 }
             } finally {
                 if (targetFile != null) {
@@ -242,21 +245,15 @@ public class WriteFile extends AbstractConnector {
         }
     }
 
-    private Config readAndValidateInputs(MessageContext msgCtx) throws InvalidConfigurationException {
+    private Config readAndValidateInputs(MessageContext msgCtx) throws InvalidConfigurationException, JaxenException {
         Config config = new Config();
         config.targetFilePath = Utils.lookUpStringParam(msgCtx, FILE_PATH_PARAM);
         config.enableLocking = Utils.lookUpBooleanParam(msgCtx, ENABLE_LOCK_PARAM, false);
         config.updateLastModified = Utils.lookUpBooleanParam(msgCtx, UPDATE_LAST_MODIFIED_TIMESTAMP, true);
-        config.includeResultTo = Utils.lookUpStringParam(msgCtx, INCLUDE_RESULT_TO, Const.MESSAGE_BODY);
-        String resultPropertyName = Utils.lookUpStringParam(msgCtx, RESULT_PROPERTY_NAME, Const.EMPTY_STRING);
-        if (config.includeResultTo.equals(Const.MESSAGE_PROPERTY) && StringUtils.isEmpty(resultPropertyName)) {
-            throw new InvalidConfigurationException("Parameter '" + RESULT_PROPERTY_NAME + "' is required.");
-        } else {
-            config.resultPropertyName = resultPropertyName;
-        }
         config.compress = Utils.lookUpBooleanParam(msgCtx, COMPRESS_PARAM, false);
         config.writeMode = FileWriteMode.fromString(Utils.lookUpStringParam(msgCtx, WRITE_MODE_PARAM, FileWriteMode.OVERWRITE.toString()));
-        config.contentToWrite = Utils.lookUpStringParam(msgCtx, CONTENT_OR_EXPRESSION_PARAM, Const.EMPTY_STRING);
+        String rawContent = Utils.lookUpStringParam(msgCtx, CONTENT_OR_EXPRESSION_PARAM, Const.EMPTY_STRING);
+        config.contentToWrite = InlineExpressionUtil.processInLineSynapseExpressionTemplate(msgCtx, rawContent);
         config.encoding = Utils.lookUpStringParam(msgCtx, ENCODING_PARAM, Const.DEFAULT_ENCODING);
         config.mimeType = Utils.lookUpStringParam(msgCtx, MIME_TYPE_PARAM, Const.EMPTY_STRING);
         config.appendNewLine = Utils.lookUpBooleanParam(msgCtx, APPEND_NEW_LINE_PARAM, false);
@@ -275,8 +272,6 @@ public class WriteFile extends AbstractConnector {
         String targetFilePath;
         String fileNameWithExtension;
         boolean enableLocking = false;
-        String includeResultTo;
-        String resultPropertyName;
         boolean compress = false;
         FileWriteMode writeMode = FileWriteMode.OVERWRITE;
         String contentToWrite;
@@ -295,10 +290,15 @@ public class WriteFile extends AbstractConnector {
      * @param e           Exception associated
      * @param error       Error code
      * @param errorDetail Error detail
+     * @param responseVariable Response variable name
+     * @param overwriteBody Overwrite body
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
+                             String responseVariable, boolean overwriteBody) {
         errorDetail = Utils.maskURLPassword(errorDetail);
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
     }
 

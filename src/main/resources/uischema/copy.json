@@ -1,142 +1,180 @@
 {
-  "connectorName": "file",
-  "operationName": "copy",
-  "title": "Copies the File or Folder Specified by SourcePath into TargetPath",
-  "help": "<h1>Copy Files</h1><b>Copies the File or Folder Specified by SourcePath into TargetPath.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
-  "elements": [
-    {
-      "type": "attributeGroup",
-      "value": {
-        "groupName": "General",
-        "elements": [
-          {
-            "type": "attribute",
-            "value": {
-              "name": "configRef",
-              "displayName": "File Connection",
-              "inputType": "connection",
-              "allowedConnectionTypes": [
-                "LOCAL",
-                "FTP",
-                "FTPS",
-                "SFTP",
-                "SMB2"
-              ],
-              "defaultType": "connection.local",
-              "defaultValue": "",
-              "required": "true",
-              "helpTip": "File connection to be used"
-            }
-          },
-          {
+    "connectorName": "file",
+    "operationName": "copy",
+    "title": "Copies the File or Folder Specified by SourcePath into TargetPath",
+    "help": "<h1>Copy Files</h1><b>Copies the File or Folder Specified by SourcePath into TargetPath.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
+    "elements": [
+        {
             "type": "attributeGroup",
             "value": {
-              "groupName": "Basic",
-              "elements": [
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "sourcePath",
-                    "displayName": "Source Path",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "true",
-                    "helpTip": "The path to the file to be copied."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "targetPath",
-                    "displayName": "Target Path",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "true",
-                    "helpTip": "The target directory where to copy the file."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "sourceFilePattern",
-                    "displayName": "Source File Pattern",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "The pattern (regex) of the files to be copied. (e.g., [a-zA-Z][a-zA-Z]*.(txt|xml|jar))."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "includeParent",
-                    "displayName": "Copy Including Source Parent",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "false",
-                    "required": "false",
-                    "helpTip": "Whether to copy including parent folder of the source folder or only content inside."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "overwrite",
-                    "displayName": "Overwrite Existing Files",
-                    "inputType": "booleanOrExpression",
-                    "defaultValue": "false",
-                    "required": "false",
-                    "helpTip": "Whether or not to overwrite the file if the target destination already exists."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "renameTo",
-                    "displayName": "Rename To",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "",
-                    "required": "false",
-                    "helpTip": "The new name for the copied file. If not provided, the original file name is kept."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "maxRetries",
-                    "displayName": "Max Retries",
-                    "inputType": "integerOrExpression",
-                    "defaultValue": "0",
-                    "required": "false",
-                    "helpTip": "The maximum number of retries to be done in case of a failure."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "retryDelay",
-                    "displayName": "Retry Interval",
-                    "inputType": "integerOrExpression",
-                    "defaultValue": "0",
-                    "required": "false",
-                    "helpTip": "The time interval between retries in milliseconds."
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "diskShareAccessMask",
-                    "displayName": "Access mask values for disk share",
-                    "inputType": "stringOrExpression",
-                    "defaultValue": "MAXIMUM_ALLOWED",
-                    "required": "false",
-                    "helpTip": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
-                  }
-                }
-              ]
+                "groupName": "General",
+                "elements": [
+                    {
+                        "type": "attribute",
+                        "value": {
+                            "name": "configRef",
+                            "displayName": "File Connection",
+                            "inputType": "connection",
+                            "allowedConnectionTypes": [
+                                "LOCAL",
+                                "FTP",
+                                "FTPS",
+                                "SFTP",
+                                "SMB2"
+                            ],
+                            "defaultType": "connection.local",
+                            "defaultValue": "",
+                            "required": "true",
+                            "helpTip": "File connection to be used"
+                        }
+                    },
+                    {
+                        "type": "attributeGroup",
+                        "value": {
+                            "groupName": "Basic",
+                            "elements": [
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "sourcePath",
+                                        "displayName": "Source Path",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "true",
+                                        "helpTip": "The path to the file to be copied."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "targetPath",
+                                        "displayName": "Target Path",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "true",
+                                        "helpTip": "The target directory where to copy the file."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "sourceFilePattern",
+                                        "displayName": "Source File Pattern",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "The pattern (regex) of the files to be copied. (e.g., [a-zA-Z][a-zA-Z]*.(txt|xml|jar))."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "includeParent",
+                                        "displayName": "Copy Including Source Parent",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "false",
+                                        "required": "false",
+                                        "helpTip": "Whether to copy including parent folder of the source folder or only content inside."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "overwrite",
+                                        "displayName": "Overwrite Existing Files",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "false",
+                                        "required": "false",
+                                        "helpTip": "Whether or not to overwrite the file if the target destination already exists."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "renameTo",
+                                        "displayName": "Rename To",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "The new name for the copied file. If not provided, the original file name is kept."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "maxRetries",
+                                        "displayName": "Max Retries",
+                                        "inputType": "integerOrExpression",
+                                        "defaultValue": "0",
+                                        "required": "false",
+                                        "helpTip": "The maximum number of retries to be done in case of a failure."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "retryDelay",
+                                        "displayName": "Retry Interval",
+                                        "inputType": "integerOrExpression",
+                                        "defaultValue": "0",
+                                        "required": "false",
+                                        "helpTip": "The time interval between retries in milliseconds."
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "type": "attributeGroup",
+                        "value": {
+                            "groupName": "Advanced",
+                            "elements": [
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "diskShareAccessMask",
+                                        "displayName": "Access mask values for disk share",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "MAXIMUM_ALLOWED",
+                                        "required": "false",
+                                        "helpTip": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
             }
-          }
-        ]
-      }
-    }
-  ]
+        },
+        {
+            "type": "attributeGroup",
+            "value": {
+                "groupName": "Output",
+                "elements": [
+                    {
+                        "type": "attribute",
+                        "value": {
+                            "name": "responseVariable",
+                            "displayName": "Output Variable Name",
+                            "inputType": "string",
+                            "deriveResponseVariable": "true",
+                            "required": "true",
+                            "helpTip": "Name of the variable to which the output of the operation should be assigned"
+                        }
+                    },
+                    {
+                        "type": "attribute",
+                        "value": {
+                            "name": "overwriteBody",
+                            "displayName": "Overwrite Message Body",
+                            "inputType": "checkbox",
+                            "defaultValue": "false",
+                            "helpTip": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable).",
+                            "required": "false"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
 }

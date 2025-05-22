@@ -32,9 +32,9 @@
                     "name": "workingDir",
                     "displayName": "Working Directory",
                     "inputType": "string",
-                    "defaultValue": "",
+                    "defaultValue": "/",
                     "required": "false",
-                    "helpTip": "Working directory. File paths in operations should be given w.r.t this folder"
+                    "helpTip": "Working directory. File paths in operations should be given w.r.t this folder. Eg: /Users/username/Downloads"
                   }
                 }
               ]

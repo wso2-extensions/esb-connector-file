@@ -18,7 +18,8 @@
 
 package org.wso2.carbon.connector.operations;
 
-import org.apache.axiom.om.OMElement;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -26,10 +27,10 @@ import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
@@ -42,11 +43,13 @@ import java.io.InputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
+
 /**
  * Implements ExploreZip File operation. This goes through
  * items in the zip file without extracting it.
  */
-public class ExploreZipFile extends AbstractConnector {
+public class ExploreZipFile extends AbstractConnectorOperation {
 
     private static final String ZIP_FILE_PATH = "zipFilePath";
     private static final String ZIP_FILE_CONTENT_ELE = "zipFileContent";
@@ -54,11 +57,11 @@ public class ExploreZipFile extends AbstractConnector {
     private static final String ERROR_MESSAGE = "Error while performing file:exploreZipFile for file ";
 
     @Override
-    public void connect(MessageContext messageContext) throws ConnectException {
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
 
         String filePath = null;
         FileObject zipFile = null;
-        FileOperationResult result;
 
         FileSystemHandler fileSystemHandlerConnection = null;
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
@@ -89,8 +92,7 @@ public class ExploreZipFile extends AbstractConnector {
                 throw new IllegalPathException("Zip file not found at path " + filePath);
             }
 
-            OMElement zipFileContentEle = Utils.
-                    createOMElement(ZIP_FILE_CONTENT_ELE, null);
+            JsonArray zipFileContentEle = new JsonArray();
 
             // open the zip file
             InputStream input = zipFile.getContent().getInputStream();
@@ -103,33 +105,31 @@ public class ExploreZipFile extends AbstractConnector {
                 while ((zipEntry = zip.getNextEntry()) != null) {
                     if (!zipEntry.isDirectory()) {
                         zipEntryName = zipEntry.getName();
-                        OMElement zipEntryEle = Utils.
-                                createOMElement(Const.FILE, zipEntryName);
-                        zipFileContentEle.addChild(zipEntryEle);
+                        zipFileContentEle.add(zipEntryName);
                     }
                 }
             }
 
-            result = new FileOperationResult(OPERATION_NAME,
-                    true,
-                    zipFileContentEle);
-            Utils.setResultAsPayload(messageContext, result);
+            JsonObject resultJSON = generateOperationResult(messageContext,
+                    new FileOperationResult(OPERATION_NAME, true));
+            resultJSON.add(ZIP_FILE_CONTENT_ELE, zipFileContentEle);
+            handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
 
 
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = ERROR_MESSAGE + filePath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
 
         } catch (IllegalPathException e) {
 
             String errorDetail = ERROR_MESSAGE + filePath;
-            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail);
+            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
 
         } catch (IOException e) {       //FileSystemException also handled here
 
             String errorDetail = ERROR_MESSAGE + filePath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail);
+            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail, responseVariable, overwriteBody);
 
         } finally {
 
@@ -158,10 +158,15 @@ public class ExploreZipFile extends AbstractConnector {
      * @param e           Exception associated
      * @param error       Error code
      * @param errorDetail Error detail
+     * @param responseVariable Response variable name
+     * @param overwriteBody Overwrite body
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
+                             String responseVariable, boolean overwriteBody) {
         errorDetail = Utils.maskURLPassword(errorDetail);
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
     }
 }

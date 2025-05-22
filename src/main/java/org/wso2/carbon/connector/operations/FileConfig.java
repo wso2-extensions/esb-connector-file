@@ -18,18 +18,23 @@
 
 package org.wso2.carbon.connector.operations;
 
+import com.google.gson.JsonObject;
+import org.apache.axis2.AxisFault;
 import org.apache.commons.lang.StringUtils;
 import org.apache.synapse.ManagedLifecycle;
 import org.apache.synapse.MessageContext;
+import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.core.SynapseEnvironment;
+import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.connection.SFTPConnectionFactory;
 import org.wso2.carbon.connector.connection.SMBConnectionFactory;
-import org.wso2.carbon.connector.core.AbstractConnector;
-import org.wso2.carbon.connector.core.ConnectException;
-import org.wso2.carbon.connector.core.connection.ConnectionHandler;
-import org.wso2.carbon.connector.core.util.ConnectorUtils;
+import org.wso2.carbon.connector.pojo.FileOperationResult;
+import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.deploy.ConnectorUndeployObserver;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
@@ -41,15 +46,20 @@ import org.wso2.carbon.connector.pojo.SFTPConnectionConfig;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
+
+import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+
+import static org.wso2.carbon.connector.utils.Const.IS_VALID_CONNECTION;
+import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
 
 /**
  * Initializes the file connection based on provided configs
  * at config/init.xml. Required input validations also
  * done here.
  */
-public class FileConfig extends AbstractConnector implements ManagedLifecycle {
+public class FileConfig extends AbstractConnectorOperation implements ManagedLifecycle {
 
     private static final String OPERATION_NAME = "init";
 
@@ -62,6 +72,12 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
     @Override
     public void destroy() {
         throw new UnsupportedOperationException("Destroy method of Config init is not supposed to be called");
+    }
+
+    @Override
+    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
+            throws ConnectException {
+        connect(messageContext);
     }
 
     @Override
@@ -313,7 +329,15 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
      * @param errorDetail Error detail
      */
     private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
-        Utils.setError(OPERATION_NAME, msgCtx, e, error, errorDetail);
+        errorDetail = Utils.maskURLPassword(errorDetail);
+        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
+        JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        try {
+            JsonUtil.getNewJsonPayload(((Axis2MessageContext)msgCtx).getAxis2MessageContext(), resultJSON.toString(),
+                    false, false);
+        } catch (AxisFault axisFault) {
+            log.error("Error while setting the error payload", axisFault);
+        }
         handleException(errorDetail, e, msgCtx);
     }
 
