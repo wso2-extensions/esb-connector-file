@@ -440,7 +440,7 @@
         <repository>
             <id>nexus-releases</id>
             <name>WSO2 Release Distribution Repository</name>
-            <url>https://maven.wso2.org/nexus/content/repositories/releases/</url>
+            <url>https://maven.wso2.org/nexus/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
 </project>
