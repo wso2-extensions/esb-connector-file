@@ -15,85 +15,1406 @@
     ],
     "releases": [
         {
+            "tagName": "v5.0.1",
+            "products": [
+                "MI 4.4.0"
+            ],
+            "operations": [
+                {
+                    "name": "read",
+                    "description": "Read a file or files in a directory",
+                    "params": [
+                        {
+                            "name": "path",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to the file or folder to read."
+                        },
+                        {
+                            "name": "filePattern",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "File pattern to match when choosing files to read in a folder. Not applicable when reading a file."
+                        },
+                        {
+                            "name": "readMode",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "Read mode to use. "
+                        },
+                        {
+                            "name": "startLineNum",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Read file starting from this line."
+                        },
+                        {
+                            "name": "endLineNum",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Read file up to this line."
+                        },
+                        {
+                            "name": "lineNum",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Specific line number to read"
+                        },
+                        {
+                            "name": "contentType",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "MIME type of the message generated. If not provided it will try to interpret."
+                        },
+                        {
+                            "name": "encoding",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Encoding of the message generated."
+                        },
+                        {
+                            "name": "enableStreaming",
+                            "type": "booleanOrExpression",
+                            "required": "true",
+                            "description": "Read the file in streaming manner."
+                        },
+                        {
+                            "name": "enableLock",
+                            "type": "booleanOrExpression",
+                            "required": "true",
+                            "description": "Whether to lock the file when reading"
+                        },
+                        {
+                            "name": "maxRetries",
+                            "type": "integerOrExpression",
+                            "required": "false",
+                            "description": "The maximum number of retries to be done in case of a failure."
+                        },
+                        {
+                            "name": "retryDelay",
+                            "type": "integerOrExpression",
+                            "required": "false",
+                            "description": "The time interval between retries in milliseconds."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "listFiles",
+                    "description": "List Files In Directory",
+                    "params": [
+                        {
+                            "name": "directoryPath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to directory to list files in."
+                        },
+                        {
+                            "name": "matchingPattern",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "File pattern to match when listing"
+                        },
+                        {
+                            "name": "recursive",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "List files in sub-directories"
+                        },
+                        {
+                            "name": "responseFormat",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "Response will be formatted as per this attribute."
+                        },
+                        {
+                            "name": "sortingAttribute",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "Files will be listed as per attribute."
+                        },
+                        {
+                            "name": "sortingOrder",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "Order you need to sort in ascending or descending order"
+                        },
+                        {
+                            "name": "maxRetries",
+                            "type": "integerOrExpression",
+                            "required": "false",
+                            "description": "The maximum number of retries to be done in case of a failure."
+                        },
+                        {
+                            "name": "retryDelay",
+                            "type": "integerOrExpression",
+                            "required": "false",
+                            "description": "The time interval between retries in milliseconds."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "checkExist",
+                    "description": "Check Existence of a File or Directory",
+                    "params": [
+                        {
+                            "name": "path",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to zip file to extract"
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "rename",
+                    "description": "Rename the file to the new name specified",
+                    "params": [
+                        {
+                            "name": "path",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "The path to the file or folder to rename"
+                        },
+                        {
+                            "name": "renameTo",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "New name of the file or folder"
+                        },
+                        {
+                            "name": "overwrite",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Whether or not to overwrite the file if a file with new name already exists"
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "exploreZipFile",
+                    "description": "List Items In ZIP File Without Extracting",
+                    "params": [
+                        {
+                            "name": "zipFilePath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to zip file to explore"
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "move",
+                    "description": "Moves the File or Folder Specified by SourcePath into TargetPath",
+                    "params": [
+                        {
+                            "name": "sourcePath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "The path to the file to be copied."
+                        },
+                        {
+                            "name": "targetPath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "The target directory where to copy the file."
+                        },
+                        {
+                            "name": "createParentDirectories",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Whether or not to create parent directories if they don\u2019t exist in the target path."
+                        },
+                        {
+                            "name": "includeParent",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Whether to copy including parent folder of the source folder or only content inside."
+                        },
+                        {
+                            "name": "overwrite",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Whether or not to overwrite the file if the target destination already exists."
+                        },
+                        {
+                            "name": "renameTo",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "The new name for the copied file. If not provided, the original file name is kept."
+                        },
+                        {
+                            "name": "filePattern",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "The pattern (regex) of the files to be moved."
+                        },
+                        {
+                            "name": "isSourceMounted",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Whether the source path is a mounted path or not."
+                        },
+                        {
+                            "name": "isTargetMounted",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Whether the target path is a mounted path or not."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "delete",
+                    "description": "Delete File Or Folder",
+                    "params": [
+                        {
+                            "name": "path",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to file or directory to delete."
+                        },
+                        {
+                            "name": "matchingPattern",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Pattern (regex) to match file name. Matching files will get removed. If not provided all files will get removed"
+                        },
+                        {
+                            "name": "maxRetries",
+                            "type": "integerOrExpression",
+                            "required": "false",
+                            "description": "The maximum number of retries to be done in case of a failure."
+                        },
+                        {
+                            "name": "retryDelay",
+                            "type": "integerOrExpression",
+                            "required": "false",
+                            "description": "The time interval between retries in milliseconds."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "splitFile",
+                    "description": "Split a file into multiple smaller files",
+                    "params": [
+                        {
+                            "name": "sourceFilePath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to the file to split"
+                        },
+                        {
+                            "name": "targetDirectory",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Folder to place split files. If already exists, it will get overwritten."
+                        },
+                        {
+                            "name": "splitMode",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "The chunk size in bytes to split the file."
+                        },
+                        {
+                            "name": "chunkSize",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "The chunk size in bytes to split the file."
+                        },
+                        {
+                            "name": "lineCount",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "The number of lines per file."
+                        },
+                        {
+                            "name": "xpathExpression",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "The XPATH expression used to split file."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "write",
+                    "description": "create file and writes the content",
+                    "params": [
+                        {
+                            "name": "filePath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path of the file to be written."
+                        },
+                        {
+                            "name": "contentOrExpression",
+                            "type": "expressionTextArea",
+                            "required": "false",
+                            "description": "Static content or expression to receive content. If not given what is message body will get written."
+                        },
+                        {
+                            "name": "mimeType",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "MIME Type of the message. When formatting message for writing this will be used."
+                        },
+                        {
+                            "name": "writeMode",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "Write mode to use - overwrite, append or create new."
+                        },
+                        {
+                            "name": "appendPosition",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Position to append the content. Only used when WriteMode is APPEND."
+                        },
+                        {
+                            "name": "encoding",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Content Encoding. Applied when a value for content/expression is present."
+                        },
+                        {
+                            "name": "compress",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Whether to compress as a zip and write. Available only when WriteMode is Create New or OverWrite."
+                        },
+                        {
+                            "name": "appendNewLine",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Whether to append a new line character the the end of written content."
+                        },
+                        {
+                            "name": "enableStreaming",
+                            "type": "booleanOrExpression",
+                            "required": "true",
+                            "description": "Write to the file in streaming manner."
+                        },
+                        {
+                            "name": "enableLock",
+                            "type": "booleanOrExpression",
+                            "required": "true",
+                            "description": "Whether to lock the file when writing"
+                        },
+                        {
+                            "name": "updateLastModified",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Set as false to skip updating the last modified timestamp"
+                        },
+                        {
+                            "name": "maxRetries",
+                            "type": "integerOrExpression",
+                            "required": "false",
+                            "description": "The maximum number of retries to be done in case of a failure."
+                        },
+                        {
+                            "name": "retryDelay",
+                            "type": "integerOrExpression",
+                            "required": "false",
+                            "description": "The time interval between retries in milliseconds."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "copy",
+                    "description": "Copies the File or Folder Specified by SourcePath into TargetPath",
+                    "params": [
+                        {
+                            "name": "sourcePath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "The path to the file to be copied."
+                        },
+                        {
+                            "name": "targetPath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "The target directory where to copy the file."
+                        },
+                        {
+                            "name": "sourceFilePattern",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "The pattern (regex) of the files to be copied. (e.g., [a-zA-Z][a-zA-Z]*.(txt|xml|jar))."
+                        },
+                        {
+                            "name": "includeParent",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Whether to copy including parent folder of the source folder or only content inside."
+                        },
+                        {
+                            "name": "overwrite",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Whether or not to overwrite the file if the target destination already exists."
+                        },
+                        {
+                            "name": "renameTo",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "The new name for the copied file. If not provided, the original file name is kept."
+                        },
+                        {
+                            "name": "maxRetries",
+                            "type": "integerOrExpression",
+                            "required": "false",
+                            "description": "The maximum number of retries to be done in case of a failure."
+                        },
+                        {
+                            "name": "retryDelay",
+                            "type": "integerOrExpression",
+                            "required": "false",
+                            "description": "The time interval between retries in milliseconds."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "createDirectory",
+                    "description": "Create Directory",
+                    "params": [
+                        {
+                            "name": "directoryPath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to new directory."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "fetchDirectoryContent",
+                    "description": "Fetch file content in a folder in to list of base64 encoded stream",
+                    "params": [
+                        {
+                            "name": "directoryPath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "The path to the directory to list files"
+                        },
+                        {
+                            "name": "matchingPattern",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Pattern to match when listing files"
+                        },
+                        {
+                            "name": "recursive",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Whether to list files in sub-directories"
+                        },
+                        {
+                            "name": "sortingAttribute",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "Files will be listed as per attribute."
+                        },
+                        {
+                            "name": "sortingOrder",
+                            "type": "comboOrExpression",
+                            "required": "false",
+                            "description": "Order you need to sort in ascending or descending order"
+                        },
+                        {
+                            "name": "resultPropertyName",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Name of property to add the list of base64 encoded files operation result"
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "storeResponseInVariable",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Store the response payload in the variable specified above."
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the response of the operation."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "unzip",
+                    "description": "Unzip File to Target Directory",
+                    "params": [
+                        {
+                            "name": "sourceFilePath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to zip file to extract"
+                        },
+                        {
+                            "name": "targetDirectory",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Folder to extract. If already exists, it will get overwritten."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "compress",
+                    "description": "Archives a File or a Directory",
+                    "params": [
+                        {
+                            "name": "sourceDirectoryPath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to file/folder to compress"
+                        },
+                        {
+                            "name": "targetFilePath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to the Zip file to create."
+                        },
+                        {
+                            "name": "includeSubDirectories",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Whether to include sub-directories when compressing."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "mergeFiles",
+                    "description": "Merge Multiple Files into a Single File",
+                    "params": [
+                        {
+                            "name": "sourceDirectoryPath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to the source folder containing files to be merged."
+                        },
+                        {
+                            "name": "targetFilePath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to create merged file. If already exists, it will get overwritten."
+                        },
+                        {
+                            "name": "filePattern",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Pattern of files include in merging."
+                        },
+                        {
+                            "name": "writeMode",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "Pattern of files include in merging."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                }
+            ],
+            "connections": [
+                {
+                    "name": "SMB2",
+                    "description": "SMB Connection Config",
+                    "params": [
+                        {
+                            "name": "connectionName",
+                            "type": "string",
+                            "required": "true",
+                            "description": "The name for the file connection"
+                        },
+                        {
+                            "name": "host",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Host name of the SMB server"
+                        },
+                        {
+                            "name": "port",
+                            "type": "string",
+                            "required": "true",
+                            "description": "The port number of the SMB server"
+                        },
+                        {
+                            "name": "username",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Username used to connect with the SMB server"
+                        },
+                        {
+                            "name": "password",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Password to connect with the SMB server"
+                        },
+                        {
+                            "name": "encodePassword",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Enable this to encode the password if it has special characters"
+                        },
+                        {
+                            "name": "enableEncryption",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Enable this to enable encryption when connecting to a file share that enforces encryption"
+                        },
+                        {
+                            "name": "maxActiveConnections",
+                            "type": "string",
+                            "required": "false",
+                            "description": " The maximum number of objects (including both idle and active/borrowed) that can exist within the pool at the same time"
+                        },
+                        {
+                            "name": "maxIdleConnections",
+                            "type": "string",
+                            "required": "false",
+                            "description": "The maximum number of objects that can remain idle in the pool"
+                        },
+                        {
+                            "name": "maxWaitTime",
+                            "type": "string",
+                            "required": "false",
+                            "description": "The maximum amount of time that the borrowObject() method should block"
+                        },
+                        {
+                            "name": "evictionCheckInterval",
+                            "type": "string",
+                            "required": "false",
+                            "description": "The time interval between runs of the idle object evictor thread"
+                        },
+                        {
+                            "name": "minEvictionTime",
+                            "type": "string",
+                            "required": "false",
+                            "description": "The minimum amount of time an object must sit idle in the pool before it is eligible for eviction by the idle object evictor "
+                        },
+                        {
+                            "name": "exhaustedAction",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Determines the action to take when the borrowObject() method is called, but the pool is exhausted"
+                        }
+                    ]
+                },
+                {
+                    "name": "FTP",
+                    "description": "FTP Connection Config",
+                    "params": [
+                        {
+                            "name": "connectionName",
+                            "type": "string",
+                            "required": "true",
+                            "description": "The name for the file connection"
+                        },
+                        {
+                            "name": "host",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Host name of the FTP server"
+                        },
+                        {
+                            "name": "port",
+                            "type": "string",
+                            "required": "true",
+                            "description": "The port number of the FTP server"
+                        },
+                        {
+                            "name": "username",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Username used to connect with the FTP server"
+                        },
+                        {
+                            "name": "password",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Password to connect with the FTP server"
+                        },
+                        {
+                            "name": "encodePassword",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Enable this to encode the password if it has special characters"
+                        },
+                        {
+                            "name": "userDirIsRoot",
+                            "type": "booleanOrExpression",
+                            "required": "true",
+                            "description": "True if user directory is considered as root directory"
+                        },
+                        {
+                            "name": "workingDir",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Working directory. File paths in operations should be given w.r.t this folder. Eg: /Users/username/Downloads"
+                        },
+                        {
+                            "name": "isPassive",
+                            "type": "boolean",
+                            "required": "false",
+                            "description": "True if to enter into passive mode"
+                        },
+                        {
+                            "name": "ftpConnectionTimeout",
+                            "type": "stringOrExpression",
+                            "required": "no",
+                            "description": "Timeout in milisec for initial control connection"
+                        },
+                        {
+                            "name": "retryCount",
+                            "type": "stringOrExpression",
+                            "required": "no",
+                            "description": "Number of times to retry for FTP Connection"
+                        },
+                        {
+                            "name": "ftpSocketTimeout",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Socket timeout for FTP client"
+                        },
+                        {
+                            "name": "fileLockScheme",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "File Locking Behaviour to use in operations associated with this connection."
+                        }
+                    ]
+                },
+                {
+                    "name": "LOCAL",
+                    "description": "Local File",
+                    "params": [
+                        {
+                            "name": "connectionName",
+                            "type": "string",
+                            "required": "true",
+                            "description": "The name for the file connection"
+                        },
+                        {
+                            "name": "workingDir",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Working directory. File paths in operations should be given w.r.t this folder. Eg: /Users/username/Downloads"
+                        },
+                        {
+                            "name": "fileLockScheme",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "File Locking Behaviour to use in operations associated with this connection."
+                        }
+                    ]
+                },
+                {
+                    "name": "FTPS",
+                    "description": "Secured FTP Connection Config",
+                    "params": [
+                        {
+                            "name": "connectionName",
+                            "type": "string",
+                            "required": "true",
+                            "description": "The name for the file connection"
+                        },
+                        {
+                            "name": "host",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Host name of the FTP server"
+                        },
+                        {
+                            "name": "port",
+                            "type": "string",
+                            "required": "true",
+                            "description": "The port number of the FTP server"
+                        },
+                        {
+                            "name": "username",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Username used to connect with the FTP server"
+                        },
+                        {
+                            "name": "password",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Password to connect with the FTP server"
+                        },
+                        {
+                            "name": "encodePassword",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Enable this to encode the password if it has special characters"
+                        },
+                        {
+                            "name": "userDirIsRoot",
+                            "type": "booleanOrExpression",
+                            "required": "true",
+                            "description": "True if user directory is considered as root directory"
+                        },
+                        {
+                            "name": "workingDir",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Working directory. File paths in operations should be given w.r.t this folder. Eg: /Users/username/Downloads"
+                        },
+                        {
+                            "name": "keyStorePath",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Path to keyStore"
+                        },
+                        {
+                            "name": "keyStorePassword",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "KeyStore password"
+                        },
+                        {
+                            "name": "trustStorePath",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "Path to trustStore"
+                        },
+                        {
+                            "name": "trustStorePassword",
+                            "type": "stringOrExpression",
+                            "required": "true",
+                            "description": "TrustStore Password"
+                        },
+                        {
+                            "name": "isPassive",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "True if to enter into passive mode"
+                        },
+                        {
+                            "name": "ftpConnectionTimeout",
+                            "type": "stringOrExpression",
+                            "required": "no",
+                            "description": "Timeout in milisec for initial control connection"
+                        },
+                        {
+                            "name": "ftpSocketTimeout",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "Socket timeout for FTP client"
+                        },
+                        {
+                            "name": "implicitModeEnabled",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "True if implicit mode is enabled (https://en.wikipedia.org/wiki/FTPS#Implicit)"
+                        },
+                        {
+                            "name": "channelProtectionLevel",
+                            "type": "string",
+                            "required": "false",
+                            "description": "FTP Data Channel protection level. Possible values C,S,E,P"
+                        },
+                        {
+                            "name": "fileLockScheme",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "File Locking Behaviour to use in operations associated with this connection."
+                        }
+                    ]
+                },
+                {
+                    "name": "SFTP",
+                    "description": "SFTP Connection Config",
+                    "params": [
+                        {
+                            "name": "connectionName",
+                            "type": "string",
+                            "required": "true",
+                            "description": "The name for the file connection"
+                        },
+                        {
+                            "name": "host",
+                            "type": "string",
+                            "required": "true",
+                            "description": "Host name of the FTP server"
+                        },
+                        {
+                            "name": "port",
+                            "type": "string",
+                            "required": "true",
+                            "description": "The port number of the FTP server"
+                        },
+                        {
+                            "name": "username",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Username used to connect with the FTP server"
+                        },
+                        {
+                            "name": "password",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Password to connect with the FTP server"
+                        },
+                        {
+                            "name": "encodePassword",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Enable this to encode the password if it has special characters"
+                        },
+                        {
+                            "name": "userDirIsRoot",
+                            "type": "booleanOrExpression",
+                            "required": "true",
+                            "description": "True if user directory is considered as root directory"
+                        },
+                        {
+                            "name": "workingDir",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Working directory. File paths in operations should be given w.r.t this folder. Eg: /Users/username/Downloads"
+                        },
+                        {
+                            "name": "strictHostKeyChecking",
+                            "type": "booleanOrExpression",
+                            "required": "false",
+                            "description": "Specifies whether the Host key should be checked. If set to 'true', the connector (JSch) will always verify the public key (fingerprint) of the SSH/SFTP server. Default 'no'"
+                        },
+                        {
+                            "name": "privateKeyFilePath",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "The identity files (private key file used to ssh). Public key should be installed on the server."
+                        },
+                        {
+                            "name": "privateKeyPassword",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "The passphrase of the private key. The security of a key (even if encrypted) is retained because it is not available to anyone else. You can specify the passphrase when generating keys."
+                        },
+                        {
+                            "name": "setAvoidPermission",
+                            "type": "comboOrExpression",
+                            "required": "false",
+                            "description": "Set to true if you want to avoid permission check."
+                        },
+                        {
+                            "name": "maxActiveConnections",
+                            "type": "string",
+                            "required": "false",
+                            "description": " The maximum number of objects (including both idle and active/borrowed) that can exist within the pool at the same time"
+                        },
+                        {
+                            "name": "maxIdleConnections",
+                            "type": "string",
+                            "required": "false",
+                            "description": "The maximum number of connections that can remain idle in the pool at any time, awaiting to be borrowed. Excess idle objects may be removed."
+                        },
+                        {
+                            "name": "maxWaitTime",
+                            "type": "string",
+                            "required": "false",
+                            "description": "This parameter determines how long the connector is willing to wait in the queue for a connection to become available. If the wait time exceeds the configured maximum wait time, the pool may throw an exception when it is exhausted and no connections are available."
+                        },
+                        {
+                            "name": "evictionCheckInterval",
+                            "type": "string",
+                            "required": "false",
+                            "description": "This parameter specifies how frequently the evictor thread scans the pool for idle connections eligible for eviction. By configuring this interval, developers can control the frequency of resource checks, optimizing performance without unnecessary overhead."
+                        },
+                        {
+                            "name": "minEvictionTime",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Connections in the pool must remain idle for at least this specified duration before the evictor considers them for removal. This ensures that only connections inactive beyond a defined threshold are evicted, preventing premature eviction of frequently used resources."
+                        },
+                        {
+                            "name": "exhaustedAction",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Determines the action to take when the borrowObject() method is called, but the pool is exhausted."
+                        },
+                        {
+                            "name": "sftpPoolConnectionAgedTimeout",
+                            "type": "string",
+                            "required": "false",
+                            "description": "Interval to close connections in the connection pool in seconds"
+                        },
+                        {
+                            "name": "sftpConnectionTimeout",
+                            "type": "stringOrExpression",
+                            "required": "no",
+                            "description": "The Jsch connection timeout in milli seconds."
+                        },
+                        {
+                            "name": "sftpSessionTimeout",
+                            "type": "stringOrExpression",
+                            "required": "false",
+                            "description": "The Jsch session timeout in milli seconds."
+                        },
+                        {
+                            "name": "fileLockScheme",
+                            "type": "comboOrExpression",
+                            "required": "true",
+                            "description": "File Locking Behaviour to use in operations associated with this connection."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
             "tagName": "v5.0.0",
             "products": [
                 "MI 4.4.0"
             ],
             "operations": [
                 {
-                    "name":"init",
-                    "description":"Init operation",
-                    "isHidden":true
+                    "name": "init",
+                    "description": "Init operation",
+                    "isHidden": true
                 },
                 {
-                    "name":"createDirectory",
-                    "description":"Creates a new directory on directory path.",
-                    "isHidden":false
+                    "name": "createDirectory",
+                    "description": "Creates a new directory on directory path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"listFiles",
-                    "description":"Lists all the files in the directory path that match a matcher.",
-                    "isHidden":false
+                    "name": "listFiles",
+                    "description": "Lists all the files in the directory path that match a matcher.",
+                    "isHidden": false
                 },
                 {
-                    "name":"delete",
-                    "description":"Deletes the file specified by the path.",
-                    "isHidden":false
+                    "name": "delete",
+                    "description": "Deletes the file specified by the path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"copy",
-                    "description":"Copies the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "copy",
+                    "description": "Copies the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"move",
-                    "description":"Moves the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "move",
+                    "description": "Moves the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"rename",
-                    "description":"Rename the file to the new name specified.",
-                    "isHidden":false
+                    "name": "rename",
+                    "description": "Rename the file to the new name specified.",
+                    "isHidden": false
                 },
                 {
-                    "name":"unzip",
-                    "description":"Unzip file to target directory.",
-                    "isHidden":false
+                    "name": "unzip",
+                    "description": "Unzip file to target directory.",
+                    "isHidden": false
                 },
                 {
-                    "name":"splitFile",
-                    "description":"Split a file into multiple smaller files.",
-                    "isHidden":false
+                    "name": "splitFile",
+                    "description": "Split a file into multiple smaller files.",
+                    "isHidden": false
                 },
                 {
-                    "name":"mergeFiles",
-                    "description":"Merge multiple files in a folder to a single file.",
-                    "isHidden":false
+                    "name": "mergeFiles",
+                    "description": "Merge multiple files in a folder to a single file.",
+                    "isHidden": false
                 },
                 {
-                    "name":"checkExist",
-                    "description":"Check if a file or directory exists.",
-                    "isHidden":false
+                    "name": "checkExist",
+                    "description": "Check if a file or directory exists.",
+                    "isHidden": false
                 },
                 {
-                    "name":"exploreZipFile",
-                    "description":"List Items In ZIP File Without Extracting.",
-                    "isHidden":false
+                    "name": "exploreZipFile",
+                    "description": "List Items In ZIP File Without Extracting.",
+                    "isHidden": false
                 },
                 {
-                    "name":"compress",
-                    "description":"Compress file or folder.",
-                    "isHidden":false
+                    "name": "compress",
+                    "description": "Compress file or folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"read",
-                    "description":"Read a specific file or a file in a folder.",
-                    "isHidden":false
+                    "name": "read",
+                    "description": "Read a specific file or a file in a folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"write",
-                    "description":"Create a file or write content to a file.",
-                    "isHidden":false
+                    "name": "write",
+                    "description": "Create a file or write content to a file.",
+                    "isHidden": false
                 }
             ],
             "connections": [
@@ -132,79 +1453,79 @@
             ],
             "operations": [
                 {
-                    "name":"init",
-                    "description":"Init operation",
-                    "isHidden":true
+                    "name": "init",
+                    "description": "Init operation",
+                    "isHidden": true
                 },
                 {
-                    "name":"createDirectory",
-                    "description":"Creates a new directory on directory path.",
-                    "isHidden":false
+                    "name": "createDirectory",
+                    "description": "Creates a new directory on directory path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"listFiles",
-                    "description":"Lists all the files in the directory path that match a matcher.",
-                    "isHidden":false
+                    "name": "listFiles",
+                    "description": "Lists all the files in the directory path that match a matcher.",
+                    "isHidden": false
                 },
                 {
-                    "name":"delete",
-                    "description":"Deletes the file specified by the path.",
-                    "isHidden":false
+                    "name": "delete",
+                    "description": "Deletes the file specified by the path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"copy",
-                    "description":"Copies the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "copy",
+                    "description": "Copies the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"move",
-                    "description":"Moves the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "move",
+                    "description": "Moves the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"rename",
-                    "description":"Rename the file to the new name specified.",
-                    "isHidden":false
+                    "name": "rename",
+                    "description": "Rename the file to the new name specified.",
+                    "isHidden": false
                 },
                 {
-                    "name":"unzip",
-                    "description":"Unzip file to target directory.",
-                    "isHidden":false
+                    "name": "unzip",
+                    "description": "Unzip file to target directory.",
+                    "isHidden": false
                 },
                 {
-                    "name":"splitFile",
-                    "description":"Split a file into multiple smaller files.",
-                    "isHidden":false
+                    "name": "splitFile",
+                    "description": "Split a file into multiple smaller files.",
+                    "isHidden": false
                 },
                 {
-                    "name":"mergeFiles",
-                    "description":"Merge multiple files in a folder to a single file.",
-                    "isHidden":false
+                    "name": "mergeFiles",
+                    "description": "Merge multiple files in a folder to a single file.",
+                    "isHidden": false
                 },
                 {
-                    "name":"checkExist",
-                    "description":"Check if a file or directory exists.",
-                    "isHidden":false
+                    "name": "checkExist",
+                    "description": "Check if a file or directory exists.",
+                    "isHidden": false
                 },
                 {
-                    "name":"exploreZipFile",
-                    "description":"List Items In ZIP File Without Extracting.",
-                    "isHidden":false
+                    "name": "exploreZipFile",
+                    "description": "List Items In ZIP File Without Extracting.",
+                    "isHidden": false
                 },
                 {
-                    "name":"compress",
-                    "description":"Compress file or folder.",
-                    "isHidden":false
+                    "name": "compress",
+                    "description": "Compress file or folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"read",
-                    "description":"Read a specific file or a file in a folder.",
-                    "isHidden":false
+                    "name": "read",
+                    "description": "Read a specific file or a file in a folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"write",
-                    "description":"Create a file or write content to a file.",
-                    "isHidden":false
+                    "name": "write",
+                    "description": "Create a file or write content to a file.",
+                    "isHidden": false
                 }
             ],
             "connections": [
@@ -243,79 +1564,79 @@
             ],
             "operations": [
                 {
-                    "name":"init",
-                    "description":"Init operation",
-                    "isHidden":true
+                    "name": "init",
+                    "description": "Init operation",
+                    "isHidden": true
                 },
                 {
-                    "name":"createDirectory",
-                    "description":"Creates a new directory on directory path.",
-                    "isHidden":false
+                    "name": "createDirectory",
+                    "description": "Creates a new directory on directory path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"listFiles",
-                    "description":"Lists all the files in the directory path that match a matcher.",
-                    "isHidden":false
+                    "name": "listFiles",
+                    "description": "Lists all the files in the directory path that match a matcher.",
+                    "isHidden": false
                 },
                 {
-                    "name":"delete",
-                    "description":"Deletes the file specified by the path.",
-                    "isHidden":false
+                    "name": "delete",
+                    "description": "Deletes the file specified by the path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"copy",
-                    "description":"Copies the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "copy",
+                    "description": "Copies the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"move",
-                    "description":"Moves the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "move",
+                    "description": "Moves the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"rename",
-                    "description":"Rename the file to the new name specified.",
-                    "isHidden":false
+                    "name": "rename",
+                    "description": "Rename the file to the new name specified.",
+                    "isHidden": false
                 },
                 {
-                    "name":"unzip",
-                    "description":"Unzip file to target directory.",
-                    "isHidden":false
+                    "name": "unzip",
+                    "description": "Unzip file to target directory.",
+                    "isHidden": false
                 },
                 {
-                    "name":"splitFile",
-                    "description":"Split a file into multiple smaller files.",
-                    "isHidden":false
+                    "name": "splitFile",
+                    "description": "Split a file into multiple smaller files.",
+                    "isHidden": false
                 },
                 {
-                    "name":"mergeFiles",
-                    "description":"Merge multiple files in a folder to a single file.",
-                    "isHidden":false
+                    "name": "mergeFiles",
+                    "description": "Merge multiple files in a folder to a single file.",
+                    "isHidden": false
                 },
                 {
-                    "name":"checkExist",
-                    "description":"Check if a file or directory exists.",
-                    "isHidden":false
+                    "name": "checkExist",
+                    "description": "Check if a file or directory exists.",
+                    "isHidden": false
                 },
                 {
-                    "name":"exploreZipFile",
-                    "description":"List Items In ZIP File Without Extracting.",
-                    "isHidden":false
+                    "name": "exploreZipFile",
+                    "description": "List Items In ZIP File Without Extracting.",
+                    "isHidden": false
                 },
                 {
-                    "name":"compress",
-                    "description":"Compress file or folder.",
-                    "isHidden":false
+                    "name": "compress",
+                    "description": "Compress file or folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"read",
-                    "description":"Read a specific file or a file in a folder.",
-                    "isHidden":false
+                    "name": "read",
+                    "description": "Read a specific file or a file in a folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"write",
-                    "description":"Create a file or write content to a file.",
-                    "isHidden":false
+                    "name": "write",
+                    "description": "Create a file or write content to a file.",
+                    "isHidden": false
                 }
             ],
             "connections": [
@@ -354,79 +1675,79 @@
             ],
             "operations": [
                 {
-                    "name":"init",
-                    "description":"Init operation",
-                    "isHidden":true
+                    "name": "init",
+                    "description": "Init operation",
+                    "isHidden": true
                 },
                 {
-                    "name":"createDirectory",
-                    "description":"Creates a new directory on directory path.",
-                    "isHidden":false
+                    "name": "createDirectory",
+                    "description": "Creates a new directory on directory path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"listFiles",
-                    "description":"Lists all the files in the directory path that match a matcher.",
-                    "isHidden":false
+                    "name": "listFiles",
+                    "description": "Lists all the files in the directory path that match a matcher.",
+                    "isHidden": false
                 },
                 {
-                    "name":"delete",
-                    "description":"Deletes the file specified by the path.",
-                    "isHidden":false
+                    "name": "delete",
+                    "description": "Deletes the file specified by the path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"copy",
-                    "description":"Copies the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "copy",
+                    "description": "Copies the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"move",
-                    "description":"Moves the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "move",
+                    "description": "Moves the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"rename",
-                    "description":"Rename the file to the new name specified.",
-                    "isHidden":false
+                    "name": "rename",
+                    "description": "Rename the file to the new name specified.",
+                    "isHidden": false
                 },
                 {
-                    "name":"unzip",
-                    "description":"Unzip file to target directory.",
-                    "isHidden":false
+                    "name": "unzip",
+                    "description": "Unzip file to target directory.",
+                    "isHidden": false
                 },
                 {
-                    "name":"splitFile",
-                    "description":"Split a file into multiple smaller files.",
-                    "isHidden":false
+                    "name": "splitFile",
+                    "description": "Split a file into multiple smaller files.",
+                    "isHidden": false
                 },
                 {
-                    "name":"mergeFiles",
-                    "description":"Merge multiple files in a folder to a single file.",
-                    "isHidden":false
+                    "name": "mergeFiles",
+                    "description": "Merge multiple files in a folder to a single file.",
+                    "isHidden": false
                 },
                 {
-                    "name":"checkExist",
-                    "description":"Check if a file or directory exists.",
-                    "isHidden":false
+                    "name": "checkExist",
+                    "description": "Check if a file or directory exists.",
+                    "isHidden": false
                 },
                 {
-                    "name":"exploreZipFile",
-                    "description":"List Items In ZIP File Without Extracting.",
-                    "isHidden":false
+                    "name": "exploreZipFile",
+                    "description": "List Items In ZIP File Without Extracting.",
+                    "isHidden": false
                 },
                 {
-                    "name":"compress",
-                    "description":"Compress file or folder.",
-                    "isHidden":false
+                    "name": "compress",
+                    "description": "Compress file or folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"read",
-                    "description":"Read a specific file or a file in a folder.",
-                    "isHidden":false
+                    "name": "read",
+                    "description": "Read a specific file or a file in a folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"write",
-                    "description":"Create a file or write content to a file.",
-                    "isHidden":false
+                    "name": "write",
+                    "description": "Create a file or write content to a file.",
+                    "isHidden": false
                 }
             ],
             "connections": [
@@ -465,79 +1786,79 @@
             ],
             "operations": [
                 {
-                    "name":"init",
-                    "description":"Init operation",
-                    "isHidden":true
+                    "name": "init",
+                    "description": "Init operation",
+                    "isHidden": true
                 },
                 {
-                    "name":"createDirectory",
-                    "description":"Creates a new directory on directory path.",
-                    "isHidden":false
+                    "name": "createDirectory",
+                    "description": "Creates a new directory on directory path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"listFiles",
-                    "description":"Lists all the files in the directory path that match a matcher.",
-                    "isHidden":false
+                    "name": "listFiles",
+                    "description": "Lists all the files in the directory path that match a matcher.",
+                    "isHidden": false
                 },
                 {
-                    "name":"delete",
-                    "description":"Deletes the file specified by the path.",
-                    "isHidden":false
+                    "name": "delete",
+                    "description": "Deletes the file specified by the path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"copy",
-                    "description":"Copies the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "copy",
+                    "description": "Copies the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"move",
-                    "description":"Moves the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "move",
+                    "description": "Moves the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"rename",
-                    "description":"Rename the file to the new name specified.",
-                    "isHidden":false
+                    "name": "rename",
+                    "description": "Rename the file to the new name specified.",
+                    "isHidden": false
                 },
                 {
-                    "name":"unzip",
-                    "description":"Unzip file to target directory.",
-                    "isHidden":false
+                    "name": "unzip",
+                    "description": "Unzip file to target directory.",
+                    "isHidden": false
                 },
                 {
-                    "name":"splitFile",
-                    "description":"Split a file into multiple smaller files.",
-                    "isHidden":false
+                    "name": "splitFile",
+                    "description": "Split a file into multiple smaller files.",
+                    "isHidden": false
                 },
                 {
-                    "name":"mergeFiles",
-                    "description":"Merge multiple files in a folder to a single file.",
-                    "isHidden":false
+                    "name": "mergeFiles",
+                    "description": "Merge multiple files in a folder to a single file.",
+                    "isHidden": false
                 },
                 {
-                    "name":"checkExist",
-                    "description":"Check if a file or directory exists.",
-                    "isHidden":false
+                    "name": "checkExist",
+                    "description": "Check if a file or directory exists.",
+                    "isHidden": false
                 },
                 {
-                    "name":"exploreZipFile",
-                    "description":"List Items In ZIP File Without Extracting.",
-                    "isHidden":false
+                    "name": "exploreZipFile",
+                    "description": "List Items In ZIP File Without Extracting.",
+                    "isHidden": false
                 },
                 {
-                    "name":"compress",
-                    "description":"Compress file or folder.",
-                    "isHidden":false
+                    "name": "compress",
+                    "description": "Compress file or folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"read",
-                    "description":"Read a specific file or a file in a folder.",
-                    "isHidden":false
+                    "name": "read",
+                    "description": "Read a specific file or a file in a folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"write",
-                    "description":"Create a file or write content to a file.",
-                    "isHidden":false
+                    "name": "write",
+                    "description": "Create a file or write content to a file.",
+                    "isHidden": false
                 }
             ],
             "connections": [
@@ -576,79 +1897,79 @@
             ],
             "operations": [
                 {
-                    "name":"init",
-                    "description":"Init operation",
-                    "isHidden":true
+                    "name": "init",
+                    "description": "Init operation",
+                    "isHidden": true
                 },
                 {
-                    "name":"createDirectory",
-                    "description":"Creates a new directory on directory path.",
-                    "isHidden":false
+                    "name": "createDirectory",
+                    "description": "Creates a new directory on directory path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"listFiles",
-                    "description":"Lists all the files in the directory path that match a matcher.",
-                    "isHidden":false
+                    "name": "listFiles",
+                    "description": "Lists all the files in the directory path that match a matcher.",
+                    "isHidden": false
                 },
                 {
-                    "name":"delete",
-                    "description":"Deletes the file specified by the path.",
-                    "isHidden":false
+                    "name": "delete",
+                    "description": "Deletes the file specified by the path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"copy",
-                    "description":"Copies the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "copy",
+                    "description": "Copies the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"move",
-                    "description":"Moves the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "move",
+                    "description": "Moves the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"rename",
-                    "description":"Rename the file to the new name specified.",
-                    "isHidden":false
+                    "name": "rename",
+                    "description": "Rename the file to the new name specified.",
+                    "isHidden": false
                 },
                 {
-                    "name":"unzip",
-                    "description":"Unzip file to target directory.",
-                    "isHidden":false
+                    "name": "unzip",
+                    "description": "Unzip file to target directory.",
+                    "isHidden": false
                 },
                 {
-                    "name":"splitFile",
-                    "description":"Split a file into multiple smaller files.",
-                    "isHidden":false
+                    "name": "splitFile",
+                    "description": "Split a file into multiple smaller files.",
+                    "isHidden": false
                 },
                 {
-                    "name":"mergeFiles",
-                    "description":"Merge multiple files in a folder to a single file.",
-                    "isHidden":false
+                    "name": "mergeFiles",
+                    "description": "Merge multiple files in a folder to a single file.",
+                    "isHidden": false
                 },
                 {
-                    "name":"checkExist",
-                    "description":"Check if a file or directory exists.",
-                    "isHidden":false
+                    "name": "checkExist",
+                    "description": "Check if a file or directory exists.",
+                    "isHidden": false
                 },
                 {
-                    "name":"exploreZipFile",
-                    "description":"List Items In ZIP File Without Extracting.",
-                    "isHidden":false
+                    "name": "exploreZipFile",
+                    "description": "List Items In ZIP File Without Extracting.",
+                    "isHidden": false
                 },
                 {
-                    "name":"compress",
-                    "description":"Compress file or folder.",
-                    "isHidden":false
+                    "name": "compress",
+                    "description": "Compress file or folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"read",
-                    "description":"Read a specific file or a file in a folder.",
-                    "isHidden":false
+                    "name": "read",
+                    "description": "Read a specific file or a file in a folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"write",
-                    "description":"Create a file or write content to a file.",
-                    "isHidden":false
+                    "name": "write",
+                    "description": "Create a file or write content to a file.",
+                    "isHidden": false
                 }
             ],
             "connections": [
@@ -687,79 +2008,79 @@
             ],
             "operations": [
                 {
-                    "name":"init",
-                    "description":"Init operation",
-                    "isHidden":true
+                    "name": "init",
+                    "description": "Init operation",
+                    "isHidden": true
                 },
                 {
-                    "name":"createDirectory",
-                    "description":"Creates a new directory on directory path.",
-                    "isHidden":false
+                    "name": "createDirectory",
+                    "description": "Creates a new directory on directory path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"listFiles",
-                    "description":"Lists all the files in the directory path that match a matcher.",
-                    "isHidden":false
+                    "name": "listFiles",
+                    "description": "Lists all the files in the directory path that match a matcher.",
+                    "isHidden": false
                 },
                 {
-                    "name":"delete",
-                    "description":"Deletes the file specified by the path.",
-                    "isHidden":false
+                    "name": "delete",
+                    "description": "Deletes the file specified by the path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"copy",
-                    "description":"Copies the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "copy",
+                    "description": "Copies the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"move",
-                    "description":"Moves the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "move",
+                    "description": "Moves the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"rename",
-                    "description":"Rename the file to the new name specified.",
-                    "isHidden":false
+                    "name": "rename",
+                    "description": "Rename the file to the new name specified.",
+                    "isHidden": false
                 },
                 {
-                    "name":"unzip",
-                    "description":"Unzip file to target directory.",
-                    "isHidden":false
+                    "name": "unzip",
+                    "description": "Unzip file to target directory.",
+                    "isHidden": false
                 },
                 {
-                    "name":"splitFile",
-                    "description":"Split a file into multiple smaller files.",
-                    "isHidden":false
+                    "name": "splitFile",
+                    "description": "Split a file into multiple smaller files.",
+                    "isHidden": false
                 },
                 {
-                    "name":"mergeFiles",
-                    "description":"Merge multiple files in a folder to a single file.",
-                    "isHidden":false
+                    "name": "mergeFiles",
+                    "description": "Merge multiple files in a folder to a single file.",
+                    "isHidden": false
                 },
                 {
-                    "name":"checkExist",
-                    "description":"Check if a file or directory exists.",
-                    "isHidden":false
+                    "name": "checkExist",
+                    "description": "Check if a file or directory exists.",
+                    "isHidden": false
                 },
                 {
-                    "name":"exploreZipFile",
-                    "description":"List Items In ZIP File Without Extracting.",
-                    "isHidden":false
+                    "name": "exploreZipFile",
+                    "description": "List Items In ZIP File Without Extracting.",
+                    "isHidden": false
                 },
                 {
-                    "name":"compress",
-                    "description":"Compress file or folder.",
-                    "isHidden":false
+                    "name": "compress",
+                    "description": "Compress file or folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"read",
-                    "description":"Read a specific file or a file in a folder.",
-                    "isHidden":false
+                    "name": "read",
+                    "description": "Read a specific file or a file in a folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"write",
-                    "description":"Create a file or write content to a file.",
-                    "isHidden":false
+                    "name": "write",
+                    "description": "Create a file or write content to a file.",
+                    "isHidden": false
                 }
             ],
             "connections": [
@@ -797,79 +2118,79 @@
             ],
             "operations": [
                 {
-                    "name":"init",
-                    "description":"Init operation",
-                    "isHidden":true
+                    "name": "init",
+                    "description": "Init operation",
+                    "isHidden": true
                 },
                 {
-                    "name":"createDirectory",
-                    "description":"Creates a new directory on directory path.",
-                    "isHidden":false
+                    "name": "createDirectory",
+                    "description": "Creates a new directory on directory path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"listFiles",
-                    "description":"Lists all the files in the directory path that match a matcher.",
-                    "isHidden":false
+                    "name": "listFiles",
+                    "description": "Lists all the files in the directory path that match a matcher.",
+                    "isHidden": false
                 },
                 {
-                    "name":"delete",
-                    "description":"Deletes the file specified by the path.",
-                    "isHidden":false
+                    "name": "delete",
+                    "description": "Deletes the file specified by the path.",
+                    "isHidden": false
                 },
                 {
-                    "name":"copy",
-                    "description":"Copies the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "copy",
+                    "description": "Copies the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"move",
-                    "description":"Moves the file or folder specified by sourcePath into targetPath.",
-                    "isHidden":false
+                    "name": "move",
+                    "description": "Moves the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
                 },
                 {
-                    "name":"rename",
-                    "description":"Rename the file to the new name specified.",
-                    "isHidden":false
+                    "name": "rename",
+                    "description": "Rename the file to the new name specified.",
+                    "isHidden": false
                 },
                 {
-                    "name":"unzip",
-                    "description":"Unzip file to target directory.",
-                    "isHidden":false
+                    "name": "unzip",
+                    "description": "Unzip file to target directory.",
+                    "isHidden": false
                 },
                 {
-                    "name":"splitFile",
-                    "description":"Split a file into multiple smaller files.",
-                    "isHidden":false
+                    "name": "splitFile",
+                    "description": "Split a file into multiple smaller files.",
+                    "isHidden": false
                 },
                 {
-                    "name":"mergeFiles",
-                    "description":"Merge multiple files in a folder to a single file.",
-                    "isHidden":false
+                    "name": "mergeFiles",
+                    "description": "Merge multiple files in a folder to a single file.",
+                    "isHidden": false
                 },
                 {
-                    "name":"checkExist",
-                    "description":"Check if a file or directory exists.",
-                    "isHidden":false
+                    "name": "checkExist",
+                    "description": "Check if a file or directory exists.",
+                    "isHidden": false
                 },
                 {
-                    "name":"exploreZipFile",
-                    "description":"List Items In ZIP File Without Extracting.",
-                    "isHidden":false
+                    "name": "exploreZipFile",
+                    "description": "List Items In ZIP File Without Extracting.",
+                    "isHidden": false
                 },
                 {
-                    "name":"compress",
-                    "description":"Compress file or folder.",
-                    "isHidden":false
+                    "name": "compress",
+                    "description": "Compress file or folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"read",
-                    "description":"Read a specific file or a file in a folder.",
-                    "isHidden":false
+                    "name": "read",
+                    "description": "Read a specific file or a file in a folder.",
+                    "isHidden": false
                 },
                 {
-                    "name":"write",
-                    "description":"Create a file or write content to a file.",
-                    "isHidden":false
+                    "name": "write",
+                    "description": "Create a file or write content to a file.",
+                    "isHidden": false
                 }
             ],
             "connections": [
