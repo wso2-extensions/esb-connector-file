@@ -2,7 +2,7 @@ name: Publish Release
 
 on:
   workflow_dispatch:
-    inputs:
+    inputs: 
       update_preference:
         description: 'Metadata update preference'
         required: true
@@ -34,7 +34,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-
+      
       - name: Extract project version
         run: |
           VERSION=$(grep -oPm1 "(?<=<version>)[^<]+" pom.xml | sed 's/-SNAPSHOT$//')
@@ -80,7 +80,7 @@ jobs:
             --generate-notes \
             target/*.zip
 
-      - name: Update meta.json with parameters
+      - name: Update meta.json
         env:
           VERSION_TAG: ${{ env.VERSION_TAG }}
           UPDATE_PREFERENCE: ${{ github.event.inputs.update_preference }}
@@ -90,6 +90,15 @@ jobs:
           import os
           import glob
           import sys
+          import logging
+
+          # Configure logging
+          logging.basicConfig(
+              level=logging.INFO,
+              format='%(asctime)s - %(levelname)s - %(message)s',
+              datefmt='%Y-%m-%d %H:%M:%S'
+          )
+          logger = logging.getLogger('meta-json-updater')
 
           def process_elements(elements, params):
               """Process elements recursively to extract parameters"""
@@ -103,10 +112,11 @@ jobs:
                       params.append({
                           'name': value.get('name', ''),
                           'type': value.get('inputType', ''),
-                          'required': value.get('required', ''),
+                          'required': value.get('required', '').lower() == 'true',
+                          'defaultValue': value.get('defaultValue', ''),
                           'description': value.get('helpTip', '')
                       })
-          
+                  
                   # Process attribute group
                   elif element.get('type') == 'attributeGroup' and 'value' in element:
                       # Process elements in the attribute group
@@ -118,30 +128,30 @@ jobs:
               try:
                   with open(file_path, 'r') as f:
                       data = json.load(f)
-          
+                  
                   # Skip if not an operation file
                   if 'operationName' not in data:
                       return None
-          
+                  
                   operation_name = data.get('operationName')
                   operation_title = data.get('title', '')
-          
-                  print(f"Processing operation: {operation_name}")
-          
+                  
+                  logger.info(f"Processing operation: {operation_name}")
+                  
                   params = []
-          
+                  
                   # Process all elements recursively
                   if 'elements' in data:
                       process_elements(data['elements'], params)
-          
-                  print(f"Found {len(params)} parameters for operation {operation_name}")
+                  
+                  logger.info(f"Found {len(params)} parameters for operation {operation_name}")
                   return {
                       'operation': operation_name,
                       'title': operation_title,
                       'params': params
                   }
               except Exception as e:
-                  print(f"Error processing operation file {file_path}: {e}")
+                  logger.error(f"Error processing operation file {file_path}: {e}")
                   return None
 
           def extract_connection_params(file_path):
@@ -149,39 +159,40 @@ jobs:
               try:
                   with open(file_path, 'r') as f:
                       data = json.load(f)
-          
+                  
                   # Skip if not a connection file
                   if 'connectionName' not in data:
                       return None
-          
+                  
                   connection_name = data.get('connectionName')
                   connection_title = data.get('title', '')
-          
-                  print(f"Processing connection: {connection_name}")
-          
+                  
+                  logger.info(f"Processing connection: {connection_name}")
+                  
                   params = []
-          
+                  
                   # Process all elements recursively
                   if 'elements' in data:
                       process_elements(data['elements'], params)
-          
-                  print(f"Found {len(params)} parameters for connection {connection_name}")
+                  
+                  logger.info(f"Found {len(params)} parameters for connection {connection_name}")
                   return {
                       'connection': connection_name,
                       'title': connection_title,
                       'params': params
                   }
               except Exception as e:
-                  print(f"Error processing connection file {file_path}: {e}")
+                  logger.error(f"Error processing connection file {file_path}: {e}")
                   return None
 
-          def create_release_entry(version, operation_params, connection_params):
+          def create_release_entry(version, products, operation_params, connection_params):
               """Create a release entry with operations and connections"""
               # Create base release entry
               release_entry = {
-                  'tagName': version
+                  'tagName': version,
+                  'products': products
               }
-          
+              
               # Add operations
               if operation_params:
                   release_entry['operations'] = []
@@ -192,7 +203,7 @@ jobs:
                           'params': op_data['params'],
                           'isHidden': False
                       })
-          
+              
               # Add connections
               if connection_params:
                   release_entry['connections'] = []
@@ -202,7 +213,7 @@ jobs:
                           'description': conn_data['title'],
                           'params': conn_data['params']
                       })
-          
+                      
               return release_entry
 
           def update_meta_json():
@@ -210,39 +221,47 @@ jobs:
               try:
                   # Get version from GitHub release
                   version = os.environ.get('VERSION_TAG', '')
-                  print(f"Current version from release: {version}")
-          
+                  logger.info(f"Current version from release: {version}")
+                  
                   # Get update preference
                   update_preference = os.environ.get('UPDATE_PREFERENCE', 'overwrite')
-                  print(f"Update preference: {update_preference}")
-          
+                  logger.info(f"Update preference: {update_preference}")
+                  
                   # Process all uischema files
                   uischema_files = glob.glob('src/main/resources/uischema/*.json')
                   operation_params = []
                   connection_params = []
-          
+                  
                   for file_path in uischema_files:
-                      print(f"Processing file: {file_path}")
+                      logger.info(f"Processing file: {file_path}")
                       op_data = extract_operation_params(file_path)
                       conn_data = extract_connection_params(file_path)
-          
+                      
                       if op_data:
                           operation_params.append(op_data)
                       if conn_data:
                           connection_params.append(conn_data)
-          
-                  print(f"Found {len(operation_params)} operations and {len(connection_params)} connections")
-          
+                  
+                  logger.info(f"Found {len(operation_params)} operations and {len(connection_params)} connections")
+                  
                   # Read meta.json
                   with open('.connector-store/meta.json', 'r') as f:
                       meta_json = json.load(f)
-          
+
+                  products = []
+                  if meta_json.get('releases') and len(meta_json['releases']) > 0:
+                      products = meta_json['releases'][0].get('products', ['MI 4.4.0'])
+                      logger.info(f"Copied products from latest release: {products}")
+                  else:
+                      products = ['MI 4.4.0']
+                      logger.info("No previous releases found, using default product: MI 4.4.0")
+                  
                   # Create or update release entry
-                  release_entry = create_release_entry(version, operation_params, connection_params)
-          
+                  release_entry = create_release_entry(version, products, operation_params, connection_params)
+                  
                   # Update meta.json based on preference
                   if update_preference == 'overwrite':
-                      print(f"Overwrite preference selected. Replacing the latest version in meta.json...")
+                      logger.info(f"Overwrite preference selected. Replacing the latest version in meta.json...")
                       if meta_json.get('releases'):
                           # Replace the first entry
                           meta_json['releases'][0] = release_entry
@@ -251,26 +270,28 @@ jobs:
                           meta_json['releases'] = [release_entry]
                   else:
                       # Add a new entry
-                      print(f"Adding a new entry for version {version} to meta.json...")
+                      logger.info(f"Adding a new entry for version {version} to meta.json...")
                       if not meta_json.get('releases'):
                           meta_json['releases'] = []
                       meta_json['releases'].insert(0, release_entry)
-          
+                  
                   # Write back to meta.json
                   with open('.connector-store/meta.json', 'w') as f:
                       json.dump(meta_json, f, indent=4)
-          
-                  print("Successfully updated meta.json")
+                  
+                  logger.info("Successfully updated meta.json")
                   return 0
               except Exception as e:
-                  print(f"Error updating meta.json: {e}")
+                  logger.error(f"Error updating meta.json: {e}", exc_info=True)
                   return 1
 
           # Execute the main function
           sys.exit(update_meta_json())
           EOF
-
-      - name: Commit and push change to meta.json
+      
+      - name: Create a PR for updated meta.json
+        env:
+          GH_TOKEN: ${{ secrets.WSO2_INTEGRATION_BOT_TOKEN }}
         run: |
           
           # Check if there are changes to commit
@@ -294,8 +315,8 @@ jobs:
           git push https://${{ github.actor }}:${{ secrets.WSO2_INTEGRATION_BOT_TOKEN }}@github.com/${{ github.repository }}.git $PR_BRANCH
           
           # Create PR using GitHub CLI
-          GITHUB_TOKEN=${{ secrets.WSO2_INTEGRATION_BOT_TOKEN }} && gh pr create \
-                      --title "Update meta.json for ${{ env.VERSION_TAG }}" \
-                      --body "This PR updates the meta.json file with operation and connection parameters for version ${{ env.VERSION_TAG }}. The configRef parameter has been excluded from the parameter list." \
-                      --base $CURRENT_BRANCH \
-                      --head $PR_BRANCH
+          gh pr create \
+            --title "Update meta.json for ${{ env.VERSION_TAG }}" \
+            --body "This PR updates the meta.json file with operation and connection parameters for version ${{ env.VERSION_TAG }}. The configRef parameter has been excluded from the parameter list. The products array has been copied from the previous release." \
+            --base $CURRENT_BRANCH \
+            --head $PR_BRANCH
