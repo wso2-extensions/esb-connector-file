@@ -68,6 +68,25 @@
                 }
               ]
             }
+          },
+          {
+            "type": "attributeGroup",
+            "value": {
+              "groupName": "Advanced",
+              "elements": [
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "fileNameEncoding",
+                    "displayName": "File Name Encoding",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "UTF-8",
+                    "required": "false",
+                    "helpTip": "Specifies the character encoding to interpret file names inside the ZIP archive."
+                  }
+                }
+              ]
+            }
           }
         ]
       }

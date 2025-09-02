@@ -210,6 +210,11 @@
             <artifactId>smbj</artifactId>
             <version>${hierynomus.smbj.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.28.0</version>
+        </dependency>
     </dependencies>
     <scm>
         <connection>scm:git:https://github.com/wso2-extensions/esb-connector-file</connection>
