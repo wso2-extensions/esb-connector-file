@@ -20,7 +20,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.integration.connector</groupId>
     <artifactId>mi-connector-file</artifactId>
-    <version>5.0.3-SNAPSHOT</version>
+    <version>5.0.3</version>
     <packaging>jar</packaging>
     <name>WSO2 Carbon - Connector For esb-connector-file</name>
     <url>http://wso2.org</url>
@@ -222,7 +222,7 @@
         <connection>scm:git:https://github.com/wso2-extensions/esb-connector-file</connection>
         <url>https://github.com/wso2-extensions/esb-connector-file.git</url>
         <developerConnection>scm:git:https://github.com/wso2-extensions/esb-connector-file</developerConnection>
-        <tag>HEAD</tag>
+        <tag>v5.0.3</tag>
     </scm>
     <build>
         <plugins>
