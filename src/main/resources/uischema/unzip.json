@@ -73,6 +73,17 @@
                                         "required": "false",
                                         "helpTip": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
                                     }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "fileNameEncoding",
+                                        "displayName": "File Name Encoding",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "UTF-8",
+                                        "required": "false",
+                                        "helpTip": "Specifies the character encoding to interpret file names inside the ZIP archive."
+                                    }
                                 }
                             ]
                         }

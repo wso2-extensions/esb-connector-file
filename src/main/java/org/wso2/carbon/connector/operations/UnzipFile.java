@@ -19,6 +19,12 @@
 package org.wso2.carbon.connector.operations;
 
 import com.google.gson.JsonObject;
+import java.io.File;
+import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
@@ -39,6 +45,7 @@ import org.wso2.carbon.connector.utils.Utils;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -53,6 +60,8 @@ public class UnzipFile extends AbstractConnectorOperation {
     private static final String SOURCE_FILE_PATH_PARAM = "sourceFilePath";
     private static final String TARGET_DIRECTORY_PARAM = "targetDirectory";
     private static final String OPERATION_NAME = "unzipFile";
+    private static final String FILE_NAME_ENCODING = "fileNameEncoding";
+    private static final String DEFAULT_ENCODING = StandardCharsets.UTF_8.name();
     private static final String ERROR_MESSAGE = "Error while performing file:unzip for file ";
 
     @Override
@@ -68,6 +77,8 @@ public class UnzipFile extends AbstractConnectorOperation {
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
         String connectionName = Utils.getConnectionName(messageContext);
         String connectorName = Const.CONNECTOR_NAME;
+        String fileNameEncoding;
+        String validatedFileNameEncoding;
 
         try {
             String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
@@ -76,7 +87,8 @@ public class UnzipFile extends AbstractConnectorOperation {
                     lookupTemplateParamater(messageContext, SOURCE_FILE_PATH_PARAM);
             folderPathToExtract = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, TARGET_DIRECTORY_PARAM);
-
+            fileNameEncoding = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, FILE_NAME_ENCODING);
 
             fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
@@ -102,8 +114,9 @@ public class UnzipFile extends AbstractConnectorOperation {
             if (!targetFolder.exists()) {
                 targetFolder.createFolder();
             }
+            validatedFileNameEncoding = validateEncoding(fileNameEncoding);
 
-            executeDecompression(compressedFile, folderPathToExtract, fsManager, fso);
+            executeDecompression(compressedFile, folderPathToExtract, fsManager, fso, validatedFileNameEncoding);
 
             JsonObject resultJSON = generateOperationResult(messageContext,
                     new FileOperationResult(OPERATION_NAME, true));
@@ -148,8 +161,11 @@ public class UnzipFile extends AbstractConnectorOperation {
      * @param fso                 File System Options associated with the file connection
      * @throws IOException In case of I/O error
      */
-    private void executeDecompression(FileObject sourceFile, String folderPathToExtract,
-                                           FileSystemManager fsManager, FileSystemOptions fso) throws IOException {
+    private void executeDecompression(FileObject sourceFile,
+                                      String folderPathToExtract,
+                                      FileSystemManager fsManager,
+                                      FileSystemOptions fso,
+                                      String fileNameEncoding) throws IOException {
         //execute decompression
         String fileExtension = sourceFile.getName().getExtension();
         if (fileExtension.equals("gz")) {
@@ -160,26 +176,18 @@ public class UnzipFile extends AbstractConnectorOperation {
             return;
         }
 
-        try (ZipInputStream zipIn = new ZipInputStream(sourceFile.getContent().getInputStream())) {
-            ZipEntry entry = zipIn.getNextEntry();
-            //iterate over the entries
-            while (entry != null) {
+        try (InputStream inputStream = sourceFile.getContent().getInputStream();
+             ZipArchiveInputStream zipIn = new ZipArchiveInputStream(inputStream, fileNameEncoding, true, true)) {
+            ZipArchiveEntry entry;
+            while ((entry = zipIn.getNextZipEntry()) != null) {
                 String zipEntryPath = folderPathToExtract + Const.FILE_SEPARATOR + entry.getName();
                 FileObject zipEntryTargetFile = fsManager.resolveFile(zipEntryPath, fso);
-                try {
-                    if (!entry.isDirectory()) {
-                        // if the entry is a file, extracts it
-                        extractFile(zipIn, zipEntryTargetFile);
-                    } else {
-                        // if the entry is a directory, make the directory
-                        zipEntryTargetFile.createFolder();
-                    }
-                } finally {
-                    try {
-                        zipIn.closeEntry();
-                    } finally {
-                        entry = zipIn.getNextEntry();
-                    }
+                if (!entry.isDirectory()) {
+                    // if the entry is a file, extracts it
+                    extractFile(zipIn, zipEntryTargetFile);
+                } else {
+                    // if the entry is a directory, make the directory
+                    zipEntryTargetFile.createFolder();
                 }
             }
         }
@@ -203,7 +211,7 @@ public class UnzipFile extends AbstractConnectorOperation {
      * @param zipEntryTargetFile FileObject pointing to extracted file related to zip entry
      * @throws IOException In case of I/O error
      */
-    private void extractFile(ZipInputStream zipIn, FileObject zipEntryTargetFile) throws IOException {
+    private void extractFile(ZipArchiveInputStream zipIn, FileObject zipEntryTargetFile) throws IOException {
         BufferedOutputStream bos = null;
         OutputStream fOut = null;
         try {
@@ -255,5 +263,25 @@ public class UnzipFile extends AbstractConnectorOperation {
         JsonObject resultJSON = generateOperationResult(msgCtx, result);
         handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
+    }
+
+    /**
+     * Validate encoding. If invalid or null/empty, return default encoding.
+     *
+     * @param encoding Encoding to validate
+     * @return Valid encoding
+     */
+    private String validateEncoding(String encoding) {
+        if (encoding == null || encoding.isEmpty()) {
+            return DEFAULT_ENCODING;
+        }
+        try {
+            Charset.forName(encoding);
+            return encoding;
+        } catch (UnsupportedCharsetException e) {
+            // Log a warning and fall back to default
+            log.warn("Invalid encoding '" + encoding + "', falling back to default: " + DEFAULT_ENCODING);
+            return DEFAULT_ENCODING;
+        }
     }
 }
