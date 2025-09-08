@@ -45,6 +45,7 @@
         <rampart.wso2.version>1.6.1.wso2v18</rampart.wso2.version>
         <skip-tests>true</skip-tests>
         <hierynomus.smbj.version>0.11.3</hierynomus.smbj.version>
+        <commons.compress.version>1.28.0</commons.compress.version>
     </properties>
 
     <dependencies>
@@ -209,6 +210,11 @@
             <groupId>com.hierynomus</groupId>
             <artifactId>smbj</artifactId>
             <version>${hierynomus.smbj.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>${commons.compress.version}</version>
         </dependency>
     </dependencies>
     <scm>
