@@ -3056,6 +3056,117 @@
             ]
         },
         {
+            "tagName": "v4.0.41",
+            "products": [
+                "MI 1.2.0",
+                "MI 4.0.0",
+                "MI 4.1.0",
+                "MI 4.2.0",
+                "MI 4.3.0",
+                "MI 4.4.0"
+            ],
+            "operations": [
+                {
+                    "name": "init",
+                    "description": "Init operation",
+                    "isHidden": true
+                },
+                {
+                    "name": "createDirectory",
+                    "description": "Creates a new directory on directory path.",
+                    "isHidden": false
+                },
+                {
+                    "name": "listFiles",
+                    "description": "Lists all the files in the directory path that match a matcher.",
+                    "isHidden": false
+                },
+                {
+                    "name": "delete",
+                    "description": "Deletes the file specified by the path.",
+                    "isHidden": false
+                },
+                {
+                    "name": "copy",
+                    "description": "Copies the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
+                },
+                {
+                    "name": "move",
+                    "description": "Moves the file or folder specified by sourcePath into targetPath.",
+                    "isHidden": false
+                },
+                {
+                    "name": "rename",
+                    "description": "Rename the file to the new name specified.",
+                    "isHidden": false
+                },
+                {
+                    "name": "unzip",
+                    "description": "Unzip file to target directory.",
+                    "isHidden": false
+                },
+                {
+                    "name": "splitFile",
+                    "description": "Split a file into multiple smaller files.",
+                    "isHidden": false
+                },
+                {
+                    "name": "mergeFiles",
+                    "description": "Merge multiple files in a folder to a single file.",
+                    "isHidden": false
+                },
+                {
+                    "name": "checkExist",
+                    "description": "Check if a file or directory exists.",
+                    "isHidden": false
+                },
+                {
+                    "name": "exploreZipFile",
+                    "description": "List Items In ZIP File Without Extracting.",
+                    "isHidden": false
+                },
+                {
+                    "name": "compress",
+                    "description": "Compress file or folder.",
+                    "isHidden": false
+                },
+                {
+                    "name": "read",
+                    "description": "Read a specific file or a file in a folder.",
+                    "isHidden": false
+                },
+                {
+                    "name": "write",
+                    "description": "Create a file or write content to a file.",
+                    "isHidden": false
+                }
+            ],
+            "connections": [
+                {
+                    "name": "LOCAL",
+                    "description": "Connection for the local file system."
+                },
+                {
+                    "name": "FTP",
+                    "description": "Connection for an FTP server."
+                },
+                {
+                    "name": "FTPS",
+                    "description": "Secure connection for an FTPS server."
+                },
+                {
+                    "name": "SFTP",
+                    "description": "Secure connection for an SFTP server."
+                },
+                {
+                    "name": "SMB2",
+                    "description": "Connection for an SMB2 file share."
+                }
+            ],
+            "isHidden": false
+        },
+        {
             "tagName": "v4.0.40",
             "products": [
                 "MI 1.2.0",
