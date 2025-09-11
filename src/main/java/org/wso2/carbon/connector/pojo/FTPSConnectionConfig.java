@@ -32,6 +32,7 @@ public class FTPSConnectionConfig extends FTPConnectionConfig {
 
     private String keyStore;
     private String keyStorePassword;
+    private String keyPassword;  // vfs.ssl.keypassword
     private String trustStore;
     private String trustStorePassword;
 
@@ -81,6 +82,16 @@ public class FTPSConnectionConfig extends FTPConnectionConfig {
     public void setTrustStorePassword(String trustStorePassword) {
         if (!StringUtils.isEmpty(trustStorePassword)) {
             this.trustStorePassword = trustStorePassword;
+        }
+    }
+
+    public String getKeyPassword() {
+        return keyPassword;
+    }
+
+    public void setKeyPassword(String keyPassword) {
+        if (!StringUtils.isEmpty(keyPassword)) {
+            this.keyPassword = keyPassword;
         }
     }
 

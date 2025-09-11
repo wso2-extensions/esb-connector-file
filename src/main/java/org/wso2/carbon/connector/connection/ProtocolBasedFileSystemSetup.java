@@ -32,6 +32,7 @@ public interface ProtocolBasedFileSystemSetup {
      String setupFileSystemHandler(FileSystemOptions fso, ConnectionConfiguration fsConfig)
             throws FileServerConnectionException;
 
+
      /**
       * Constructs VFS url based on configurations.
       *
