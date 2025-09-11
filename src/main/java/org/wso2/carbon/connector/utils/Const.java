@@ -54,6 +54,7 @@ public final class Const {
     public static final String SOCKET_TIMEOUT = "ftpSocketTimeout";
     public static final String KEYSTORE_PATH = "keyStorePath";
     public static final String KEYSTORE_PASSWORD = "keyStorePassword";
+    public static final String KEY_PASSWORD = "keyPassword";
     public static final String TRUSTSTORE_PATH = "trustStorePath";
     public static final String TRUSTSTORE_PASSWORD = "trustStorePassword";
     public static final String IMPLICIT_MODE_ENABLED = "implicitModeEnabled";
@@ -127,4 +128,7 @@ public final class Const {
 
     public static final String FILE_CONNECTION_TEST = "FILE_CONNECTION_TEST";
     public static final String IS_VALID_CONNECTION = "isValidConnection";
+
+    // SFTP-specific parameters  
+    public static final String SFTP_PATH_FROM_ROOT = "sftpPathFromRoot";
 }

@@ -40,6 +40,7 @@
 	<!--FTPS specific params-->
 	<parameter name="keyStorePath" description="Path to keyStore"/>
 	<parameter name="keyStorePassword" description="KeyStore password"/>
+	<parameter name="keyPassword" description="Private key password"/>
 	<parameter name="trustStorePath" description="Path to trustStore"/>
 	<parameter name="trustStorePassword" description="TrustStore password"/>
 	<parameter name="implicitModeEnabled" description="True if implicit mode is enabled (https://en.wikipedia.org/wiki/FTPS#Implicit)"/>
@@ -51,6 +52,7 @@
 	<parameter name="privateKeyFilePath" description="path to private key file"/>
 	<parameter name="privateKeyPassword" description="Passphrase of the private key"/>
 	<parameter name="setAvoidPermission" description="Sets whether to avoid file permission check."/>
+	<parameter name="sftpPathFromRoot" description="Enable absolute path access from filesystem root"/>
 	<parameter name="sftpPoolConnectionAgedTimeout" description="Interval to close connections in the connection pool in seconds"/>
 	<parameter name="maxActiveConnections" description="The maximum number of objects (including both idle and active/borrowed) that can exist within the pool at the same time."/>
 	<parameter name="maxIdleConnections" description="The maximum number of objects that can remain idle in the pool, awaiting to be borrowed. Excess idle objects may be removed"/>
@@ -58,6 +60,13 @@
 	<parameter name="evictionCheckInterval" description="The time interval between runs of the idle object evictor thread"/>
 	<parameter name="minEvictionTime" description="The minimum amount of time an object must sit idle in the pool before it is eligible for eviction by the idle object evictor "/>
 	<parameter name="exhaustedAction" description="Determines the action to take when the borrowObject() method is called, but the pool is exhausted"/>
+	<!--Connection suspension params-->
+	<parameter name="fileCacheEnabled" description="Enable file caching for better performance"/>
+	<parameter name="suspendOnConnectionFailure" description="Suspend connection on failure"/>
+	<parameter name="retriesBeforeSuspension" description="Number of retries before suspending the connection"/>
+	<parameter name="suspendInitialDuration" description="Initial duration in milliseconds to suspend the connection"/>
+	<parameter name="suspendProgressionFactor" description="Progression factor for suspension duration"/>
+	<parameter name="suspendMaximumDuration" description="Maximum duration in milliseconds to suspend the connection"/>
 	<sequence>
 		<property name="name" expression="$func:name"/>
 		<class name="org.wso2.carbon.connector.operations.FileConfig" />

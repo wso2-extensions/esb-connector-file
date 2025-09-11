@@ -58,6 +58,16 @@ public class ConnectionConfiguration {
     private long poolConnectionAgedTimeout;
 
     private boolean isEncryptionEnabled =  false;
+    
+    private boolean fileCacheEnabled = true;
+    private boolean suspendOnConnectionFailure = true;
+    private int retriesBeforeSuspension = 0;
+    private long suspendInitialDuration = 1000;
+    private double suspendProgressionFactor = 1.0;
+    private long suspendMaximumDuration = 300000;
+
+    // Note: VFS Transport Parameters like Append, CreateFolder, etc. 
+    // are handled at the file operation level, not at connection configuration level
 
     public ConnectionConfiguration(MessageContext messageContext) {
 
@@ -248,4 +258,88 @@ public class ConnectionConfiguration {
             this.isEncryptionEnabled = false;
         }
     }
+
+    public boolean isFileCacheEnabled() {
+        return fileCacheEnabled;
+    }
+
+    public void setFileCacheEnabled(String fileCacheEnabled) throws InvalidConfigurationException {
+        if (StringUtils.isNotEmpty(fileCacheEnabled)) {
+            if ("true".equalsIgnoreCase(fileCacheEnabled) || "false".equalsIgnoreCase(fileCacheEnabled)) {
+                this.fileCacheEnabled = Boolean.parseBoolean(fileCacheEnabled);
+            } else {
+                throw new InvalidConfigurationException("Parameter 'fileCacheEnabled' must be 'true' or 'false'.");
+            }
+        }
+    }
+
+    public boolean isSuspendOnConnectionFailure() {
+        return suspendOnConnectionFailure;
+    }
+
+    public void setSuspendOnConnectionFailure(String suspendOnConnectionFailure) throws InvalidConfigurationException {
+        if (StringUtils.isNotEmpty(suspendOnConnectionFailure)) {
+            if ("true".equalsIgnoreCase(suspendOnConnectionFailure) || "false".equalsIgnoreCase(suspendOnConnectionFailure)) {
+                this.suspendOnConnectionFailure = Boolean.parseBoolean(suspendOnConnectionFailure);
+            } else {
+                throw new InvalidConfigurationException("Parameter 'suspendOnConnectionFailure' must be 'true' or 'false'.");
+            }
+        }
+    }
+
+    public int getRetriesBeforeSuspension() {
+        return retriesBeforeSuspension;
+    }
+
+    public void setRetriesBeforeSuspension(String retriesBeforeSuspension) throws InvalidConfigurationException {
+        if (StringUtils.isNotEmpty(retriesBeforeSuspension)) {
+            if (!StringUtils.isNumeric(retriesBeforeSuspension)) {
+                throw new InvalidConfigurationException("Parameter 'retriesBeforeSuspension' does not contain a numeric value.");
+            }
+            this.retriesBeforeSuspension = Integer.parseInt(retriesBeforeSuspension);
+        }
+    }
+
+    public long getSuspendInitialDuration() {
+        return suspendInitialDuration;
+    }
+
+    public void setSuspendInitialDuration(String suspendInitialDuration) throws InvalidConfigurationException {
+        if (StringUtils.isNotEmpty(suspendInitialDuration)) {
+            try {
+                this.suspendInitialDuration = Long.parseLong(suspendInitialDuration);
+            } catch (NumberFormatException e) {
+                throw new InvalidConfigurationException("Parameter 'suspendInitialDuration' does not contain a valid numeric value.");
+            }
+        }
+    }
+
+    public double getSuspendProgressionFactor() {
+        return suspendProgressionFactor;
+    }
+
+    public void setSuspendProgressionFactor(String suspendProgressionFactor) throws InvalidConfigurationException {
+        if (StringUtils.isNotEmpty(suspendProgressionFactor)) {
+            try {
+                this.suspendProgressionFactor = Double.parseDouble(suspendProgressionFactor);
+            } catch (NumberFormatException e) {
+                throw new InvalidConfigurationException("Parameter 'suspendProgressionFactor' does not contain a valid numeric value.");
+            }
+        }
+    }
+
+    public long getSuspendMaximumDuration() {
+        return suspendMaximumDuration;
+    }
+
+    public void setSuspendMaximumDuration(String suspendMaximumDuration) throws InvalidConfigurationException {
+        if (StringUtils.isNotEmpty(suspendMaximumDuration)) {
+            try {
+                this.suspendMaximumDuration = Long.parseLong(suspendMaximumDuration);
+            } catch (NumberFormatException e) {
+                throw new InvalidConfigurationException("Parameter 'suspendMaximumDuration' does not contain a valid numeric value.");
+            }
+        }
+    }
+
 }
