@@ -24,6 +24,8 @@ import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.impl.StandardFileSystemManager;
+import org.apache.commons.vfs2.cache.DefaultFilesCache;
+import org.apache.commons.vfs2.cache.NullFilesCache;
 import org.wso2.integration.connector.core.connection.ConnectionConfig;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.integration.connector.core.connection.Connection;
@@ -62,6 +64,20 @@ public class FileSystemHandler implements Connection {
         try {
 
             this.fsManager = new StandardFileSystemManager();
+            
+            // Configure VFS caching at FileSystemManager level based on user preference
+            if (fsConfig.isFileCacheEnabled()) {
+                ((StandardFileSystemManager) fsManager).setFilesCache(new DefaultFilesCache());
+                if (log.isDebugEnabled()) {
+                    log.debug("VFS file caching enabled using DefaultFilesCache");
+                }
+            } else {
+                ((StandardFileSystemManager) fsManager).setFilesCache(new NullFilesCache());
+                if (log.isDebugEnabled()) {
+                    log.debug("VFS file caching disabled using NullFilesCache");
+                }
+            }
+            
             ((StandardFileSystemManager) fsManager).init();
             this.fsOptions = new FileSystemOptions();
             setupFSO(fsOptions, fsConfig);

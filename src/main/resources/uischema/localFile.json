@@ -59,6 +59,72 @@
               "required": "true",
               "helpTip":"File Locking Behaviour to use in operations associated with this connection."
             }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "fileCacheEnabled",
+              "displayName": "File Cache Enabled",
+              "inputType": "booleanOrExpression",
+              "defaultValue": "true",
+              "required": "false",
+              "helpTip":"Enable file caching for better performance"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "suspendOnConnectionFailure",
+              "displayName": "Suspend On Connection Failure",
+              "inputType": "booleanOrExpression",
+              "defaultValue": "true",
+              "required": "false",
+              "helpTip":"Suspend connection on failure"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "retriesBeforeSuspension",
+              "displayName": "Retries Before Suspension",
+              "inputType": "stringOrExpression",
+              "defaultValue": "0",
+              "required": "false",
+              "helpTip":"Number of retries before suspending the connection"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "suspendInitialDuration",
+              "displayName": "Suspend Initial Duration (ms)",
+              "inputType": "stringOrExpression",
+              "defaultValue": "1000",
+              "required": "false",
+              "helpTip":"Initial duration in milliseconds to suspend the connection"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "suspendProgressionFactor",
+              "displayName": "Suspend Progression Factor",
+              "inputType": "stringOrExpression",
+              "defaultValue": "1.0",
+              "required": "false",
+              "helpTip":"Progression factor for suspension duration"
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "suspendMaximumDuration",
+              "displayName": "Suspend Maximum Duration (ms)",
+              "inputType": "stringOrExpression",
+              "defaultValue": "300000",
+              "required": "false",
+              "helpTip":"Maximum duration in milliseconds to suspend the connection"
+            }
           }
         ]
       }

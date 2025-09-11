@@ -65,6 +65,10 @@ public class FTPSFileSystemSetup implements ProtocolBasedFileSystemSetup {
             ftpsConfigBuilder.setTrustStorePW(fso, ftpsConnectionConfig.getTrustStorePassword());
         }
 
+        if (StringUtils.isNotEmpty(ftpsConnectionConfig.getKeyPassword())) {
+            ftpsConfigBuilder.setKeyPW(fso, ftpsConnectionConfig.getKeyPassword());
+        }
+
         return Const.FTPS_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);
     }
 }

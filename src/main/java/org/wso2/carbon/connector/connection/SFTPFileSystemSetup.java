@@ -45,6 +45,11 @@ public class SFTPFileSystemSetup implements ProtocolBasedFileSystemSetup {
             sftpConfigBuilder.setAvoidPermissionCheck(fso, sftpConnectionConfig.getAvoidPermissionCheck());
             sftpConfigBuilder.setTimeout(fso, sftpConnectionConfig.getSessionTimeout());
             sftpConfigBuilder.setUserDirIsRoot(fso, sftpConnectionConfig.isUserDirIsRoot());
+            
+            // Set SFTP path from root if enabled (overrides userDirIsRoot for absolute path access)
+            if (sftpConnectionConfig.isSftpPathFromRoot()) {
+                sftpConfigBuilder.setUserDirIsRoot(fso, false); // false = paths are relative to filesystem root
+            }
 
             if (sftpConnectionConfig.isStrictHostKeyChecking()) {
                 sftpConfigBuilder.setStrictHostKeyChecking(fso, "yes");
