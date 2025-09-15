@@ -119,7 +119,7 @@
             "value": {
               "name": "isPassive",
               "displayName": "Is Passive",
-              "inputType": "boolean",
+              "inputType": "booleanOrExpression",
               "defaultValue": "true",
               "required": "false",
               "helpTip":"True if to enter into passive mode"

@@ -166,9 +166,6 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         
         // File caching parameter (handled by VFS library)
         String fileCacheEnabled = (String) ConnectorUtils.lookupTemplateParamater(msgContext, "fileCacheEnabled");
-        
-        // Note: VFS Transport parameters (Append, CreateFolder, etc.) are handled 
-        // at the file operation level, not during connection initialization
 
         ConnectionConfiguration connectionConfig = new ConnectionConfiguration(msgContext);
         if (sftpPoolConnectionAgedTimeout != null) {

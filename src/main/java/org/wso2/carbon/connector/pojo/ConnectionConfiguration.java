@@ -66,9 +66,6 @@ public class ConnectionConfiguration {
     private double suspendProgressionFactor = 1.0;
     private long suspendMaximumDuration = 300000;
 
-    // Note: VFS Transport Parameters like Append, CreateFolder, etc. 
-    // are handled at the file operation level, not at connection configuration level
-
     public ConnectionConfiguration(MessageContext messageContext) {
 
         this.configuration = ConnectorUtils.getPoolConfiguration(messageContext);

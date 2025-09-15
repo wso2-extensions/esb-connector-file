@@ -32,7 +32,7 @@ public class FTPSConnectionConfig extends FTPConnectionConfig {
 
     private String keyStore;
     private String keyStorePassword;
-    private String keyPassword;  // vfs.ssl.keypassword
+    private String keyPassword;
     private String trustStore;
     private String trustStorePassword;
 
