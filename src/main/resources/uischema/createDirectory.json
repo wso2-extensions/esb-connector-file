@@ -43,6 +43,28 @@
                                         "required": "true",
                                         "helpTip": "Path to new directory."
                                     }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "autoCreate",
+                                        "displayName": "Auto Create Parent Directories",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "false",
+                                        "required": "false",
+                                        "helpTip": "Automatically create missing parent directories if they don't exist."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "permissions",
+                                        "displayName": "Permissions",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Permissions to set on the new directory in octal format (e.g., 755, 644). Mainly supported for local file systems."
+                                    }
                                 }
                             ]
                         }

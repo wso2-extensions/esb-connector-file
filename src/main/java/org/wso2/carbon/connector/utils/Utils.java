@@ -338,4 +338,72 @@ public class Utils {
             log.warn(message, warn);
         }
     }
+
+    /**
+     * Set file permissions on the given file object (mainly for local file systems).
+     * This is a best-effort implementation as VFS doesn't have universal permission support.
+     * 
+     * @param fileObject The file object to set permissions on
+     * @param permissions Octal permission value (e.g., 0755)
+     * @throws FileSystemException if setting permissions fails
+     */
+    public static void setFilePermissions(FileObject fileObject, int permissions) throws FileSystemException {
+        try {
+            // This is primarily supported for local file systems
+            // For remote file systems like SFTP, permission setting may not be supported
+            String scheme = fileObject.getName().getScheme();
+            
+            if ("file".equals(scheme)) {
+                // For local files, try to use Java NIO if available
+                try {
+                    java.nio.file.Path path = java.nio.file.Paths.get(fileObject.getName().getPath());
+                    if (java.nio.file.Files.exists(path)) {
+                        // Convert octal permission to PosixFilePermissions
+                        java.util.Set<java.nio.file.attribute.PosixFilePermission> perms = 
+                            convertOctalToPermissions(permissions);
+                        java.nio.file.Files.setPosixFilePermissions(path, perms);
+                        log.debug("Successfully set permissions " + Integer.toOctalString(permissions) + 
+                                 " on " + fileObject.getName().getPath());
+                    }
+                } catch (Exception e) {
+                    log.debug("Could not set POSIX permissions, trying alternative method: " + e.getMessage());
+                    // Fallback: could implement other permission setting methods here
+                }
+            } else {
+                log.debug("Permission setting not implemented for scheme: " + scheme);
+            }
+        } catch (Exception e) {
+            throw new FileSystemException("Failed to set permissions on " + fileObject.getName().getPath(), e);
+        }
+    }
+    
+    /**
+     * Convert octal permission value to Java NIO PosixFilePermission set
+     * 
+     * @param octalPermission Octal permission value (e.g., 0755)
+     * @return Set of PosixFilePermission
+     */
+    private static java.util.Set<java.nio.file.attribute.PosixFilePermission> convertOctalToPermissions(int octalPermission) {
+        java.util.Set<java.nio.file.attribute.PosixFilePermission> permissions = new java.util.HashSet<>();
+        
+        // Owner permissions (first digit)
+        int owner = (octalPermission >> 6) & 7;
+        if ((owner & 4) != 0) permissions.add(java.nio.file.attribute.PosixFilePermission.OWNER_READ);
+        if ((owner & 2) != 0) permissions.add(java.nio.file.attribute.PosixFilePermission.OWNER_WRITE);
+        if ((owner & 1) != 0) permissions.add(java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE);
+        
+        // Group permissions (second digit)
+        int group = (octalPermission >> 3) & 7;
+        if ((group & 4) != 0) permissions.add(java.nio.file.attribute.PosixFilePermission.GROUP_READ);
+        if ((group & 2) != 0) permissions.add(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE);
+        if ((group & 1) != 0) permissions.add(java.nio.file.attribute.PosixFilePermission.GROUP_EXECUTE);
+        
+        // Others permissions (third digit)
+        int others = octalPermission & 7;
+        if ((others & 4) != 0) permissions.add(java.nio.file.attribute.PosixFilePermission.OTHERS_READ);
+        if ((others & 2) != 0) permissions.add(java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE);
+        if ((others & 1) != 0) permissions.add(java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE);
+        
+        return permissions;
+    }
 }
