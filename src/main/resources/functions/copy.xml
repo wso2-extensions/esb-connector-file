@@ -20,6 +20,11 @@
     <parameter name="sourcePath" description="The path to the file to be copied."/>
     <parameter name="targetPath" description="The target directory where to copy the file."/>
     <parameter name="sourceFilePattern" description="The pattern (regex) of the files to be copied."/>
+    <parameter name="fileFilterType" description="Type of pattern matching: 'ant' for Ant-style patterns or 'regex' for regular expressions."/>
+    <parameter name="includeFiles" description="Comma-separated patterns for files to include."/>
+    <parameter name="excludeFiles" description="Comma-separated patterns for files to exclude."/>
+    <parameter name="maxFileAge" description="Maximum age of files to copy (e.g., '2h', '30m', '1d')."/>
+    <parameter name="timeBetweenSizeCheck" description="Time in milliseconds to wait between size checks for file stability verification."/>
     <parameter name="includeParent" description="Whether to copy including parent folder or only content inside"/>
     <parameter name="overwrite" description="Whether or not to overwrite the file if the target destination already exists."/>
     <parameter name="renameTo" description="The new name for the copied file."/>
