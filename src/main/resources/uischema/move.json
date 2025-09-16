@@ -107,7 +107,63 @@
                                         "inputType": "stringOrExpression",
                                         "defaultValue": "",
                                         "required": "false",
-                                        "helpTip": "The pattern (regex) of the files to be moved."
+                                        "helpTip": "The pattern (regex) of the files to be moved. Note: Use fileFilterType for advanced filtering."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "fileFilterType",
+                                        "displayName": "File Filter Type",
+                                        "inputType": "comboOrExpression",
+                                        "comboValues": ["ant", "regex"],
+                                        "defaultValue": "ant",
+                                        "required": "false",
+                                        "helpTip": "Type of pattern matching: 'ant' for Ant-style patterns (e.g., *.txt, **/*.java) or 'regex' for regular expressions."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "includeFiles",
+                                        "displayName": "Include Files",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Comma-separated patterns for files to include. Uses fileFilterType pattern matching (e.g., '*.txt,*.pdf' for Ant or '.*\\.txt$,.*\\.pdf$' for regex)."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "excludeFiles",
+                                        "displayName": "Exclude Files",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Comma-separated patterns for files to exclude. Uses fileFilterType pattern matching. Exclude patterns take precedence over include patterns."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "maxFileAge",
+                                        "displayName": "Max File Age",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Maximum age of files to move (e.g., '2h', '30m', '1d'). Supports units: s (seconds), m (minutes), h (hours), d (days)."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "timeBetweenSizeCheck",
+                                        "displayName": "Time Between Size Check",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Time in milliseconds to wait between size checks for file stability verification. Ensures files are not actively being written before moving."
                                     }
                                 },
                                 {
