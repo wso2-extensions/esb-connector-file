@@ -38,6 +38,10 @@ import org.wso2.carbon.connector.pojo.MergeFileResult;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
+import org.wso2.carbon.connector.utils.AdvancedFileFilter;
+import org.apache.commons.vfs2.FileSelectInfo;
+import org.apache.commons.vfs2.FileSelector;
+import org.apache.commons.vfs2.Selectors;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -53,6 +57,11 @@ public class MergeFiles extends AbstractConnectorOperation {
     private static final String SOURCE_DIRECTORY_PATH_PARAM = "sourceDirectoryPath";
     private static final String TARGET_FILE_PATH_PARAM = "targetFilePath";
     private static final String FILE_PATTERN_PARAM = "filePattern";
+    private static final String FILE_FILTER_TYPE = "fileFilterType";
+    private static final String INCLUDE_FILES = "includeFiles";
+    private static final String EXCLUDE_FILES = "excludeFiles";
+    private static final String MAX_FILE_AGE = "maxFileAge";
+    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
     private static final String WRITE_MODE_PARAM = "writeMode";
     private static final String DETAIL_ELE_NAME = "detail";
     private static final String NUMBER_OF_MERGED_FILES_ELE_NAME = "numberOfMergedFiles";
@@ -86,6 +95,19 @@ public class MergeFiles extends AbstractConnectorOperation {
                     lookupTemplateParamater(messageContext, TARGET_FILE_PATH_PARAM);
             String filePattern = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, FILE_PATTERN_PARAM);
+            
+            // Read new filtering parameters
+            String fileFilterType = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, FILE_FILTER_TYPE);
+            String includeFiles = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, INCLUDE_FILES);
+            String excludeFiles = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, EXCLUDE_FILES);
+            String maxFileAge = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, MAX_FILE_AGE);
+            String timeBetweenSizeCheck = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, TIME_BETWEEN_SIZE_CHECK);
+                    
             String writeMode = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, WRITE_MODE_PARAM);
 
@@ -121,10 +143,22 @@ public class MergeFiles extends AbstractConnectorOperation {
             }
 
 
+            // Determine which filtering to use
+            boolean useAdvancedFilter = !StringUtils.isEmpty(includeFiles) || !StringUtils.isEmpty(excludeFiles) 
+                                      || !StringUtils.isEmpty(maxFileAge);
+            
             FileObject[] children = sourceDir.getChildren();
 
             if (children != null && children.length != 0) {
-                MergeFileResult mergeFileResult = mergeFiles(targetFile, filePattern, children);
+                MergeFileResult mergeFileResult;
+                if (useAdvancedFilter) {
+                    // Use advanced filtering
+                    AdvancedFileFilter advancedFilter = new AdvancedFileFilter(fileFilterType, includeFiles, excludeFiles, maxFileAge);
+                    mergeFileResult = mergeFilesWithAdvancedFilter(targetFile, advancedFilter, timeBetweenSizeCheck, children);
+                } else {
+                    // Use legacy pattern filtering
+                    mergeFileResult = mergeFiles(targetFile, filePattern, timeBetweenSizeCheck, children);
+                }
                 numberOfMergedFiles = mergeFileResult.getNumberOfMergedFiles();
                 numberOfTotalBytesWritten = mergeFileResult.getNumberOfTotalWrittenBytes();
             }
@@ -177,11 +211,12 @@ public class MergeFiles extends AbstractConnectorOperation {
      *
      * @param targetFile  Target file to create after merge
      * @param filePattern Specific pattern of files to merge
+     * @param timeBetweenSizeCheck Time to wait between size checks for stability
      * @param children    Files to merge
      * @return Info object with result of the operation
      * @throws IOException In case of file operation issue
      */
-    private MergeFileResult mergeFiles(FileObject targetFile, String filePattern, FileObject[] children) throws IOException {
+    private MergeFileResult mergeFiles(FileObject targetFile, String filePattern, String timeBetweenSizeCheck, FileObject[] children) throws IOException {
 
         int numberOfMergedFiles = 0;
         long numberOfTotalBytesWritten = 0;
@@ -195,6 +230,15 @@ public class MergeFiles extends AbstractConnectorOperation {
 
             for (FileObject child : children) {
                 long numberOfBytesWritten = 0;
+                
+                // Check file stability if parameter is provided
+                if (!StringUtils.isEmpty(timeBetweenSizeCheck) && child.isFile()) {
+                    if (!isFileStable(child, timeBetweenSizeCheck)) {
+                        log.warn("File is not stable (still being written), skipping: " + child.getName().getBaseName());
+                        continue;
+                    }
+                }
+                
                 if (StringUtils.isNotEmpty(filePattern)) {
                     if (child.getName().getBaseName().matches(filePattern)) {
                         numberOfBytesWritten = child.getContent().write(bufferedOutputStream);
@@ -237,6 +281,149 @@ public class MergeFiles extends AbstractConnectorOperation {
                             + " closing outputStream for file " + targetFile.getURL());
                 }
             }
+        }
+    }
+
+    /**
+     * Perform File merging with advanced filtering.
+     *
+     * @param targetFile           Target file to create after merge
+     * @param advancedFilter       Advanced filter for file selection
+     * @param timeBetweenSizeCheck Time to wait between size checks for stability
+     * @param children             Files to merge
+     * @return Info object with result of the operation
+     * @throws IOException In case of file operation issue
+     */
+    private MergeFileResult mergeFilesWithAdvancedFilter(FileObject targetFile, AdvancedFileFilter advancedFilter, 
+                                                        String timeBetweenSizeCheck, FileObject[] children) throws IOException {
+        int numberOfMergedFiles = 0;
+        long numberOfTotalBytesWritten = 0;
+        OutputStream outputStream = null;
+        BufferedOutputStream bufferedOutputStream = null;
+
+        try {
+            //we'll append all in source files
+            outputStream = targetFile.getContent().getOutputStream(true);
+            bufferedOutputStream = new BufferedOutputStream(outputStream);
+
+            for (FileObject child : children) {
+                long numberOfBytesWritten = 0;
+                
+                // Check file stability if parameter is provided
+                if (!StringUtils.isEmpty(timeBetweenSizeCheck) && child.isFile()) {
+                    if (!isFileStable(child, timeBetweenSizeCheck)) {
+                        log.warn("File is not stable (still being written), skipping: " + child.getName().getBaseName());
+                        continue;
+                    }
+                }
+                
+                // Use advanced filter to check if file should be included
+                try {
+                    FileSelectInfo fileSelectInfo = new FileSelectInfo() {
+                        @Override
+                        public FileObject getFile() {
+                            return child;
+                        }
+
+                        @Override
+                        public int getDepth() {
+                            return 1; // Files in source directory are at depth 1
+                        }
+
+                        @Override
+                        public FileObject getBaseFolder() {
+                            try {
+                                return child.getParent();
+                            } catch (Exception e) {
+                                return null;
+                            }
+                        }
+                    };
+                    
+                    if (advancedFilter.accept(fileSelectInfo)) {
+                        numberOfBytesWritten = child.getContent().write(bufferedOutputStream);
+                    }
+                } catch (Exception e) {
+                    log.warn("Error applying advanced filter to file " + child.getName().getBaseName() + ": " + e.getMessage());
+                    continue;
+                }
+                
+                if (numberOfBytesWritten != 0) {
+                    bufferedOutputStream.flush();
+                    outputStream.flush();
+                    numberOfMergedFiles = numberOfMergedFiles + 1;
+                    numberOfTotalBytesWritten = numberOfTotalBytesWritten + numberOfBytesWritten;
+                }
+
+                try {
+                    child.close();
+                } catch (IOException e) {
+                    log.warn("Error while closing a file in the source folder: " + e.getMessage(), e);
+                }
+            }
+
+            return new MergeFileResult(numberOfMergedFiles, numberOfTotalBytesWritten);
+
+        } finally {
+
+            if (bufferedOutputStream != null) {
+                try {
+                    bufferedOutputStream.close();
+                } catch (IOException e) {
+                    log.error("FileConnector: MergeFiles - Error while "
+                            + "closing buffered outputStream for file " + targetFile.getURL());
+                }
+            }
+
+            if (outputStream != null) {
+                try {
+                    outputStream.close();
+                } catch (IOException e) {
+                    log.error("FileConnector: MergeFiles - Error while"
+                            + " closing outputStream for file " + targetFile.getURL());
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if file is stable (not being written to) by comparing file sizes
+     * over a specified interval.
+     * 
+     * @param file File to check for stability
+     * @param sizeCheckInterval Time in milliseconds to wait between size checks
+     * @return true if file is stable, false if still being written
+     */
+    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
+        try {
+            long interval = Long.parseLong(sizeCheckInterval);
+            if (interval <= 0) {
+                return true; // No stability check if interval is 0 or negative
+            }
+            
+            long initialSize = file.getContent().getSize();
+            
+            // Wait for the specified interval
+            Thread.sleep(interval);
+            
+            // Re-read file size and compare
+            long finalSize = file.getContent().getSize();
+            
+            // File is stable if size hasn't changed
+            return initialSize == finalSize;
+            
+        } catch (NumberFormatException e) {
+            // If we can't parse the interval, assume file is stable
+            log.warn("Invalid timeBetweenSizeCheck value: " + sizeCheckInterval + ". Skipping stability check.");
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            // If interrupted, assume file is stable
+            return true;
+        } catch (Exception e) {
+            // If we can't check stability, assume file is stable
+            log.warn("Error checking file stability: " + e.getMessage() + ". Assuming file is stable.");
+            return true;
         }
     }
 
