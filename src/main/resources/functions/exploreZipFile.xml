@@ -18,6 +18,7 @@
 
 <template xmlns="http://ws.apache.org/ns/synapse" name="exploreZipFile">
     <parameter name="zipFilePath" description="Path to the .zip file"/>
+    <parameter name="timeBetweenSizeCheck" description="Time to wait between file size checks to ensure file stability (e.g., '2s', '1000ms')"/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>
     <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
