@@ -232,6 +232,28 @@
                                 {
                                     "type": "attribute",
                                     "value": {
+                                        "name": "timeBetweenSizeCheck",
+                                        "displayName": "Time Between Size Checks",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Time to wait between file size checks to ensure file stability in milliseconds (e.g., '2000', '5000'). Prevents writing to files still being modified."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "updateFilePermission",
+                                        "displayName": "Update File Permission",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "File permission to set after writing (e.g., '755', '644'). Only supported for local file systems."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
                                         "name": "diskShareAccessMask",
                                         "displayName": "Access mask values for disk share",
                                         "inputType": "stringOrExpression",

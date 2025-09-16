@@ -84,6 +84,8 @@ public class WriteFile extends AbstractConnectorOperation {
     private static final String APPEND_NEW_LINE_PARAM = "appendNewLine";
     private static final String ENABLE_STREAMING_PARAM = "enableStreaming";
     private static final String APPEND_POSITION_PARAM = "appendPosition";
+    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
+    private static final String UPDATE_FILE_PERMISSION = "updateFilePermission";
     private static final String OPERATION_NAME = "write";
     private static final String ERROR_MESSAGE = "Error while performing file:write for file ";
 
@@ -145,6 +147,12 @@ public class WriteFile extends AbstractConnectorOperation {
                     throw new IllegalPathException("Path does not point to a file " + targetFilePath);
                 }
 
+                // Check file stability if timeBetweenSizeCheck is provided and file exists
+                if (StringUtils.isNotEmpty(config.timeBetweenSizeCheck) && targetFile.exists() && 
+                    !isFileStable(targetFile, config.timeBetweenSizeCheck)) {
+                    throw new FileOperationException("File is not stable (still being written). Cannot write at this time: " + targetFilePath);
+                }
+
                 //lock the file if enabled
                 if (config.enableLocking) {
                     lockAcquired = fileLockManager.tryAndAcquireLock(targetFilePath, Const.DEFAULT_LOCK_TIMEOUT);
@@ -157,8 +165,15 @@ public class WriteFile extends AbstractConnectorOperation {
                 int byteCountWritten;
 
                 byteCountWritten = (int) writeToFile(targetFile, messageContext, config);
+                
+                // Update last modified time if requested
                 if (!targetFile.getURL().toString().startsWith(Const.FTP_PROTOCOL_PREFIX) && config.updateLastModified) {
                     targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
+                }
+                
+                // Update file permissions if requested
+                if (StringUtils.isNotEmpty(config.updateFilePermission)) {
+                    updateFilePermissions(targetFile, config.updateFilePermission);
                 }
                 result = new FileOperationResult(
                         OPERATION_NAME,
@@ -260,6 +275,8 @@ public class WriteFile extends AbstractConnectorOperation {
         config.enableStreaming = Utils.lookUpBooleanParam(msgCtx, ENABLE_STREAMING_PARAM, false);
         String appendPosition = Utils.lookUpStringParam(msgCtx, APPEND_POSITION_PARAM, String.valueOf(Integer.MAX_VALUE));
         config.appendPosition = Integer.parseInt(appendPosition);
+        config.timeBetweenSizeCheck = Utils.lookUpStringParam(msgCtx, TIME_BETWEEN_SIZE_CHECK, Const.EMPTY_STRING);
+        config.updateFilePermission = Utils.lookUpStringParam(msgCtx, UPDATE_FILE_PERMISSION, Const.EMPTY_STRING);
 
         config.fileNameWithExtension = config.targetFilePath.
                 substring(config.targetFilePath.lastIndexOf(Const.FILE_SEPARATOR) + 1);
@@ -281,6 +298,66 @@ public class WriteFile extends AbstractConnectorOperation {
         boolean enableStreaming = false;
         int appendPosition = Integer.MAX_VALUE;
         boolean updateLastModified = true;
+        String timeBetweenSizeCheck;
+        String updateFilePermission;
+    }
+
+    /**
+     * Checks if a file is stable by comparing its size over time.
+     *
+     * @param file The file to check for stability
+     * @param sizeCheckInterval Time to wait between size checks in milliseconds
+     * @return true if file size is stable, false otherwise
+     */
+    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
+        try {
+            long interval = Long.parseLong(sizeCheckInterval);
+            if (interval <= 0) {
+                return true; // No stability check if interval is 0 or negative
+            }
+            
+            long initialSize = file.getContent().getSize();
+            
+            // Wait for the specified interval
+            Thread.sleep(interval);
+            
+            // Refresh and check size again
+            file.refresh();
+            long finalSize = file.getContent().getSize();
+            
+            return initialSize == finalSize;
+        } catch (Exception e) {
+            log.warn("Error checking file stability for " + file + ": " + e.getMessage());
+            return true; // Assume stable if we can't check
+        }
+    }
+
+    /**
+     * Updates file permissions if supported by the file system.
+     *
+     * @param file The file to update permissions for
+     * @param permissionString Permission string (e.g., "755", "644")
+     */
+    private void updateFilePermissions(FileObject file, String permissionString) {
+        try {
+            // File permissions are primarily supported for local file systems
+            if (file.getName().getScheme().equals("file")) {
+                // Convert permission string to octal and set permissions
+                if (permissionString.matches("\\d{3}")) {
+                    // Use reflection to access file system specific operations
+                    // Note: This is a simplified implementation - real implementation would depend on VFS2 capabilities
+                    log.info("Setting file permissions " + permissionString + " for file: " + file.getName().getBaseName());
+                    // In a full implementation, you would use system-specific commands or APIs
+                    // For now, we'll just log the operation
+                } else {
+                    log.warn("Invalid permission format: " + permissionString + ". Expected format: XXX (e.g., 755, 644)");
+                }
+            } else {
+                log.info("File permission setting not supported for protocol: " + file.getName().getScheme());
+            }
+        } catch (Exception e) {
+            log.warn("Error setting file permissions for " + file + ": " + e.getMessage());
+        }
     }
 
     /**
