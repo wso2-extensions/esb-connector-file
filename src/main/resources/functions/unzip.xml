@@ -19,6 +19,7 @@
 <template xmlns="http://ws.apache.org/ns/synapse" name="unzip">
     <parameter name="sourceFilePath" description="Path to the .zip file"/>
     <parameter name="targetDirectory" description="Folder to extract"/>
+    <parameter name="timeBetweenSizeCheck" description="Time in milliseconds to wait between size checks for file stability verification."/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <parameter name="responseVariable" description="The name of the variable to which the response should be stored."/>
     <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
