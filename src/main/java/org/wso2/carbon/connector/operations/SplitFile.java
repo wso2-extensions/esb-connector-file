@@ -85,6 +85,7 @@ public class SplitFile extends AbstractConnectorOperation {
     private static final String CHUNK_SIZE_PARAM = "chunkSize";
     private static final String LINE_COUNT_PARAM = "lineCount";
     private static final String XPATH_EXPRESSION_PARAM = "xpathExpression";
+    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
     private static final String NUMBER_OF_SPLITS_ELE_NAME = "numberOfSplits";
     private static final String LOG_IDENTIFIER = "File Connector:splitFile";
     private static final String OPERATION_NAME = "splitFile";
@@ -115,6 +116,8 @@ public class SplitFile extends AbstractConnectorOperation {
 
             String splitModeAsStr = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, SPLIT_MODE_PARAM);
+            String timeBetweenSizeCheck = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, TIME_BETWEEN_SIZE_CHECK);
 
             if(StringUtils.isNotEmpty(splitModeAsStr)) {
                 splitMode = FileSplitMode.fromString(splitModeAsStr);
@@ -146,6 +149,16 @@ public class SplitFile extends AbstractConnectorOperation {
 
             if (!targetDir.exists()) {
                 targetDir.createFolder();
+            }
+
+            // Check file stability if parameter is provided
+            if (!StringUtils.isEmpty(timeBetweenSizeCheck) && fileToSplit.isFile()) {
+                if (!isFileStable(fileToSplit, timeBetweenSizeCheck)) {
+                    handleError(messageContext, new IllegalPathException("File is not stable (still being written). Cannot split at this time."),
+                            Error.OPERATION_ERROR, "File is not stable (still being written). Cannot split at this time.",
+                            responseVariable, overwriteBody);
+                    return;
+                }
             }
 
             int splitFileCount = 0;
@@ -536,6 +549,47 @@ public class SplitFile extends AbstractConnectorOperation {
         documentBuilderFactory.setAttribute(Constants.XERCES_PROPERTY_PREFIX +
                 Constants.SECURITY_MANAGER_PROPERTY, securityManager);
         return documentBuilderFactory;
+    }
+
+    /**
+     * Check if file is stable (not being written to) by comparing file sizes
+     * over a specified interval.
+     * 
+     * @param file File to check for stability
+     * @param sizeCheckInterval Time in milliseconds to wait between size checks
+     * @return true if file is stable, false if still being written
+     */
+    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
+        try {
+            long interval = Long.parseLong(sizeCheckInterval);
+            if (interval <= 0) {
+                return true; // No stability check if interval is 0 or negative
+            }
+            
+            long initialSize = file.getContent().getSize();
+            
+            // Wait for the specified interval
+            Thread.sleep(interval);
+            
+            // Re-read file size and compare
+            long finalSize = file.getContent().getSize();
+            
+            // File is stable if size hasn't changed
+            return initialSize == finalSize;
+            
+        } catch (NumberFormatException e) {
+            // If we can't parse the interval, assume file is stable
+            log.warn("Invalid timeBetweenSizeCheck value: " + sizeCheckInterval + ". Skipping stability check.");
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            // If interrupted, assume file is stable
+            return true;
+        } catch (Exception e) {
+            // If we can't check stability, assume file is stable
+            log.warn("Error checking file stability: " + e.getMessage() + ". Assuming file is stable.");
+            return true;
+        }
     }
 
     /**
