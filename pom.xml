@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.integration.connector</groupId>
     <artifactId>mi-connector-file</artifactId>
-    <version>5.0.4-SNAPSHOT</version>
+    <version>6.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>WSO2 Carbon - Connector For esb-connector-file</name>
     <url>http://wso2.org</url>
