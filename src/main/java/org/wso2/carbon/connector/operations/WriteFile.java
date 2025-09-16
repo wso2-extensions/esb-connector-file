@@ -340,23 +340,17 @@ public class WriteFile extends AbstractConnectorOperation {
      */
     private void updateFilePermissions(FileObject file, String permissionString) {
         try {
-            // File permissions are primarily supported for local file systems
-            if (file.getName().getScheme().equals("file")) {
-                // Convert permission string to octal and set permissions
-                if (permissionString.matches("\\d{3}")) {
-                    // Use reflection to access file system specific operations
-                    // Note: This is a simplified implementation - real implementation would depend on VFS2 capabilities
-                    log.info("Setting file permissions " + permissionString + " for file: " + file.getName().getBaseName());
-                    // In a full implementation, you would use system-specific commands or APIs
-                    // For now, we'll just log the operation
-                } else {
-                    log.warn("Invalid permission format: " + permissionString + ". Expected format: XXX (e.g., 755, 644)");
-                }
+            // Convert permission string to octal and set permissions
+            if (permissionString.matches("\\d{3,4}")) {
+                int permissionValue = Integer.parseInt(permissionString, 8);
+                Utils.setFilePermissions(file, permissionValue);
+                log.info("Successfully set file permissions " + permissionString + " for file: " + file.getName().getBaseName());
             } else {
-                log.info("File permission setting not supported for protocol: " + file.getName().getScheme());
+                log.warn("Invalid permission format: " + permissionString + ". Expected format: XXX (e.g., 755, 644)");
             }
         } catch (Exception e) {
-            log.warn("Error setting file permissions for " + file + ": " + e.getMessage());
+            log.warn("Could not set permissions " + permissionString + " on file " + file.getName().getPath() + 
+                     ". Permissions setting may not be supported on this file system.", e);
         }
     }
 

@@ -93,8 +93,7 @@ public class CreateDirectory extends AbstractConnectorOperation {
                     // Convert permissions string to octal (e.g., "755" -> 0755)
                     if (permissions.matches("\\d{3,4}")) {
                         int permissionValue = Integer.parseInt(permissions, 8);
-                        // Note: VFS doesn't have direct permission setting, but we can try with system-specific methods
-                        // This is mainly applicable for local file systems
+                        // Set permissions using Java NIO POSIX file permissions
                         Utils.setFilePermissions(folderToCreate, permissionValue);
                     }
                 } catch (Exception e) {
