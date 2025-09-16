@@ -20,6 +20,12 @@
     <parameter name="sourceDirectoryPath" description="Path to folder to Zip"/>
     <parameter name="targetFilePath" description="Path to the Zip file to create."/>
     <parameter name="includeSubDirectories" description="Whether to include sub-directories"/>
+    <parameter name="fileFilterType" description="Type of file filtering: 'ant' or 'regex'"/>
+    <parameter name="includeFiles" description="Comma-separated patterns for files to include"/>
+    <parameter name="excludeFiles" description="Comma-separated patterns for files to exclude"/>
+    <parameter name="maxFileAge" description="Maximum age of files to include (e.g., '7d', '2h', '30m')"/>
+    <parameter name="subDirectoryMaxDepth" description="Maximum depth of subdirectories to traverse"/>
+    <parameter name="timeBetweenSizeCheck" description="Time to wait between file size checks for stability (in milliseconds)"/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>
     <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
