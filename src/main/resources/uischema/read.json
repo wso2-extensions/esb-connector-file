@@ -82,6 +82,29 @@
                                 {
                                     "type": "attribute",
                                     "value": {
+                                        "name": "metadataOutputFormat",
+                                        "displayName": "Metadata Output Format",
+                                        "inputType": "comboOrExpression",
+                                        "comboValues": [
+                                            "default",
+                                            "simple",
+                                            "detailed",
+                                            "iso8601",
+                                            "unix"
+                                        ],
+                                        "defaultValue": "default",
+                                        "required": "false",
+                                        "enableCondition": [
+                                            {
+                                                "readMode": "Metadata Only"
+                                            }
+                                        ],
+                                        "helpTip": "Format for metadata output. Options: default (MM/dd/yyyy HH:mm:ss), simple (yyyy-MM-dd HH:mm:ss), detailed (includes extended properties), iso8601 (ISO 8601 format), unix (Unix timestamp)"
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
                                         "name": "startLineNum",
                                         "displayName": "Start Line Number",
                                         "inputType": "stringOrExpression",
@@ -219,6 +242,61 @@
                                         "defaultValue": "0",
                                         "required": "false",
                                         "helpTip": "The time interval between retries in milliseconds."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "fileFilterType",
+                                        "displayName": "File Filter Type",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "ant",
+                                        "required": "false",
+                                        "helpTip": "Type of file filtering pattern: 'ant' for Ant-style patterns or 'regex' for regular expressions. Only applicable when reading from directories."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "includeFiles",
+                                        "displayName": "Include Files",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Comma-separated patterns for files to include (e.g., '*.txt,*.csv' for Ant-style or '.*\\.(txt|csv)' for regex). Only applicable when reading from directories."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "excludeFiles",
+                                        "displayName": "Exclude Files",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Comma-separated patterns for files to exclude (e.g., '*.tmp,*.log' for Ant-style or '.*\\.(tmp|log)' for regex). Only applicable when reading from directories."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "maxFileAge",
+                                        "displayName": "Max File Age",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Maximum age of files to consider for reading (e.g., '7d', '2h', '30m'). Files older than this will be excluded. Only applicable when reading from directories."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "timeBetweenSizeCheck",
+                                        "displayName": "Time Between Size Checks",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Time to wait between file size checks to ensure file stability in milliseconds (e.g., '2000', '5000'). Prevents reading files still being written."
                                     }
                                 },
                                 {
