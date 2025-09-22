@@ -133,11 +133,10 @@ public class SplitFile extends AbstractConnectorOperation {
             sourceFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourceFilePath;
             targetDirectoryPath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetDirectoryPath;
 
-            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-            fileToSplit = fsManager.resolveFile(sourceFilePath, fso);
-            targetDir = fsManager.resolveFile(targetDirectoryPath, fso);
+            fileToSplit = fileSystemHandlerConnection.resolveFileWithSuspension(sourceFilePath);
+            targetDir = fileSystemHandlerConnection.resolveFileWithSuspension(targetDirectoryPath);
 
             if (!fileToSplit.exists()) {
                 throw new IllegalPathException("File not found: " + sourceFilePath);
@@ -172,7 +171,7 @@ public class SplitFile extends AbstractConnectorOperation {
                         splitFileCount = splitByChunkSize(fileToSplit,
                                 targetDirectoryPath,
                                 chunkSizeAsStr,
-                                fsManager, fso);
+                                fileSystemHandlerConnection);
                     } else {
                         throw new InvalidConfigurationException("Parameter '" + CHUNK_SIZE_PARAM + "' is not provided");
                     }
@@ -184,8 +183,7 @@ public class SplitFile extends AbstractConnectorOperation {
                         splitFileCount = splitByLines(fileToSplit,
                                 targetDirectoryPath,
                                 lineCountAsStr,
-                                fsManager,
-                                fso);
+                                fileSystemHandlerConnection);
                     } else {
                         throw new InvalidConfigurationException("Parameter '" + LINE_COUNT_PARAM + "' is not provided");
                     }
@@ -197,8 +195,7 @@ public class SplitFile extends AbstractConnectorOperation {
                         splitFileCount = splitByXPathExpression(fileToSplit,
                                 targetDirectoryPath,
                                 xpathExpression,
-                                fsManager,
-                                fso);
+                                fileSystemHandlerConnection);
                     } else {
                         throw new InvalidConfigurationException("Parameter '" + XPATH_EXPRESSION_PARAM + "' is not provided");
                     }
@@ -260,7 +257,7 @@ public class SplitFile extends AbstractConnectorOperation {
      * @throws IOException In case of file operation error
      */
     private int splitByLines(FileObject fileToSplit, String targetFolderPath, String splitLength,
-                             FileSystemManager manager, FileSystemOptions fso) throws IOException {
+                             FileSystemHandler fileSystemHandlerConnection) throws IOException {
 
         BufferedReader bufferedReader = null;
         BufferedWriter bufferedWriter;
@@ -276,14 +273,14 @@ public class SplitFile extends AbstractConnectorOperation {
 
             //create first file part
             String sourceFileName = fileToSplit.getName().getBaseName();
-            FileObject filePart = createFilePart(targetFolderPath, sourceFileName, partNum, manager, fso);
+            FileObject filePart = createFilePart(targetFolderPath, sourceFileName, partNum, fileSystemHandlerConnection);
             bufferedWriter = new BufferedWriter(new OutputStreamWriter(
                     filePart.getContent().getOutputStream()));
 
             boolean startNextFile = false;
             while ((currentLine = bufferedReader.readLine()) != null) {
                 if (startNextFile) {
-                    filePart = createFilePart(targetFolderPath, sourceFileName, partNum, manager, fso);
+                    filePart = createFilePart(targetFolderPath, sourceFileName, partNum, fileSystemHandlerConnection);
                     bufferedWriter = new BufferedWriter(new OutputStreamWriter(
                             filePart.getContent().getOutputStream()));
                     startNextFile = false;
@@ -333,15 +330,14 @@ public class SplitFile extends AbstractConnectorOperation {
      * @throws FileSystemException in case of an issue creating file
      */
     private FileObject createFilePart(String targetFolderPath, String sourceFileName,
-                                      int partNum, FileSystemManager manager,
-                                      FileSystemOptions fso) throws FileSystemException {
+                                      int partNum, FileSystemHandler fileSystemHandlerConnection) throws FileSystemException {
 
         String[] sourceFileNameParts = sourceFileName.split("\\.");
         String fileName = sourceFileNameParts[0];
         String extension = sourceFileNameParts[1];
         String pathToFilePart = targetFolderPath + Const.FILE_SEPARATOR
                 + fileName + partNum + "." + extension;
-        FileObject file = manager.resolveFile(pathToFilePart, fso);
+        FileObject file = fileSystemHandlerConnection.resolveFileWithSuspension(pathToFilePart);
         file.createFile();
         if (log.isDebugEnabled()) {
             log.debug(LOG_IDENTIFIER + "Created the file part "
@@ -362,7 +358,7 @@ public class SplitFile extends AbstractConnectorOperation {
      * @throws IOException In case of error creating, writing to files
      */
     private int splitByChunkSize(FileObject sourceFileObj, String destination, String chunkSize,
-                                 FileSystemManager manager, FileSystemOptions options) throws IOException {
+                                 FileSystemHandler fileSystemHandlerConnection) throws IOException {
         byte[] bytesIn = new byte[Integer.parseInt(chunkSize)];
         InputStream inputStream = null;
         OutputStream outputStream = null;
@@ -374,7 +370,7 @@ public class SplitFile extends AbstractConnectorOperation {
             inputStream = new AutoCloseInputStream(sourceFileObj.getContent().getInputStream());
             while (inputStream.read(bytesIn) != -1) {
                 try {
-                    outputFileObj = createFilePart(destination, sourceFileName, partNum, manager, options);
+                    outputFileObj = createFilePart(destination, sourceFileName, partNum, fileSystemHandlerConnection);
                     outputStream = outputFileObj.getContent().getOutputStream();
                     bufferedOutputStream = new BufferedOutputStream(outputStream);
                     bufferedOutputStream.write(bytesIn);
@@ -433,7 +429,7 @@ public class SplitFile extends AbstractConnectorOperation {
      * @throws FileOperationException In case of I/O error
      */
     private int splitByXPathExpression(FileObject sourceFileObj, String destination, String xpathExpression,
-                                       FileSystemManager manager, FileSystemOptions options) throws FileOperationException {
+                                       FileSystemHandler fileSystemHandlerConnection) throws FileOperationException {
 
         DocumentBuilderFactory documentFactory = getSecuredDocumentBuilder();
         DocumentBuilder documentBuilder;
@@ -483,8 +479,8 @@ public class SplitFile extends AbstractConnectorOperation {
                 transformer.setOutputProperty(OutputKeys.INDENT, Const.YES);
                 source = new DOMSource(distinationXmlDocument);
 
-                outputFileObj = manager.resolveFile(destination + Const.FILE_SEPARATOR
-                                + parentNode + (i + 1) + ".xml", options);
+                outputFileObj = fileSystemHandlerConnection.resolveFileWithSuspension(destination + Const.FILE_SEPARATOR
+                                + parentNode + (i + 1) + ".xml");
                 if (!outputFileObj.exists()) {
                     outputFileObj.createFile();
                 }

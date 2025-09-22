@@ -53,6 +53,7 @@ import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
+import org.wso2.carbon.connector.exception.ConnectionSuspendedException;
 import org.wso2.carbon.connector.filelock.FileLockManager;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.FileReadMode;
@@ -146,10 +147,11 @@ public class ReadFile extends AbstractConnectorOperation {
                 String workingDirRelativePAth = config.path;
                 sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + config.path;
 
-                FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
                 FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
                 Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-                fileObject = fsManager.resolveFile(sourcePath, fso);
+
+                // Use suspension-enabled file resolution for FTP/FTPS
+                fileObject = fileSystemHandlerConnection.resolveFileWithSuspension(sourcePath);
 
                 fileLockManager = fileSystemHandlerConnection.getFileLockManager();
 
@@ -213,6 +215,12 @@ public class ReadFile extends AbstractConnectorOperation {
 
                 String errorDetail = ERROR_MESSAGE + sourcePath;
                 handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
+
+            } catch (ConnectionSuspendedException e) {
+                // Clean logging for suspended connections - no stack trace needed
+                log.warn("Connection suspended: " + e.getMessage());
+                String errorDetail = ERROR_MESSAGE + sourcePath;
+                handleError(messageContext, e, Error.CONNECTION_ERROR, errorDetail, responseVariable, overwriteBody);
 
             } catch (FileOperationException | IOException e) { //FileSystemException also handled here
                 log.error(e);

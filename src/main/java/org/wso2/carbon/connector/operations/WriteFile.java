@@ -133,10 +133,10 @@ public class WriteFile extends AbstractConnectorOperation {
 
                 targetFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetFilePath;
 
-                FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
                 FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
                 Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-                targetFile = fsManager.resolveFile(targetFilePath, fso);
+                // Use suspension-enabled file resolution for FTP/FTPS
+                targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetFilePath);
 
                 if (log.isDebugEnabled()) {
                     log.debug("Write file attempt " + attempt + " of " + maxRetries + " for file " + targetFilePath);
@@ -164,7 +164,7 @@ public class WriteFile extends AbstractConnectorOperation {
 
                 int byteCountWritten;
 
-                byteCountWritten = (int) writeToFile(targetFile, messageContext, config);
+                byteCountWritten = (int) writeToFile(targetFile, messageContext, config, fileSystemHandlerConnection);
                 
                 // Update last modified time if requested
                 if (!targetFile.getURL().toString().startsWith(Const.FTP_PROTOCOL_PREFIX) && config.updateLastModified) {
@@ -419,7 +419,7 @@ public class WriteFile extends AbstractConnectorOperation {
      * @throws FileOperationException In case of any application error
      * @throws IllegalPathException   In case if invalid file path
      */
-    private long writeToFile(FileObject targetFile, MessageContext msgCtx, Config config)
+    private long writeToFile(FileObject targetFile, MessageContext msgCtx, Config config, FileSystemHandler fileSystemHandlerConnection)
             throws IOException, FileOperationException, IllegalPathException {
 
         long writtenBytesCount;
@@ -445,8 +445,8 @@ public class WriteFile extends AbstractConnectorOperation {
                     throw new FileOperationException("Target file already exists. Path = "
                             + targetFile.getURL());
                 } else {
-                    try (FileObject tempFile = targetFile.getFileSystem().getFileSystemManager().resolveFile(
-                            targetFile.getParent(), targetFile.getName().getBaseName() + ".tmp")) {
+                    try (FileObject tempFile = fileSystemHandlerConnection.resolveFileWithSuspension(
+                            targetFile.getParent().getName().getPath() + Const.FILE_SEPARATOR + targetFile.getName().getBaseName() + ".tmp")) {
 
                         // Create a temporary file with .tmp extension
                         tempFile.createFile();

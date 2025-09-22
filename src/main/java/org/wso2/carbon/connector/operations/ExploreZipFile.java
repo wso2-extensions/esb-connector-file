@@ -90,7 +90,7 @@ public class ExploreZipFile extends AbstractConnectorOperation {
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-            zipFile = fsManager.resolveFile(filePath, fso);
+            zipFile = fileSystemHandlerConnection.resolveFileWithSuspension(filePath);
 
             if (!zipFile.exists()) {
                 throw new IllegalPathException("Zip file not found at path " + filePath);

@@ -72,7 +72,8 @@ public class CreateDirectory extends AbstractConnectorOperation {
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
             folderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPath;
-            folderToCreate = fsManager.resolveFile(folderPath, fso);
+            // Use suspension-enabled file resolution for FTP/FTPS
+            folderToCreate = fileSystemHandlerConnection.resolveFileWithSuspension(folderPath);
             
             // Check if auto create is enabled for parent directories
             boolean shouldAutoCreate = autoCreate != null && Boolean.parseBoolean(autoCreate);

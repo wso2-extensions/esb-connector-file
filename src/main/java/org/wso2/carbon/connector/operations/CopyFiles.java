@@ -162,7 +162,7 @@ public class CopyFiles extends AbstractConnectorOperation {
                 }
 
                 //execute copy
-                sourceFile = fsManager.resolveFile(sourcePath, fso);
+                sourceFile = fileSystemHandlerConnection.resolveFileWithSuspension(sourcePath);
                 if (sourceFile.exists()) {
 
                     if (sourceFile.isFile()) {
@@ -178,7 +178,7 @@ public class CopyFiles extends AbstractConnectorOperation {
                                     + sourceFile.getName().getBaseName();
                         }
 
-                        FileObject targetFile = fsManager.resolveFile(targetFilePath, fso);
+                        FileObject targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetFilePath);
                         boolean success = copyFile(sourceFile, fileSelector, targetFile, overwrite);
                         FileOperationResult result;
                         if (success) {
@@ -202,7 +202,7 @@ public class CopyFiles extends AbstractConnectorOperation {
                             }
                         }
 
-                        FileObject targetFile = fsManager.resolveFile(targetPath, fso);
+                        FileObject targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetPath);
 
                         boolean success = copyFolder(sourceFile, fileSelector, targetFile, overwrite);
                         if (success) {

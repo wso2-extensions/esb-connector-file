@@ -107,7 +107,7 @@ public class FetchContentToList extends AbstractConnector {
             String sortingOrder = Utils.lookUpStringParam(messageContext, SORT_ORDER_PARAM, DEFAULT_SORT_ORDER);
 
             folderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPath;
-            folder = fsManager.resolveFile(folderPath, fso);
+            folder = fileSystemHandlerConnection.resolveFileWithSuspension(folderPath);
 
             if (folder.exists()) {
 

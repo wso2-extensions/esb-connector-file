@@ -156,7 +156,7 @@ public class ListFiles extends AbstractConnectorOperation {
                         lookupTemplateParamater(messageContext, SUB_DIRECTORY_MAX_DEPTH);
 
                 folderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPath;
-                folder = fsManager.resolveFile(folderPath, fso);
+                folder = fileSystemHandlerConnection.resolveFileWithSuspension(folderPath);
 
                 if (folder.exists()) {
 

@@ -119,8 +119,8 @@ public class MergeFiles extends AbstractConnectorOperation {
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-            sourceDir = fsManager.resolveFile(sourceDirectoryPath, fso);
-            targetFile = fsManager.resolveFile(targetFilePath, fso);
+            sourceDir = fileSystemHandlerConnection.resolveFileWithSuspension(sourceDirectoryPath);
+            targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetFilePath);
 
             if (!sourceDir.exists()) {
                 throw new IllegalPathException("Directory not found: " + sourceDirectoryPath);

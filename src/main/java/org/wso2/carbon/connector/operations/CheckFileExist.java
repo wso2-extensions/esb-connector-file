@@ -80,14 +80,14 @@ public class CheckFileExist extends AbstractConnectorOperation {
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-            fileObject = fsManager.resolveFile(filePath, fso);
+            fileObject = fileSystemHandlerConnection.resolveFileWithSuspension(filePath);
             /*
                 Temporarily reverting this fix with expensive file system resolve calls.
                 No git issue is pointed in this commit. So  we cannot find a better solution which resolve both issues.
              */
             //fsManager.getFilesCache().removeFile(fileObject.getFileSystem(),  fileObject.getName());
             //fsManager.getFilesCache().removeFile(fileObject.getParent().getFileSystem(),  fileObject.getParent().getName());
-            //fileObject = fsManager.resolveFile(filePath, fso);
+            //fileObject = fileSystemHandlerConnection.resolveFileWithSuspension(filePath);
 
             JsonObject resultJSON = generateOperationResult(messageContext,
                     new FileOperationResult(OPERATION_NAME,true));

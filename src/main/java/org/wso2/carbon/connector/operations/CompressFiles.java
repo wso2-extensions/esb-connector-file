@@ -123,12 +123,12 @@ public class CompressFiles extends AbstractConnectorOperation {
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-            fileToCompress = fsManager.resolveFile(sourceFilePath, fso);
+            fileToCompress = fileSystemHandlerConnection.resolveFileWithSuspension(sourceFilePath);
 
             if (!fileToCompress.exists()) {
                 throw new IllegalPathException("File or directory to compress does not exist");
             }
-            targetZipFile = fsManager.resolveFile(targetZipFilePath, fso);
+            targetZipFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetZipFilePath);
 
             if(StringUtils.isEmpty(targetZipFile.getName().getExtension())) {
                 throw new IllegalPathException("Target File path does not resolve to a file");

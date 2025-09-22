@@ -112,7 +112,7 @@ public class DeleteFileOrFolder extends AbstractConnectorOperation {
                 FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
                 Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
                 fileOrFolderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + fileOrFolderPath;
-                fileObjectToDelete = fsManager.resolveFile(fileOrFolderPath, fso);
+                fileObjectToDelete = fileSystemHandlerConnection.resolveFileWithSuspension(fileOrFolderPath);
 
                 if (log.isDebugEnabled()) {
                     log.debug("Delete file/folder attempt " + attempt + " of " + maxRetries + " for file/folder "

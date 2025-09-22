@@ -301,8 +301,15 @@ public class Utils {
      */
     public static FileSystemHandler getFileSystemHandler(String connectionName) throws ConnectException {
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
-        return (FileSystemHandler) handler
+        FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
                 .getConnection(Const.CONNECTOR_NAME, connectionName);
+
+        // Initialize VFS wrapper for suspension support if not already done
+        if (fileSystemHandler.getVfsWrapper() == null) {
+            fileSystemHandler.initializeVFSWrapper(connectionName);
+        }
+
+        return fileSystemHandler;
     }
 
     /**

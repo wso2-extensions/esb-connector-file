@@ -99,11 +99,10 @@ public class UnzipFile extends AbstractConnectorOperation {
             filePath = fileSystemHandlerConnection.getBaseDirectoryPath() + filePath;
             folderPathToExtract = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPathToExtract;
 
-            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-            compressedFile = fsManager.resolveFile(filePath, fso);
-            targetFolder = fsManager.resolveFile(folderPathToExtract, fso);
+            compressedFile = fileSystemHandlerConnection.resolveFileWithSuspension(filePath);
+            targetFolder = fileSystemHandlerConnection.resolveFileWithSuspension(folderPathToExtract);
 
             //execute validations
 
@@ -130,7 +129,7 @@ public class UnzipFile extends AbstractConnectorOperation {
                 }
             }
 
-            executeDecompression(compressedFile, folderPathToExtract, fsManager, fso, validatedFileNameEncoding);
+            executeDecompression(compressedFile, folderPathToExtract, validatedFileNameEncoding, fileSystemHandlerConnection);
 
             JsonObject resultJSON = generateOperationResult(messageContext,
                     new FileOperationResult(OPERATION_NAME, true));
@@ -177,15 +176,14 @@ public class UnzipFile extends AbstractConnectorOperation {
      */
     private void executeDecompression(FileObject sourceFile,
                                       String folderPathToExtract,
-                                      FileSystemManager fsManager,
-                                      FileSystemOptions fso,
-                                      String fileNameEncoding) throws IOException {
+                                      String fileNameEncoding,
+                                      FileSystemHandler fileSystemHandlerConnection) throws IOException {
         //execute decompression
         String fileExtension = sourceFile.getName().getExtension();
         if (fileExtension.equals("gz")) {
-            FileObject target = fsManager.resolveFile(folderPathToExtract + Const.FILE_SEPARATOR
+            FileObject target = fileSystemHandlerConnection.resolveFileWithSuspension(folderPathToExtract + Const.FILE_SEPARATOR
                     + sourceFile.getName().getBaseName()
-                    .replace("." + sourceFile.getName().getExtension(), ""), fso);
+                    .replace("." + sourceFile.getName().getExtension(), ""));
             extractGzip(sourceFile, target);
             return;
         }
@@ -195,7 +193,7 @@ public class UnzipFile extends AbstractConnectorOperation {
             ZipArchiveEntry entry;
             while ((entry = zipIn.getNextZipEntry()) != null) {
                 String zipEntryPath = folderPathToExtract + Const.FILE_SEPARATOR + entry.getName();
-                FileObject zipEntryTargetFile = fsManager.resolveFile(zipEntryPath, fso);
+                FileObject zipEntryTargetFile = fileSystemHandlerConnection.resolveFileWithSuspension(zipEntryPath);
                 if (!entry.isDirectory()) {
                     // if the entry is a file, extracts it
                     extractFile(zipIn, zipEntryTargetFile);

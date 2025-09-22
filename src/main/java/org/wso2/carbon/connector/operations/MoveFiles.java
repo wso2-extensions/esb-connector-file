@@ -157,7 +157,7 @@ public class MoveFiles extends AbstractConnectorOperation {
             }
 
             //execute move
-            sourceFile = fsManager.resolveFile(sourcePath, fso);
+            sourceFile = fileSystemHandlerConnection.resolveFileWithSuspension(sourcePath);
 
             if (sourceFile.exists()) {
 
@@ -174,7 +174,7 @@ public class MoveFiles extends AbstractConnectorOperation {
                                 + sourceFile.getName().getBaseName();
                     }
 
-                    FileObject targetFile = fsManager.resolveFile(targetFilePath, fso);
+                    FileObject targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetFilePath);
 
                     // Set the isMounted flag to to avoid errors in mounted volumes.
                     try {
@@ -197,7 +197,7 @@ public class MoveFiles extends AbstractConnectorOperation {
 
                 } else {
                     //in case of folder
-                    FileObject targetFile = fsManager.resolveFile(targetPath, fso);
+                    FileObject targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetPath);
 
                     if (!targetFile.exists() && !createNonExistingParents) {
                         throw new FileOperationException("Target folder does not exist and not configured to create");
@@ -210,10 +210,10 @@ public class MoveFiles extends AbstractConnectorOperation {
                             String sourceParentFolderName = sourceFile.getName().getBaseName();
                             targetPath = targetPath + Const.FILE_SEPARATOR + sourceParentFolderName;
                         }
-                        targetFile = fsManager.resolveFile(targetPath, fso);
+                        targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetPath);
                     }
 
-                    boolean success = moveFolder(sourceFile, targetFile, overwrite, filePattern, fileSelector, true);
+                    boolean success = moveFolder(sourceFile, targetFile, overwrite, filePattern, fileSelector, true, fileSystemHandlerConnection);
                     if (success) {
                         JsonObject resultJSON = generateOperationResult(messageContext,
                                 new FileOperationResult(OPERATION_NAME, true));
@@ -314,7 +314,8 @@ public class MoveFiles extends AbstractConnectorOperation {
      * @throws FileSystemException In case of I/O error
      */
     private boolean moveFolder(FileObject srcFile, FileObject destinationFile, boolean overWrite,
-                               String filePattern, FileSelector fileSelector, boolean isSuccessful) throws FileSystemException {
+                               String filePattern, FileSelector fileSelector, boolean isSuccessful,
+                               FileSystemHandler fileSystemHandlerConnection) throws FileSystemException {
 
         if (destinationFile.exists()) {
             if (!overWrite) {
@@ -353,12 +354,12 @@ public class MoveFiles extends AbstractConnectorOperation {
             for (FileObject child : children) {
                 boolean result;
                 if (child.getType() == FileType.FILE) {
-                    result = moveFileWithPattern(child, destinationFile, filePattern);
+                    result = moveFileWithPattern(child, destinationFile, filePattern, fileSystemHandlerConnection);
                 } else if (child.getType() == FileType.FOLDER) {
                     String newDestination = destinationFile.getPublicURIString() + Const.FILE_SEPARATOR
                             + child.getName().getBaseName();
-                    result = moveFolder(child, fsManager.resolveFile(newDestination, fso),
-                            overWrite, filePattern, fileSelector, isSuccessful);
+                    result = moveFolder(child, fileSystemHandlerConnection.resolveFileWithSuspension(newDestination),
+                            overWrite, filePattern, fileSelector, isSuccessful, fileSystemHandlerConnection);
                 } else {
                     log.error("Could not move the file: " + child.getName() + "Unsupported file type: "
                             + child.getType() + " for move operation.");
@@ -384,7 +385,8 @@ public class MoveFiles extends AbstractConnectorOperation {
      * @param filePattern Pattern of the file
      * @return True if operation is performed fine
      */
-    private boolean moveFileWithPattern(FileObject remoteFile, FileObject target, String filePattern) {
+    private boolean moveFileWithPattern(FileObject remoteFile, FileObject target, String filePattern,
+                                        FileSystemHandler fileSystemHandlerConnection) {
         FilePatternMatcher patternMatcher = new FilePatternMatcher(filePattern);
         try {
             if (patternMatcher.validate(remoteFile.getName().getBaseName())) {
@@ -392,7 +394,7 @@ public class MoveFiles extends AbstractConnectorOperation {
                     target.createFolder();
                 }
                 String newTarget = target + Const.FILE_SEPARATOR + remoteFile.getName().getBaseName();
-                remoteFile.moveTo(fsManager.resolveFile(newTarget, fso));
+                remoteFile.moveTo(fileSystemHandlerConnection.resolveFileWithSuspension(newTarget));
             }
         } catch (IOException e) {
             log.error("Error occurred while moving a file. " + e.getMessage(), e);

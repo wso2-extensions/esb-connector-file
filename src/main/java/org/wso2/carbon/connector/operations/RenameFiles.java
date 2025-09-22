@@ -82,12 +82,12 @@ public class RenameFiles extends AbstractConnectorOperation {
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
             fileOrFolderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + fileOrFolderPath;
-            fileToRename = fsManager.resolveFile(fileOrFolderPath, fso);
+            fileToRename = fileSystemHandlerConnection.resolveFileWithSuspension(fileOrFolderPath);
 
             //path after rename
             String newFilePath = fileOrFolderPath.substring(0, fileOrFolderPath.lastIndexOf(Const.FILE_SEPARATOR))
                     + Const.FILE_SEPARATOR + newName;
-            FileObject newFile = fsManager.resolveFile(newFilePath, fso);
+            FileObject newFile = fileSystemHandlerConnection.resolveFileWithSuspension(newFilePath);
 
             if (fileToRename.exists()) {
 
