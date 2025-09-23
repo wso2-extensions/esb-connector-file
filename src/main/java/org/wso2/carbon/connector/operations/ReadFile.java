@@ -248,7 +248,16 @@ public class ReadFile extends AbstractConnectorOperation {
 
             } catch (Exception e) {
                 String errorDetail = ERROR_MESSAGE + sourcePath;
-                log.error(errorDetail, e);
+
+                // Clean logging for connection pool errors
+                if (e.getMessage() != null && e.getMessage().contains("Could not create a validated object")) {
+                    log.warn("Connection pool validation failed: " + e.getMessage());
+                } else if (e.getCause() instanceof java.util.NoSuchElementException) {
+                    log.warn("Unable to obtain connection from pool (server may be down)");
+                } else {
+                    log.error(errorDetail, e);
+                }
+
                 Utils.closeFileSystem(fileObject);
                 if (attempt >= maxRetries - 1) {
                     handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
