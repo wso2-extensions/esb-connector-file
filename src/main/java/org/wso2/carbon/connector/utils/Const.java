@@ -54,8 +54,10 @@ public final class Const {
     public static final String SOCKET_TIMEOUT = "ftpSocketTimeout";
     public static final String KEYSTORE_PATH = "keyStorePath";
     public static final String KEYSTORE_PASSWORD = "keyStorePassword";
+    public static final String KEYSTORE_TYPE = "keyStoreType";
     public static final String TRUSTSTORE_PATH = "trustStorePath";
     public static final String TRUSTSTORE_PASSWORD = "trustStorePassword";
+    public static final String TRUSTSTORE_TYPE = "trustStoreType";
     public static final String IMPLICIT_MODE_ENABLED = "implicitModeEnabled";
     public static final String CHANNEL_PROTECTION_LEVEL = "channelProtectionLevel";
 
