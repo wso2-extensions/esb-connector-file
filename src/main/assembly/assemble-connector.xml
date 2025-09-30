@@ -26,14 +26,25 @@
         <fileSet>
             <directory>target/connector/dependencies</directory>
             <outputDirectory>lib</outputDirectory>
+            <excludes>
+                <exclude>commons-email-1.2.jar</exclude>
+            </excludes>
         </fileSet>
         <fileSet>
             <directory>target/classes</directory>
             <outputDirectory></outputDirectory>
             <excludes>
+                <exclude>org/**</exclude>
                 <exclude>**/metrics_module.xml</exclude>
                 <exclude>**/META-INF/*</exclude>
             </excludes>
         </fileSet>
     </fileSets>
+    <files>
+        <file>
+            <source>target/mi-connector-file-${project.version}-shaded.jar</source>
+            <outputDirectory>lib</outputDirectory>
+            <destName>mi-connector-file-${project.version}-shaded.jar</destName>
+        </file>
+    </files>
 </assembly>
