@@ -138,10 +138,6 @@
                     <groupId>javax.servlet</groupId>
                     <artifactId>servlet-api</artifactId>
                 </exclusion>
-                <exclusion>
-                    <groupId>org.apache.commons</groupId>
-                    <artifactId>commons-vfs2</artifactId>
-                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -199,12 +195,6 @@
             <groupId>org.wso2.ei</groupId>
             <artifactId>integration-test-utils</artifactId>
             <version>${product.ei.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.commons</groupId>
-                    <artifactId>commons-vfs2</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.wso2.ei</groupId>
@@ -255,42 +245,11 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.0</version>
-                <executions>
-                    <execution>
-                        <id>shade-vfs2</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <artifactSet>
-                                <includes>
-                                    <include>org.wso2.org.apache.commons:commons-vfs2</include>
-                                    <include>org.wso2.org.apache.commons:commons-vfs2-sandbox</include>
-                                </includes>
-                            </artifactSet>
-                            <relocations>
-                                <relocation>
-                                    <pattern>org.apache.commons.vfs2</pattern>
-                                    <shadedPattern>shaded.org.apache.commons.vfs2</shadedPattern>
-                                </relocation>
-                            </relocations>
-                            <shadedArtifactAttached>true</shadedArtifactAttached>
-                            <shadedClassifierName>shaded</shadedClassifierName>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <executions>
                     <execution>
                         <id>email-library</id>
-                        <phase>package</phase>
+                        <phase>compile</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
