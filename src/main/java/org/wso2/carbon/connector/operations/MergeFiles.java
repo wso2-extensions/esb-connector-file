@@ -20,10 +20,10 @@ package org.wso2.carbon.connector.operations;
 
 import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.integration.connector.core.AbstractConnectorOperation;
@@ -39,9 +39,9 @@ import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.AdvancedFileFilter;
-import org.apache.commons.vfs2.FileSelectInfo;
-import org.apache.commons.vfs2.FileSelector;
-import org.apache.commons.vfs2.Selectors;
+import org.wso2.org.apache.commons.vfs2.FileSelectInfo;
+import org.wso2.org.apache.commons.vfs2.FileSelector;
+import org.wso2.org.apache.commons.vfs2.Selectors;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;

@@ -19,9 +19,9 @@
 package org.wso2.carbon.connector.utils;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.vfs2.FileFilter;
-import org.apache.commons.vfs2.FileSelectInfo;
-import org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileFilter;
+import org.wso2.org.apache.commons.vfs2.FileSelectInfo;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;

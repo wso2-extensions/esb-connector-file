@@ -19,8 +19,8 @@
 package org.wso2.carbon.connector.pojo;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.vfs2.provider.ftps.FtpsDataChannelProtectionLevel;
-import org.apache.commons.vfs2.provider.ftps.FtpsMode;
+import org.wso2.org.apache.commons.vfs2.provider.ftps.FtpsDataChannelProtectionLevel;
+import org.wso2.org.apache.commons.vfs2.provider.ftps.FtpsMode;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 
 /**

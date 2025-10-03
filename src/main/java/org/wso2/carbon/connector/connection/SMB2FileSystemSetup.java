@@ -20,8 +20,8 @@ package org.wso2.carbon.connector.connection;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.provider.smb2.Smb2FileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileSystemConfigBuilder;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.carbon.connector.utils.Const;
 

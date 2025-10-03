@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.connector.exception;
 
-import org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 
 /**
  * Exception thrown when a connection is suspended.

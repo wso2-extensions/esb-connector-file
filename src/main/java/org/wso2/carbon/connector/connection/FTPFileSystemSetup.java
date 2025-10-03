@@ -18,8 +18,8 @@
 
 package org.wso2.carbon.connector.connection;
 
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.carbon.connector.pojo.FTPConnectionConfig;
 import org.wso2.carbon.connector.utils.Const;

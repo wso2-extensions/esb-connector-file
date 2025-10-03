@@ -20,12 +20,12 @@ package org.wso2.carbon.connector.connection;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.impl.StandardFileSystemManager;
-import org.apache.commons.vfs2.cache.DefaultFilesCache;
-import org.apache.commons.vfs2.cache.NullFilesCache;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.impl.StandardFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.cache.DefaultFilesCache;
+import org.wso2.org.apache.commons.vfs2.cache.NullFilesCache;
 import org.wso2.integration.connector.core.connection.ConnectionConfig;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.integration.connector.core.connection.Connection;
@@ -191,7 +191,7 @@ public class FileSystemHandler implements Connection {
      * @return FileObject
      * @throws FileSystemException if file resolution fails
      */
-    public org.apache.commons.vfs2.FileObject resolveFileWithSuspension(String path) throws FileSystemException {
+    public org.wso2.org.apache.commons.vfs2.FileObject resolveFileWithSuspension(String path) throws FileSystemException {
         if (vfsWrapper != null && needsSuspensionSupport()) {
             // Custom suspension logic for FTP/FTPS (bypass WSO2 ConnectionHandler)
             return vfsWrapper.resolveFile(path);

@@ -19,10 +19,10 @@
 package org.wso2.carbon.connector.connection;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.provider.sftp.IdentityInfo;
-import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.IdentityInfo;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.carbon.connector.pojo.SFTPConnectionConfig;

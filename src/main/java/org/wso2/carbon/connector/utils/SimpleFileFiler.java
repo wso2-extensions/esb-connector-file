@@ -18,8 +18,8 @@
 
 package org.wso2.carbon.connector.utils;
 
-import org.apache.commons.vfs2.FileFilter;
-import org.apache.commons.vfs2.FileSelectInfo;
+import org.wso2.org.apache.commons.vfs2.FileFilter;
+import org.wso2.org.apache.commons.vfs2.FileSelectInfo;
 
 import java.util.regex.Pattern;
 
