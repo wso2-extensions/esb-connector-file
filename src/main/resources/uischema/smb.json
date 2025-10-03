@@ -73,6 +73,17 @@
                 {
                   "type": "attribute",
                   "value": {
+                    "name": "workingDir",
+                    "displayName": "Working Directory",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "Working directory (share name and path). File paths in operations should be given relative to this folder"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
                     "name": "encodePassword",
                     "displayName": "EncodePassword",
                     "inputType": "booleanOrExpression",

@@ -28,7 +28,7 @@
 
     <properties>
         <connector.name>file</connector.name>
-        <commons.vfs.version>2.10.0-wso2v1</commons.vfs.version>
+        <commons.vfs.version>2.10.0-wso2v3</commons.vfs.version>
         <integration.base.version>1.0.2</integration.base.version>
         <product.ei.version>6.1.1</product.ei.version>
         <carbon.kernel.version>4.4.17</carbon.kernel.version>
