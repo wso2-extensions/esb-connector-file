@@ -54,6 +54,17 @@
                                         "required": "true",
                                         "helpTip": "Folder to extract. If already exists, it will get overwritten."
                                     }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "timeBetweenSizeCheck",
+                                        "displayName": "Time Between Size Check",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Time in milliseconds to wait between size checks for file stability verification. Ensures files are not actively being written before unzipping."
+                                    }
                                 }
                             ]
                         }

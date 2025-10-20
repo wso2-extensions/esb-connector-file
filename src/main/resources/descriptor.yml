@@ -1,0 +1,19 @@
+# Connector Descriptor File
+# Specifies the dependencies and repositories required for the File connector.
+
+dependencies:
+  # Core VFS libraries with WSO2 modifications for SMB2 support
+  - groupId: "org.wso2.org.apache.commons"
+    artifactId: "commons-vfs2"
+    version: "2.10.0-wso2v4"
+  - groupId: "org.wso2.org.apache.commons"
+    artifactId: "commons-vfs2-sandbox"
+    version: "2.10.0-wso2v4"
+
+repositories:
+  - id: "wso2-nexus"
+    url: "https://maven.wso2.org/nexus/content/groups/wso2-public/"
+  - id: "wso2-maven2-repository"
+    url: "scp://dist.wso2.org/home/https/dist.wso2.org/maven2/"
+  - id: "central"
+    url: "https://repo1.maven.org/maven2/"

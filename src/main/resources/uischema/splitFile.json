@@ -126,6 +126,17 @@
                                         "required": "false",
                                         "helpTip": "The XPATH expression used to split file."
                                     }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "timeBetweenSizeCheck",
+                                        "displayName": "Time Between Size Check",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Time in milliseconds to wait between size checks for file stability verification. Ensures files are not actively being written before splitting."
+                                    }
                                 }
                             ]
                         }

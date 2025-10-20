@@ -19,10 +19,10 @@
 package org.wso2.carbon.connector.operations;
 
 import com.google.gson.JsonObject;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.integration.connector.core.AbstractConnectorOperation;
@@ -59,6 +59,11 @@ public class CreateDirectory extends AbstractConnectorOperation {
         try {
             String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
                     (messageContext, Const.DISK_SHARE_ACCESS_MASK);
+            String autoCreate = (String) ConnectorUtils.lookupTemplateParamater
+                    (messageContext, "autoCreate");
+            String permissions = (String) ConnectorUtils.lookupTemplateParamater
+                    (messageContext, "permissions");
+            
             fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
             folderPath = (String) ConnectorUtils.
@@ -67,9 +72,36 @@ public class CreateDirectory extends AbstractConnectorOperation {
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
             folderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPath;
-            folderToCreate = fsManager.resolveFile(folderPath, fso);
+            // Use suspension-enabled file resolution for FTP/FTPS
+            folderToCreate = fileSystemHandlerConnection.resolveFileWithSuspension(folderPath);
+            
+            // Check if auto create is enabled for parent directories
+            boolean shouldAutoCreate = autoCreate != null && Boolean.parseBoolean(autoCreate);
+            if (shouldAutoCreate) {
+                // Create parent directories if they don't exist
+                FileObject parent = folderToCreate.getParent();
+                if (parent != null && !parent.exists()) {
+                    parent.createFolder();
+                }
+            }
+            
             //create folder if it doesn't exist
             folderToCreate.createFolder();
+            
+            // Set permissions if specified (mainly for local/SFTP file systems)
+            if (permissions != null && !permissions.trim().isEmpty()) {
+                try {
+                    // Convert permissions string to octal (e.g., "755" -> 0755)
+                    if (permissions.matches("\\d{3,4}")) {
+                        int permissionValue = Integer.parseInt(permissions, 8);
+                        // Set permissions using Java NIO POSIX file permissions
+                        Utils.setFilePermissions(folderToCreate, permissionValue);
+                    }
+                } catch (Exception e) {
+                    log.warn("Could not set permissions " + permissions + " on directory " + folderPath + 
+                             ". Permissions setting may not be supported on this file system.", e);
+                }
+            }
 
             JsonObject resultJSON = generateOperationResult(messageContext,
                     new FileOperationResult(OPERATION_NAME, true));

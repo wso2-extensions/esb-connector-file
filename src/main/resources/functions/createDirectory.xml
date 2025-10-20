@@ -19,6 +19,8 @@
 <template xmlns="http://ws.apache.org/ns/synapse" name="createDirectory">
     <parameter name="directoryPath" description="Path to new directory"/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
+    <parameter name="autoCreate" description="Automatically create missing parent directories"/>
+    <parameter name="permissions" description="Permissions to set on the new directory (octal format, e.g., 755)"/>
     <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>
     <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
     <sequence>

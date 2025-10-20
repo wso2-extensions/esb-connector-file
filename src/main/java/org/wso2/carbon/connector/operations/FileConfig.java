@@ -35,6 +35,7 @@ import org.wso2.integration.connector.core.AbstractConnectorOperation;
 import org.wso2.integration.connector.core.ConnectException;
 import org.wso2.integration.connector.core.connection.ConnectionHandler;
 import org.wso2.integration.connector.core.util.ConnectorUtils;
+import org.wso2.integration.connector.core.pool.Configuration;
 import org.wso2.carbon.connector.deploy.ConnectorUndeployObserver;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
@@ -155,6 +156,16 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         String retryCount = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.RETRY_COUNT);
         String enableEncryption = (String) ConnectorUtils.lookupTemplateParamater(msgContext, Const.ENABLE_ENCRYPTION);
+        
+        // Connection suspension parameters (handled by connector core)
+        String suspendOnConnectionFailure = (String) ConnectorUtils.lookupTemplateParamater(msgContext, "suspendOnConnectionFailure");
+        String retriesBeforeSuspension = (String) ConnectorUtils.lookupTemplateParamater(msgContext, "retriesBeforeSuspension");
+        String suspendInitialDuration = (String) ConnectorUtils.lookupTemplateParamater(msgContext, "suspendInitialDuration");
+        String suspendProgressionFactor = (String) ConnectorUtils.lookupTemplateParamater(msgContext, "suspendProgressionFactor");
+        String suspendMaximumDuration = (String) ConnectorUtils.lookupTemplateParamater(msgContext, "suspendMaximumDuration");
+        
+        // File caching parameter (handled by VFS library)
+        String fileCacheEnabled = (String) ConnectorUtils.lookupTemplateParamater(msgContext, "fileCacheEnabled");
 
         ConnectionConfiguration connectionConfig = new ConnectionConfiguration(msgContext);
         if (sftpPoolConnectionAgedTimeout != null) {
@@ -178,6 +189,34 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         connectionConfig.setClusterLockingEnabled(fileLockScheme);
         connectionConfig.setMaxFailureRetryCount(maxFailureRetryCount);
         connectionConfig.setEnableEncryption(enableEncryption);
+        
+        // Set file caching configuration (handled by VFS)
+        connectionConfig.setFileCacheEnabled(fileCacheEnabled);
+        
+        // Set connection suspension parameters
+        connectionConfig.setSuspendOnConnectionFailure(suspendOnConnectionFailure);
+        connectionConfig.setRetriesBeforeSuspension(retriesBeforeSuspension);
+        connectionConfig.setSuspendInitialDuration(suspendInitialDuration);
+        connectionConfig.setSuspendProgressionFactor(suspendProgressionFactor);
+        connectionConfig.setSuspendMaximumDuration(suspendMaximumDuration);
+        
+        // Configure circuit breaker if suspension is enabled
+        if (connectionConfig.isSuspendOnConnectionFailure()) {
+            Configuration config = connectionConfig.getConfiguration();
+            config.setCircuitBreakerEnabled(true);
+            config.setFailureThreshold(connectionConfig.getRetriesBeforeSuspension());
+            config.setOpenDurationMillis(connectionConfig.getSuspendInitialDuration());
+            config.setOpenDurationProgressFactor((int) connectionConfig.getSuspendProgressionFactor());
+            config.setMaxOpenDurationMillis(connectionConfig.getSuspendMaximumDuration());
+            
+            if (log.isDebugEnabled()) {
+                log.debug("Circuit breaker enabled for connection: " + connectionName + 
+                    ", failureThreshold: " + connectionConfig.getRetriesBeforeSuspension() +
+                    ", initialDuration: " + connectionConfig.getSuspendInitialDuration() +
+                    ", progressionFactor: " + (int) connectionConfig.getSuspendProgressionFactor() +
+                    ", maxDuration: " + connectionConfig.getSuspendMaximumDuration());
+            }
+        }
 
         if (connectionConfig.isRemote()) {
             connectionConfig.setRemoteServerConfig(getRemoteServerConfig(msgContext, connectionConfig));
@@ -278,6 +317,8 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
                 lookupTemplateParamater(msgContext, Const.KEYSTORE_PATH);
         String keyStorePassword = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.KEYSTORE_PASSWORD);
+        String keyPassword = (String) ConnectorUtils.
+                lookupTemplateParamater(msgContext, Const.KEY_PASSWORD);
         String trustStorePath = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.TRUSTSTORE_PATH);
         String trustStorePassword = (String) ConnectorUtils.
@@ -290,6 +331,7 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         setFTPConnectionConfigsFromContext(msgContext, config);
         config.setKeyStore(keyStorePath);
         config.setKeyStorePassword(keyStorePassword);
+        config.setKeyPassword(keyPassword);
         config.setTrustStore(trustStorePath);
         config.setTrustStorePassword(trustStorePassword);
         config.setFtpsModetMode(implicitModeEnabled);
@@ -311,6 +353,8 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
                 lookupTemplateParamater(msgContext, Const.PRIVATE_KEY_PASSWORD);
         String setAvoidPermission = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.SET_AVOID_PERMISSION);
+        String sftpPathFromRoot = (String) ConnectorUtils.
+                lookupTemplateParamater(msgContext, Const.SFTP_PATH_FROM_ROOT);
 
         config.setConnectionTimeout(sftpConnectionTimeout);
         config.setSessionTimeout(sftpSessionTimeout);
@@ -318,6 +362,7 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         config.setPrivateKeyFilePath(privateKeyFilePath);
         config.setPrivateKeyPassword(privateKeyPassword);
         config.setAvoidPermissionCheck(setAvoidPermission);
+        config.setSftpPathFromRoot(sftpPathFromRoot);
     }
 
     /**

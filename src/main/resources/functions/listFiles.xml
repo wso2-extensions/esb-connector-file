@@ -18,8 +18,13 @@
 
 <template xmlns="http://ws.apache.org/ns/synapse" name="listFiles">
     <parameter name="directoryPath" description="The path to the directory to list files"/>
-    <parameter name="matchingPattern" description="Pattern to match when listing files"/>
+    <parameter name="matchingPattern" description="Legacy pattern to match when listing files"/>
+    <parameter name="fileFilterType" description="Type of file filtering: regex or ant"/>
+    <parameter name="includeFiles" description="Pattern for files to include in the listing"/>
+    <parameter name="excludeFiles" description="Pattern for files to exclude from the listing"/>
+    <parameter name="maxFileAge" description="Maximum age of files to include in the list"/>
     <parameter name="recursive" description="List files in sub-directories"/>
+    <parameter name="subDirectoryMaxDepth" description="Maximum depth of subdirectories to search"/>
     <parameter name="responseFormat" description="Format to list the files in response" />
     <parameter name="sortingAttribute" description="Sort files when listing" />
     <parameter name="sortingOrder" description="File sorting order"/>

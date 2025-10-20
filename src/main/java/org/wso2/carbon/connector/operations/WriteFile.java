@@ -31,10 +31,10 @@ import org.apache.axis2.util.MessageProcessorSelector;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.CountingOutputStream;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.util.InlineExpressionUtil;
@@ -84,6 +84,8 @@ public class WriteFile extends AbstractConnectorOperation {
     private static final String APPEND_NEW_LINE_PARAM = "appendNewLine";
     private static final String ENABLE_STREAMING_PARAM = "enableStreaming";
     private static final String APPEND_POSITION_PARAM = "appendPosition";
+    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
+    private static final String UPDATE_FILE_PERMISSION = "updateFilePermission";
     private static final String OPERATION_NAME = "write";
     private static final String ERROR_MESSAGE = "Error while performing file:write for file ";
 
@@ -131,10 +133,10 @@ public class WriteFile extends AbstractConnectorOperation {
 
                 targetFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetFilePath;
 
-                FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
                 FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
                 Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-                targetFile = fsManager.resolveFile(targetFilePath, fso);
+                // Use suspension-enabled file resolution for FTP/FTPS
+                targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetFilePath);
 
                 if (log.isDebugEnabled()) {
                     log.debug("Write file attempt " + attempt + " of " + maxRetries + " for file " + targetFilePath);
@@ -143,6 +145,12 @@ public class WriteFile extends AbstractConnectorOperation {
 
                 if (targetFile.isFolder()) {
                     throw new IllegalPathException("Path does not point to a file " + targetFilePath);
+                }
+
+                // Check file stability if timeBetweenSizeCheck is provided and file exists
+                if (StringUtils.isNotEmpty(config.timeBetweenSizeCheck) && targetFile.exists() && 
+                    !isFileStable(targetFile, config.timeBetweenSizeCheck)) {
+                    throw new FileOperationException("File is not stable (still being written). Cannot write at this time: " + targetFilePath);
                 }
 
                 //lock the file if enabled
@@ -156,9 +164,16 @@ public class WriteFile extends AbstractConnectorOperation {
 
                 int byteCountWritten;
 
-                byteCountWritten = (int) writeToFile(targetFile, messageContext, config);
+                byteCountWritten = (int) writeToFile(targetFile, messageContext, config, fileSystemHandlerConnection);
+                
+                // Update last modified time if requested
                 if (!targetFile.getURL().toString().startsWith(Const.FTP_PROTOCOL_PREFIX) && config.updateLastModified) {
                     targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
+                }
+                
+                // Update file permissions if requested
+                if (StringUtils.isNotEmpty(config.updateFilePermission)) {
+                    updateFilePermissions(targetFile, config.updateFilePermission);
                 }
                 result = new FileOperationResult(
                         OPERATION_NAME,
@@ -260,6 +275,8 @@ public class WriteFile extends AbstractConnectorOperation {
         config.enableStreaming = Utils.lookUpBooleanParam(msgCtx, ENABLE_STREAMING_PARAM, false);
         String appendPosition = Utils.lookUpStringParam(msgCtx, APPEND_POSITION_PARAM, String.valueOf(Integer.MAX_VALUE));
         config.appendPosition = Integer.parseInt(appendPosition);
+        config.timeBetweenSizeCheck = Utils.lookUpStringParam(msgCtx, TIME_BETWEEN_SIZE_CHECK, Const.EMPTY_STRING);
+        config.updateFilePermission = Utils.lookUpStringParam(msgCtx, UPDATE_FILE_PERMISSION, Const.EMPTY_STRING);
 
         config.fileNameWithExtension = config.targetFilePath.
                 substring(config.targetFilePath.lastIndexOf(Const.FILE_SEPARATOR) + 1);
@@ -281,6 +298,60 @@ public class WriteFile extends AbstractConnectorOperation {
         boolean enableStreaming = false;
         int appendPosition = Integer.MAX_VALUE;
         boolean updateLastModified = true;
+        String timeBetweenSizeCheck;
+        String updateFilePermission;
+    }
+
+    /**
+     * Checks if a file is stable by comparing its size over time.
+     *
+     * @param file The file to check for stability
+     * @param sizeCheckInterval Time to wait between size checks in milliseconds
+     * @return true if file size is stable, false otherwise
+     */
+    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
+        try {
+            long interval = Long.parseLong(sizeCheckInterval);
+            if (interval <= 0) {
+                return true; // No stability check if interval is 0 or negative
+            }
+            
+            long initialSize = file.getContent().getSize();
+            
+            // Wait for the specified interval
+            Thread.sleep(interval);
+            
+            // Refresh and check size again
+            file.refresh();
+            long finalSize = file.getContent().getSize();
+            
+            return initialSize == finalSize;
+        } catch (Exception e) {
+            log.warn("Error checking file stability for " + file + ": " + e.getMessage());
+            return true; // Assume stable if we can't check
+        }
+    }
+
+    /**
+     * Updates file permissions if supported by the file system.
+     *
+     * @param file The file to update permissions for
+     * @param permissionString Permission string (e.g., "755", "644")
+     */
+    private void updateFilePermissions(FileObject file, String permissionString) {
+        try {
+            // Convert permission string to octal and set permissions
+            if (permissionString.matches("\\d{3,4}")) {
+                int permissionValue = Integer.parseInt(permissionString, 8);
+                Utils.setFilePermissions(file, permissionValue);
+                log.info("Successfully set file permissions " + permissionString + " for file: " + file.getName().getBaseName());
+            } else {
+                log.warn("Invalid permission format: " + permissionString + ". Expected format: XXX (e.g., 755, 644)");
+            }
+        } catch (Exception e) {
+            log.warn("Could not set permissions " + permissionString + " on file " + file.getName().getPath() + 
+                     ". Permissions setting may not be supported on this file system.", e);
+        }
     }
 
     /**
@@ -348,7 +419,7 @@ public class WriteFile extends AbstractConnectorOperation {
      * @throws FileOperationException In case of any application error
      * @throws IllegalPathException   In case if invalid file path
      */
-    private long writeToFile(FileObject targetFile, MessageContext msgCtx, Config config)
+    private long writeToFile(FileObject targetFile, MessageContext msgCtx, Config config, FileSystemHandler fileSystemHandlerConnection)
             throws IOException, FileOperationException, IllegalPathException {
 
         long writtenBytesCount;
@@ -374,8 +445,8 @@ public class WriteFile extends AbstractConnectorOperation {
                     throw new FileOperationException("Target file already exists. Path = "
                             + targetFile.getURL());
                 } else {
-                    try (FileObject tempFile = targetFile.getFileSystem().getFileSystemManager().resolveFile(
-                            targetFile.getParent(), targetFile.getName().getBaseName() + ".tmp")) {
+                    try (FileObject tempFile = fileSystemHandlerConnection.resolveFileWithSuspension(
+                            targetFile.getParent().getName().getPath() + Const.FILE_SEPARATOR + targetFile.getName().getBaseName() + ".tmp")) {
 
                         // Create a temporary file with .tmp extension
                         tempFile.createFile();

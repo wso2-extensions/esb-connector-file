@@ -18,14 +18,14 @@
 
 package org.wso2.carbon.connector.utils;
 
-import org.apache.commons.vfs2.FileSelectInfo;
+import org.wso2.org.apache.commons.vfs2.FileSelectInfo;
 
 import java.util.regex.Pattern;
 
 /**
  * Case insensitive Java regex based file selector.
  */
-public class SimpleFileSelector implements org.apache.commons.vfs2.FileSelector {
+public class SimpleFileSelector implements org.wso2.org.apache.commons.vfs2.FileSelector {
 
     private Pattern pattern;
 

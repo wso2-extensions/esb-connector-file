@@ -46,6 +46,7 @@ public class SFTPConnectionConfig extends RemoteServerConfig {
     private String privateKeyPassword;
 
     private String setAvoidPermission;
+    private boolean sftpPathFromRoot = false;
 
     /**
      * Create a SFTPConnectionConfig
@@ -123,6 +124,16 @@ public class SFTPConnectionConfig extends RemoteServerConfig {
     public void setAvoidPermissionCheck(String setAvoidPermission) {
         if (StringUtils.isNotBlank(setAvoidPermission)) {
             this.setAvoidPermission = setAvoidPermission;
+        }
+    }
+
+    public boolean isSftpPathFromRoot() {
+        return sftpPathFromRoot;
+    }
+
+    public void setSftpPathFromRoot(String sftpPathFromRoot) {
+        if (StringUtils.isNotEmpty(sftpPathFromRoot)) {
+            this.sftpPathFromRoot = Boolean.parseBoolean(sftpPathFromRoot);
         }
     }
 }

@@ -20,10 +20,10 @@ package org.wso2.carbon.connector.operations;
 
 
 import com.google.gson.JsonObject;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.integration.connector.core.AbstractConnectorOperation;
@@ -36,6 +36,7 @@ import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
+import org.apache.commons.lang.StringUtils;
 
 import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
 
@@ -46,6 +47,7 @@ public class RenameFiles extends AbstractConnectorOperation {
 
     private static final String OVERWRITE_PARAM = "overwrite";
     private static final String RENAME_TO_PARAM = "renameTo";
+    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
     private static final String OPERATION_NAME = "renameFile";
     private static final String ERROR_MESSAGE = "Error while performing file:rename for file/folder ";
 
@@ -72,20 +74,32 @@ public class RenameFiles extends AbstractConnectorOperation {
                     lookupTemplateParamater(messageContext, OVERWRITE_PARAM));
             newName = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, RENAME_TO_PARAM);
+            String timeBetweenSizeCheck = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, TIME_BETWEEN_SIZE_CHECK);
             fileOrFolderPath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, Const.FILE_OR_DIRECTORY_PATH);
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
             fileOrFolderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + fileOrFolderPath;
-            fileToRename = fsManager.resolveFile(fileOrFolderPath, fso);
+            fileToRename = fileSystemHandlerConnection.resolveFileWithSuspension(fileOrFolderPath);
 
             //path after rename
             String newFilePath = fileOrFolderPath.substring(0, fileOrFolderPath.lastIndexOf(Const.FILE_SEPARATOR))
                     + Const.FILE_SEPARATOR + newName;
-            FileObject newFile = fsManager.resolveFile(newFilePath, fso);
+            FileObject newFile = fileSystemHandlerConnection.resolveFileWithSuspension(newFilePath);
 
             if (fileToRename.exists()) {
+
+                // Check file stability if parameter is provided
+                if (!StringUtils.isEmpty(timeBetweenSizeCheck) && fileToRename.isFile()) {
+                    if (!isFileStable(fileToRename, timeBetweenSizeCheck)) {
+                        handleError(messageContext, null, Error.OPERATION_ERROR,
+                                "File is not stable (still being written). Cannot rename at this time.",
+                                responseVariable, overwriteBody);
+                        return;
+                    }
+                }
 
                 if (fileToRename.canRenameTo(newFile)) {
 
@@ -146,6 +160,47 @@ public class RenameFiles extends AbstractConnectorOperation {
                 }
             }
 
+        }
+    }
+
+    /**
+     * Check if file is stable (not being written to) by comparing file sizes
+     * over a specified interval.
+     * 
+     * @param file File to check for stability
+     * @param sizeCheckInterval Time in milliseconds to wait between size checks
+     * @return true if file is stable, false if still being written
+     */
+    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
+        try {
+            long interval = Long.parseLong(sizeCheckInterval);
+            if (interval <= 0) {
+                return true; // No stability check if interval is 0 or negative
+            }
+            
+            long initialSize = file.getContent().getSize();
+            
+            // Wait for the specified interval
+            Thread.sleep(interval);
+            
+            // Re-read file size and compare
+            long finalSize = file.getContent().getSize();
+            
+            // File is stable if size hasn't changed
+            return initialSize == finalSize;
+            
+        } catch (NumberFormatException e) {
+            // If we can't parse the interval, assume file is stable
+            log.warn("Invalid timeBetweenSizeCheck value: " + sizeCheckInterval + ". Skipping stability check.");
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            // If interrupted, assume file is stable
+            return true;
+        } catch (Exception e) {
+            // If we can't check stability, assume file is stable
+            log.warn("Error checking file stability: " + e.getMessage() + ". Assuming file is stable.");
+            return true;
         }
     }
 

@@ -19,9 +19,9 @@ package org.wso2.carbon.connector.connection;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.integration.connector.core.pool.ConnectionFactory;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 
@@ -57,7 +57,15 @@ public class SFTPConnectionFactory implements ConnectionFactory  {
                 return fileObject.exists(); // This throws an exception if the connection is not valid
             }
         } catch (Throwable e) {
-            log.error("Error while validating the connection", e);
+            // Log connection validation failures without stack trace for common issues
+            if (e.getCause() instanceof java.net.ConnectException) {
+                log.debug("SFTP connection validation failed: Connection refused");
+            } else if (e.getMessage() != null && e.getMessage().contains("Connection refused")) {
+                log.debug("SFTP connection validation failed: " + e.getMessage());
+            } else {
+                // Only log full stack trace for unexpected errors
+                log.debug("Error while validating SFTP connection", e);
+            }
             return false;
         }
     }

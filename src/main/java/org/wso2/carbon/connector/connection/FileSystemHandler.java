@@ -20,15 +20,18 @@ package org.wso2.carbon.connector.connection;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.impl.StandardFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.impl.StandardFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.cache.DefaultFilesCache;
+import org.wso2.org.apache.commons.vfs2.cache.NullFilesCache;
 import org.wso2.integration.connector.core.connection.ConnectionConfig;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.integration.connector.core.connection.Connection;
 import org.wso2.carbon.connector.filelock.FileLockManager;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
+import org.wso2.carbon.connector.connection.FileServerProtocol;
 
 /**
  * Object that handles all file operations
@@ -43,6 +46,8 @@ public class FileSystemHandler implements Connection {
     private FileSystemManager fsManager;
     private FileSystemOptions fsOptions;
     private FileLockManager fileLockManager;
+    private VFSConnectionWrapper vfsWrapper;
+    private ConnectionConfiguration connectionConfig;
 
     /**
      * URL constructed adding file protocol,
@@ -60,8 +65,23 @@ public class FileSystemHandler implements Connection {
      */
     public FileSystemHandler(ConnectionConfiguration fsConfig) throws FileServerConnectionException {
         try {
+            this.connectionConfig = fsConfig;
 
             this.fsManager = new StandardFileSystemManager();
+
+            // Configure VFS caching at FileSystemManager level based on user preference
+            if (fsConfig.isFileCacheEnabled()) {
+                ((StandardFileSystemManager) fsManager).setFilesCache(new DefaultFilesCache());
+                if (log.isDebugEnabled()) {
+                    log.debug("VFS file caching enabled using DefaultFilesCache");
+                }
+            } else {
+                ((StandardFileSystemManager) fsManager).setFilesCache(new NullFilesCache());
+                if (log.isDebugEnabled()) {
+                    log.debug("VFS file caching disabled using NullFilesCache");
+                }
+            }
+
             ((StandardFileSystemManager) fsManager).init();
             this.fsOptions = new FileSystemOptions();
             setupFSO(fsOptions, fsConfig);
@@ -149,6 +169,55 @@ public class FileSystemHandler implements Connection {
         return fileLockManager;
     }
 
+    /**
+     * Initialize VFS connection wrapper for suspension-enabled protocols
+     *
+     * @param connectionName Name of the connection
+     */
+    public void initializeVFSWrapper(String connectionName) {
+        // Only initialize wrapper for protocols that need suspension
+        if (needsSuspensionSupport()) {
+            this.vfsWrapper = new VFSConnectionWrapper(fsManager, fsOptions, connectionConfig, connectionName);
+            if (log.isDebugEnabled()) {
+                log.debug("VFS connection wrapper initialized for connection: " + connectionName);
+            }
+        }
+    }
+
+    /**
+     * Resolve file with suspension logic (for FTP/FTPS) or direct VFS (for others)
+     *
+     * @param path File path to resolve
+     * @return FileObject
+     * @throws FileSystemException if file resolution fails
+     */
+    public org.wso2.org.apache.commons.vfs2.FileObject resolveFileWithSuspension(String path) throws FileSystemException {
+        if (vfsWrapper != null && needsSuspensionSupport()) {
+            // Custom suspension logic for FTP/FTPS (bypass WSO2 ConnectionHandler)
+            return vfsWrapper.resolveFile(path);
+        } else {
+            // Direct VFS - SFTP/SMB already have suspension via WSO2 ConnectionHandler
+            // LOCAL doesn't need suspension
+            return fsManager.resolveFile(path, fsOptions);
+        }
+    }
+
+    /**
+     * Check if current protocol needs suspension support
+     * All remote protocols benefit from suspension logic for connection failures
+     */
+    private boolean needsSuspensionSupport() {
+        // All protocols except LOCAL need suspension support
+        return connectionConfig.getProtocol() != FileServerProtocol.LOCAL;
+    }
+
+    /**
+     * Get VFS connection wrapper for monitoring
+     */
+    public VFSConnectionWrapper getVfsWrapper() {
+        return vfsWrapper;
+    }
+
     @Override
     public void connect(ConnectionConfig config) {
         throw new UnsupportedOperationException("Nothing to do when connect");
@@ -158,5 +227,12 @@ public class FileSystemHandler implements Connection {
     public void close() {
         ((StandardFileSystemManager) fsManager).close();
         fileLockManager.releaseAllLocks();
+
+        // Cleanup VFS wrapper state if exists
+        if (vfsWrapper != null) {
+            // Remove connection state to prevent memory leaks
+            VFSConnectionWrapper.removeConnectionState(vfsWrapper.getConnectionName());
+        }
     }
+
 }

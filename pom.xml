@@ -16,19 +16,19 @@
    specific language governing permissions and limitations
    under the License.
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.integration.connector</groupId>
     <artifactId>mi-connector-file</artifactId>
-    <version>5.0.4-SNAPSHOT</version>
+    <version>6.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>WSO2 Carbon - Connector For esb-connector-file</name>
     <url>http://wso2.org</url>
 
     <properties>
         <connector.name>file</connector.name>
-<!--        <commons.vfs.version>2.6.0</commons.vfs.version>-->
-        <commons.vfs.version>2.2.0-wso2v22</commons.vfs.version>
+        <commons.vfs.version>2.10.0-wso2v4</commons.vfs.version>
         <integration.base.version>1.0.2</integration.base.version>
         <product.ei.version>6.1.1</product.ei.version>
         <carbon.kernel.version>4.4.17</carbon.kernel.version>
@@ -43,7 +43,7 @@
         <bouncycastle.version>1.55</bouncycastle.version>
         <rampart.apache.version>1.6.1-wso2v18</rampart.apache.version>
         <rampart.wso2.version>1.6.1.wso2v18</rampart.wso2.version>
-        <connector.core.version>0.9.2</connector.core.version>
+        <connector.core.version>0.9.3</connector.core.version>
         <skip-tests>true</skip-tests>
         <hierynomus.smbj.version>0.11.3</hierynomus.smbj.version>
         <commons.compress.version>1.28.0</commons.compress.version>

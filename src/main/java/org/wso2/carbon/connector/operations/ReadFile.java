@@ -32,10 +32,11 @@ import org.apache.axis2.format.ManagedDataSourceFactory;
 import org.apache.axis2.transport.TransportUtils;
 import org.apache.commons.io.input.AutoCloseInputStream;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSelectInfo;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
@@ -52,12 +53,14 @@ import org.wso2.carbon.connector.exception.FileLockException;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
+import org.wso2.carbon.connector.exception.ConnectionSuspendedException;
 import org.wso2.carbon.connector.filelock.FileLockManager;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.FileReadMode;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
+import org.wso2.carbon.connector.utils.AdvancedFileFilter;
 import org.wso2.carbon.connector.utils.FileObjectDataSource;
 
 import javax.mail.internet.ContentType;
@@ -93,6 +96,12 @@ public class ReadFile extends AbstractConnectorOperation {
     private static final String END_LINE_NUM_PARAM = "endLineNum";
     private static final String LINE_NUM_PARAM = "lineNum";
     private static final String CHARSET_PARAM = "charset";
+    private static final String FILE_FILTER_TYPE = "fileFilterType";
+    private static final String INCLUDE_FILES = "includeFiles";
+    private static final String EXCLUDE_FILES = "excludeFiles";
+    private static final String MAX_FILE_AGE = "maxFileAge";
+    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
+    private static final String METADATA_OUTPUT_FORMAT = "metadataOutputFormat";
     private static final String OPERATION_NAME = "read";
     private static final String ERROR_MESSAGE = "Error while performing file:read for file/directory ";
 
@@ -138,10 +147,11 @@ public class ReadFile extends AbstractConnectorOperation {
                 String workingDirRelativePAth = config.path;
                 sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + config.path;
 
-                FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
                 FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
                 Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-                fileObject = fsManager.resolveFile(sourcePath, fso);
+
+                // Use suspension-enabled file resolution for FTP/FTPS
+                fileObject = fileSystemHandlerConnection.resolveFileWithSuspension(sourcePath);
 
                 fileLockManager = fileSystemHandlerConnection.getFileLockManager();
 
@@ -150,11 +160,21 @@ public class ReadFile extends AbstractConnectorOperation {
                 }
 
                 if (fileObject.isFolder()) {
-                    //select file to read
-                    fileObject = selectFileToRead(fileObject, config.filePattern);
+                    //select file to read with advanced filtering if provided
+                    if (StringUtils.isNotEmpty(config.fileFilterType) || StringUtils.isNotEmpty(config.includeFiles) ||
+                        StringUtils.isNotEmpty(config.excludeFiles) || StringUtils.isNotEmpty(config.maxFileAge)) {
+                        fileObject = selectFileToReadWithAdvancedFilter(fileObject, config);
+                    } else {
+                        fileObject = selectFileToRead(fileObject, config.filePattern);
+                    }
                     workingDirRelativePAth = workingDirRelativePAth + Const.FILE_SEPARATOR
                             + fileObject.getName().getBaseName();
                     sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + workingDirRelativePAth;
+                }
+
+                // Check file stability if timeBetweenSizeCheck is provided
+                if (StringUtils.isNotEmpty(config.timeBetweenSizeCheck) && !isFileStable(fileObject, config.timeBetweenSizeCheck)) {
+                    throw new FileOperationException("File is not stable (still being written). Cannot read at this time: " + sourcePath);
                 }
 
                 //lock the file if enabled
@@ -166,7 +186,7 @@ public class ReadFile extends AbstractConnectorOperation {
                     }
                 }
 
-                Map<String, Object> fileAttributes = getFileProperties(workingDirRelativePAth, fileObject);
+                Map<String, Object> fileAttributes = getFileProperties(workingDirRelativePAth, fileObject, config);
 
                 //if we need to read metadata only, no need to touch content
                 if (Objects.equals(config.readMode, FileReadMode.METADATA_ONLY)) {
@@ -196,6 +216,12 @@ public class ReadFile extends AbstractConnectorOperation {
                 String errorDetail = ERROR_MESSAGE + sourcePath;
                 handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
 
+            } catch (ConnectionSuspendedException e) {
+                // Clean logging for suspended connections - no stack trace needed
+                log.warn("Connection suspended: " + e.getMessage());
+                String errorDetail = ERROR_MESSAGE + sourcePath;
+                handleError(messageContext, e, Error.CONNECTION_ERROR, errorDetail, responseVariable, overwriteBody);
+
             } catch (FileOperationException | IOException e) { //FileSystemException also handled here
                 log.error(e);
                 Utils.closeFileSystem(fileObject);
@@ -222,7 +248,16 @@ public class ReadFile extends AbstractConnectorOperation {
 
             } catch (Exception e) {
                 String errorDetail = ERROR_MESSAGE + sourcePath;
-                log.error(errorDetail, e);
+
+                // Clean logging for connection pool errors
+                if (e.getMessage() != null && e.getMessage().contains("Could not create a validated object")) {
+                    log.warn("Connection pool validation failed: " + e.getMessage());
+                } else if (e.getCause() instanceof java.util.NoSuchElementException) {
+                    log.warn("Unable to obtain connection from pool (server may be down)");
+                } else {
+                    log.error(errorDetail, e);
+                }
+
                 Utils.closeFileSystem(fileObject);
                 if (attempt >= maxRetries - 1) {
                     handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
@@ -274,6 +309,12 @@ public class ReadFile extends AbstractConnectorOperation {
         int endLineNum;
         int lineNum;
         String charSet;
+        String fileFilterType;
+        String includeFiles;
+        String excludeFiles;
+        String maxFileAge;
+        String timeBetweenSizeCheck;
+        String metadataOutputFormat;
     }
 
     private Config readAndValidateInputs(MessageContext msgCtx) throws InvalidConfigurationException {
@@ -300,6 +341,18 @@ public class ReadFile extends AbstractConnectorOperation {
                 parseInt(Utils.lookUpStringParam(msgCtx, LINE_NUM_PARAM, "0"));
         config.charSet = Utils.
                 lookUpStringParam(msgCtx, CHARSET_PARAM, Const.EMPTY_STRING);
+        config.fileFilterType = Utils.
+                lookUpStringParam(msgCtx, FILE_FILTER_TYPE, Const.EMPTY_STRING);
+        config.includeFiles = Utils.
+                lookUpStringParam(msgCtx, INCLUDE_FILES, Const.EMPTY_STRING);
+        config.excludeFiles = Utils.
+                lookUpStringParam(msgCtx, EXCLUDE_FILES, Const.EMPTY_STRING);
+        config.maxFileAge = Utils.
+                lookUpStringParam(msgCtx, MAX_FILE_AGE, Const.EMPTY_STRING);
+        config.timeBetweenSizeCheck = Utils.
+                lookUpStringParam(msgCtx, TIME_BETWEEN_SIZE_CHECK, Const.EMPTY_STRING);
+        config.metadataOutputFormat = Utils.
+                lookUpStringParam(msgCtx, METADATA_OUTPUT_FORMAT, "default");
 
         if(config.readMode == null) {
             throw new InvalidConfigurationException("Unknown file read mode");
@@ -463,18 +516,154 @@ public class ReadFile extends AbstractConnectorOperation {
     }
 
     /**
+     * Select file to read from the directory provided using advanced filtering.
+     *
+     * @param directory directory to scan
+     * @param config    configuration containing filter parameters
+     * @return File selected
+     * @throws FileSystemException    in case of file related issue
+     * @throws FileOperationException if no file can be selected
+     */
+    private FileObject selectFileToReadWithAdvancedFilter(FileObject directory, Config config)
+            throws FileSystemException, FileOperationException {
+
+        FileObject[] children = directory.getChildren();
+
+        if (children == null || children.length == 0) {
+            throw new FileOperationException("There is no immediate files to read in the folder " + directory.getURL());
+        }
+
+        // Create advanced file filter
+        AdvancedFileFilter filter = new AdvancedFileFilter(config.fileFilterType, config.includeFiles, 
+                                                          config.excludeFiles, config.maxFileAge);
+
+        // Find first file that matches advanced filtering criteria
+        for (FileObject child : children) {
+            if (child.isFile()) {
+                // Check file stability if required
+                if (StringUtils.isNotEmpty(config.timeBetweenSizeCheck) && !isFileStable(child, config.timeBetweenSizeCheck)) {
+                    log.warn("File is not stable (still being written), skipping: " + child.getName().getBaseName());
+                    continue;
+                }
+                
+                // Apply advanced filtering
+                if (acceptFile(filter, child)) {
+                    return child;
+                }
+            }
+        }
+
+        throw new FileOperationException("No files found that match the advanced filtering criteria in folder " + directory.getURL());
+    }
+
+    /**
+     * Checks if a file is stable by comparing its size over time.
+     *
+     * @param file The file to check for stability
+     * @param sizeCheckInterval Time to wait between size checks in milliseconds
+     * @return true if file size is stable, false otherwise
+     */
+    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
+        try {
+            long interval = Long.parseLong(sizeCheckInterval);
+            if (interval <= 0) {
+                return true; // No stability check if interval is 0 or negative
+            }
+            
+            long initialSize = file.getContent().getSize();
+            
+            // Wait for the specified interval
+            Thread.sleep(interval);
+            
+            // Refresh and check size again
+            file.refresh();
+            long finalSize = file.getContent().getSize();
+            
+            return initialSize == finalSize;
+        } catch (Exception e) {
+            log.warn("Error checking file stability for " + file + ": " + e.getMessage());
+            return true; // Assume stable if we can't check
+        }
+    }
+
+    /**
+     * Helper method to check if a file object matches the advanced filter criteria.
+     *
+     * @param filter The advanced file filter
+     * @param file   The file object to check
+     * @return true if the file matches the filter criteria, false otherwise
+     */
+    private boolean acceptFile(AdvancedFileFilter filter, FileObject file) {
+        try {
+            // Create a simple FileSelectInfo wrapper for the FileObject
+            FileSelectInfo fileSelectInfo = new FileSelectInfo() {
+                @Override
+                public FileObject getFile() {
+                    return file;
+                }
+
+                @Override
+                public int getDepth() {
+                    return 0; // Not used in our filtering logic
+                }
+
+                @Override
+                public FileObject getBaseFolder() {
+                    try {
+                        return file.getParent();
+                    } catch (Exception e) {
+                        return null;
+                    }
+                }
+            };
+            
+            return filter.accept(fileSelectInfo);
+        } catch (Exception e) {
+            log.warn("Error checking file filter for " + file + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Get properties of file being read into the messageContext.
      *
      * @param filePath   Path of the file being read
      * @param file       File object being read
+     * @param config     Configuration with metadata format settings
      * @throws FileSystemException If relevant information cannot be read from file
      */
-    private Map<String, Object> getFileProperties(String filePath, FileObject file) throws FileSystemException {
+    private Map<String, Object> getFileProperties(String filePath, FileObject file, Config config) throws FileSystemException {
 
-        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
-        String lastModifiedTime = sdf.format(file.getContent().getLastModifiedTime());
         Map<String, Object> fileProperties = new HashMap<>();
-        fileProperties.put(Const.FILE_LAST_MODIFIED_TIME, lastModifiedTime);
+        
+        // Choose date format based on metadata output format
+        SimpleDateFormat sdf = null;
+        switch (config.metadataOutputFormat.toLowerCase()) {
+            case "iso8601":
+                sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+                break;
+            case "unix":
+                // For Unix timestamp, we'll store the raw long value
+                fileProperties.put(Const.FILE_LAST_MODIFIED_TIME, String.valueOf(file.getContent().getLastModifiedTime()));
+                break;
+            case "detailed":
+                sdf = new SimpleDateFormat("EEEE, MMMM dd, yyyy HH:mm:ss z");
+                break;
+            case "simple":
+                sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                break;
+            default: // "default" or unrecognized format
+                sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+                break;
+        }
+        
+        // Format last modified time if not using Unix timestamp
+        if (!config.metadataOutputFormat.equalsIgnoreCase("unix") && sdf != null) {
+            String lastModifiedTime = sdf.format(file.getContent().getLastModifiedTime());
+            fileProperties.put(Const.FILE_LAST_MODIFIED_TIME, lastModifiedTime);
+        }
+        
+        // Add basic properties
         fileProperties.put(Const.FILE_IS_DIR, String.valueOf(file.isFolder()));
         fileProperties.put(Const.FILE_PATH, filePath);
         fileProperties.put(Const.FILE_URL, file.getName().getFriendlyURI());
@@ -483,7 +672,82 @@ public class ReadFile extends AbstractConnectorOperation {
                 getBaseName().split("\\.")[0]);
         //The size of the file, in bytes
         fileProperties.put(Const.FILE_SIZE, String.valueOf(file.getContent().getSize()));
+        
+        // Add extended properties for "detailed" format
+        if (config.metadataOutputFormat.equalsIgnoreCase("detailed")) {
+            // Add file extension
+            String fileName = file.getName().getBaseName();
+            int lastDotIndex = fileName.lastIndexOf('.');
+            if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
+                fileProperties.put("fileExtension", fileName.substring(lastDotIndex + 1));
+            } else {
+                fileProperties.put("fileExtension", "");
+            }
+            
+            // Add readable file size (e.g., "1.5 MB", "256 KB")
+            long sizeInBytes = file.getContent().getSize();
+            String readableSize = getReadableFileSize(sizeInBytes);
+            fileProperties.put("fileSizeReadable", readableSize);
+            
+            // Add file permissions if available
+            try {
+                if (file.isReadable()) {
+                    fileProperties.put("isReadable", "true");
+                }
+                if (file.isWriteable()) {
+                    fileProperties.put("isWritable", "true");
+                }
+                if (file.isExecutable()) {
+                    fileProperties.put("isExecutable", "true");
+                }
+                if (file.isHidden()) {
+                    fileProperties.put("isHidden", "true");
+                }
+            } catch (Exception e) {
+                // Permissions might not be available for all file systems
+                log.debug("Could not retrieve all file permissions: " + e.getMessage());
+            }
+            
+            // Add content type
+            try {
+                String contentType = file.getContent().getContentInfo().getContentType();
+                if (contentType != null) {
+                    fileProperties.put("contentType", contentType);
+                }
+            } catch (Exception e) {
+                log.debug("Could not retrieve content type: " + e.getMessage());
+            }
+            
+            // Add parent directory
+            try {
+                FileObject parent = file.getParent();
+                if (parent != null) {
+                    fileProperties.put("parentPath", parent.getName().getPath());
+                }
+            } catch (Exception e) {
+                log.debug("Could not retrieve parent path: " + e.getMessage());
+            }
+        }
+        
         return fileProperties;
+    }
+    
+    /**
+     * Convert file size in bytes to human-readable format.
+     *
+     * @param sizeInBytes File size in bytes
+     * @return Human-readable file size string
+     */
+    private String getReadableFileSize(long sizeInBytes) {
+        if (sizeInBytes < 1024) {
+            return sizeInBytes + " B";
+        } else if (sizeInBytes < 1024 * 1024) {
+            return String.format("%.2f KB", sizeInBytes / 1024.0);
+        } else if (sizeInBytes < 1024 * 1024 * 1024) {
+            return String.format("%.2f MB", sizeInBytes / (1024.0 * 1024));
+        } else {
+            return String.format("%.2f GB", sizeInBytes / (1024.0 * 1024 * 1024));
+        }
     }
 
     /**

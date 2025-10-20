@@ -62,6 +62,17 @@
                               "required": "false",
                               "helpTip": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
                             }
+                          },
+                          {
+                            "type": "attribute",
+                            "value": {
+                              "name": "timeBetweenSizeCheck",
+                              "displayName": "Time Between Size Checks",
+                              "inputType": "stringOrExpression",
+                              "defaultValue": "",
+                              "required": "false",
+                              "helpTip": "Time to wait between file size checks to ensure file stability (e.g., '2s', '1000ms'). This prevents processing files that are still being uploaded or modified."
+                            }
                           }
                         ]
                       }

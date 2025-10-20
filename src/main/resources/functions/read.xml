@@ -20,6 +20,7 @@
     <parameter name="path" description="Path to the file or folder to read"/>
     <parameter name="filePattern" description="File pattern to match when choosing files to read"/>
     <parameter name="readMode" description="Read mode to use"/>
+    <parameter name="metadataOutputFormat" description="Format for metadata output (default, simple, detailed, iso8601, unix)"/>
     <parameter name="startLineNum" description="Read file starting from this line"/>
     <parameter name="endLineNum" description="Read file up to this line"/>
     <parameter name="lineNum" description="Specific line number to read"/>
@@ -29,6 +30,11 @@
     <parameter name="enableLock" description="Whether to lock the file when reading"/>
     <parameter name="maxRetries" description="The maximum number of retry attempts in case of a failure."/>
     <parameter name="retryDelay" description="The delay between retry attempts in milliseconds."/>
+    <parameter name="fileFilterType" description="Type of file filtering: 'ant' or 'regex'"/>
+    <parameter name="includeFiles" description="Comma-separated patterns for files to include"/>
+    <parameter name="excludeFiles" description="Comma-separated patterns for files to exclude"/>
+    <parameter name="maxFileAge" description="Maximum age of files to consider for reading (e.g., '7d', '2h', '30m')"/>
+    <parameter name="timeBetweenSizeCheck" description="Time to wait between file size checks for stability (in milliseconds)"/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>
     <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>

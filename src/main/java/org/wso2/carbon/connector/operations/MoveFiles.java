@@ -21,11 +21,11 @@ package org.wso2.carbon.connector.operations;
 import com.google.gson.JsonObject;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.FileType;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileType;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.integration.connector.core.AbstractConnectorOperation;
@@ -40,6 +40,9 @@ import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.FilePatternMatcher;
 import org.wso2.carbon.connector.utils.Utils;
+import org.wso2.carbon.connector.utils.AdvancedFileSelector;
+import org.wso2.org.apache.commons.vfs2.FileSelector;
+import org.wso2.org.apache.commons.vfs2.Selectors;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -59,6 +62,11 @@ public class MoveFiles extends AbstractConnectorOperation {
     private static final String OVERWRITE_PARAM = "overwrite";
     private static final String RENAME_TO_PARAM = "renameTo";
     private static final String FILE_PATTERN_PARAM = "filePattern";
+    private static final String FILE_FILTER_TYPE = "fileFilterType";
+    private static final String INCLUDE_FILES = "includeFiles";
+    private static final String EXCLUDE_FILES = "excludeFiles";
+    private static final String MAX_FILE_AGE = "maxFileAge";
+    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
     private static final String OPERATION_NAME = "moveFiles";
     private static final String IS_SOURCE_MOUNTED = "isSourceMounted";
     private static final String IS_TARGET_MOUNTED = "isTargetMounted";
@@ -110,6 +118,19 @@ public class MoveFiles extends AbstractConnectorOperation {
                     lookupTemplateParamater(messageContext, RENAME_TO_PARAM);
             filePattern = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, FILE_PATTERN_PARAM);
+            
+            // Read new filtering parameters
+            String fileFilterType = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, FILE_FILTER_TYPE);
+            String includeFiles = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, INCLUDE_FILES);
+            String excludeFiles = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, EXCLUDE_FILES);
+            String maxFileAge = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, MAX_FILE_AGE);
+            String timeBetweenSizeCheck = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, TIME_BETWEEN_SIZE_CHECK);
+                    
             sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourcePath;
             targetPath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetPath;
 
@@ -119,8 +140,24 @@ public class MoveFiles extends AbstractConnectorOperation {
             isTargetMounted = Boolean.parseBoolean((String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, IS_TARGET_MOUNTED));
 
-            //execute copy
-            sourceFile = fsManager.resolveFile(sourcePath, fso);
+            // Determine which selector to use based on available parameters
+            FileSelector fileSelector = null;
+            boolean useAdvancedFilter = !StringUtils.isEmpty(includeFiles) || !StringUtils.isEmpty(excludeFiles) 
+                                      || !StringUtils.isEmpty(maxFileAge) || !StringUtils.isEmpty(timeBetweenSizeCheck);
+            
+            if (useAdvancedFilter) {
+                // Use advanced selector for include/exclude/age/stability filtering
+                fileSelector = new AdvancedFileSelector(fileFilterType, includeFiles, excludeFiles, 
+                                                       maxFileAge, timeBetweenSizeCheck);
+            } else if (StringUtils.isNotEmpty(filePattern)) {
+                // Legacy pattern handling will be done in moveFolder method
+                fileSelector = null;
+            } else {
+                fileSelector = Selectors.SELECT_ALL;
+            }
+
+            //execute move
+            sourceFile = fileSystemHandlerConnection.resolveFileWithSuspension(sourcePath);
 
             if (sourceFile.exists()) {
 
@@ -137,7 +174,7 @@ public class MoveFiles extends AbstractConnectorOperation {
                                 + sourceFile.getName().getBaseName();
                     }
 
-                    FileObject targetFile = fsManager.resolveFile(targetFilePath, fso);
+                    FileObject targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetFilePath);
 
                     // Set the isMounted flag to to avoid errors in mounted volumes.
                     try {
@@ -160,7 +197,7 @@ public class MoveFiles extends AbstractConnectorOperation {
 
                 } else {
                     //in case of folder
-                    FileObject targetFile = fsManager.resolveFile(targetPath, fso);
+                    FileObject targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetPath);
 
                     if (!targetFile.exists() && !createNonExistingParents) {
                         throw new FileOperationException("Target folder does not exist and not configured to create");
@@ -173,10 +210,10 @@ public class MoveFiles extends AbstractConnectorOperation {
                             String sourceParentFolderName = sourceFile.getName().getBaseName();
                             targetPath = targetPath + Const.FILE_SEPARATOR + sourceParentFolderName;
                         }
-                        targetFile = fsManager.resolveFile(targetPath, fso);
+                        targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetPath);
                     }
 
-                    boolean success = moveFolder(sourceFile, targetFile, overwrite, filePattern, true);
+                    boolean success = moveFolder(sourceFile, targetFile, overwrite, filePattern, fileSelector, true, fileSystemHandlerConnection);
                     if (success) {
                         JsonObject resultJSON = generateOperationResult(messageContext,
                                 new FileOperationResult(OPERATION_NAME, true));
@@ -270,13 +307,15 @@ public class MoveFiles extends AbstractConnectorOperation {
      * @param srcFile                  Src directory to move
      * @param destinationFile          Destination folder
      * @param overWrite                True if to overwrite any existing file when moving
-     * @param filePattern              The pattern (regex) of the files to be moved
+     * @param filePattern              The pattern (regex) of the files to be moved (legacy)
+     * @param fileSelector             Advanced file selector for filtering
      * @param isSuccessful             Flag to keep track of something goes wrong while moving a file.
      * @return True if operation is performed fine
      * @throws FileSystemException In case of I/O error
      */
     private boolean moveFolder(FileObject srcFile, FileObject destinationFile, boolean overWrite,
-                               String filePattern, boolean isSuccessful) throws FileSystemException {
+                               String filePattern, FileSelector fileSelector, boolean isSuccessful,
+                               FileSystemHandler fileSystemHandlerConnection) throws FileSystemException {
 
         if (destinationFile.exists()) {
             if (!overWrite) {
@@ -304,17 +343,23 @@ public class MoveFiles extends AbstractConnectorOperation {
             }
         }
 
-        if (StringUtils.isNotEmpty(filePattern)) {
+        if (fileSelector != null) {
+            // Use advanced file selector or SELECT_ALL
+            destinationFile.copyFrom(srcFile, fileSelector);
+            // Delete source after successful copy (completing the move operation)
+            srcFile.deleteAll();
+        } else if (StringUtils.isNotEmpty(filePattern)) {
+            // Legacy pattern handling
             FileObject[] children = srcFile.getChildren();
             for (FileObject child : children) {
                 boolean result;
                 if (child.getType() == FileType.FILE) {
-                    result = moveFileWithPattern(child, destinationFile, filePattern);
+                    result = moveFileWithPattern(child, destinationFile, filePattern, fileSystemHandlerConnection);
                 } else if (child.getType() == FileType.FOLDER) {
                     String newDestination = destinationFile.getPublicURIString() + Const.FILE_SEPARATOR
                             + child.getName().getBaseName();
-                    result = moveFolder(child, fsManager.resolveFile(newDestination, fso),
-                            overWrite, filePattern, isSuccessful);
+                    result = moveFolder(child, fileSystemHandlerConnection.resolveFileWithSuspension(newDestination),
+                            overWrite, filePattern, fileSelector, isSuccessful, fileSystemHandlerConnection);
                 } else {
                     log.error("Could not move the file: " + child.getName() + "Unsupported file type: "
                             + child.getType() + " for move operation.");
@@ -328,6 +373,7 @@ public class MoveFiles extends AbstractConnectorOperation {
                 }
             }
         } else {
+            // Simple move without filtering
             srcFile.moveTo(destinationFile);
         }
         return isSuccessful;
@@ -339,7 +385,8 @@ public class MoveFiles extends AbstractConnectorOperation {
      * @param filePattern Pattern of the file
      * @return True if operation is performed fine
      */
-    private boolean moveFileWithPattern(FileObject remoteFile, FileObject target, String filePattern) {
+    private boolean moveFileWithPattern(FileObject remoteFile, FileObject target, String filePattern,
+                                        FileSystemHandler fileSystemHandlerConnection) {
         FilePatternMatcher patternMatcher = new FilePatternMatcher(filePattern);
         try {
             if (patternMatcher.validate(remoteFile.getName().getBaseName())) {
@@ -347,7 +394,7 @@ public class MoveFiles extends AbstractConnectorOperation {
                     target.createFolder();
                 }
                 String newTarget = target + Const.FILE_SEPARATOR + remoteFile.getName().getBaseName();
-                remoteFile.moveTo(fsManager.resolveFile(newTarget, fso));
+                remoteFile.moveTo(fileSystemHandlerConnection.resolveFileWithSuspension(newTarget));
             }
         } catch (IOException e) {
             log.error("Error occurred while moving a file. " + e.getMessage(), e);

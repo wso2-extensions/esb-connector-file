@@ -25,10 +25,10 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.integration.connector.core.AbstractConnectorOperation;
@@ -41,6 +41,7 @@ import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
+import org.apache.commons.lang.StringUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -59,6 +60,7 @@ public class UnzipFile extends AbstractConnectorOperation {
 
     private static final String SOURCE_FILE_PATH_PARAM = "sourceFilePath";
     private static final String TARGET_DIRECTORY_PARAM = "targetDirectory";
+    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
     private static final String OPERATION_NAME = "unzipFile";
     private static final String FILE_NAME_ENCODING = "fileNameEncoding";
     private static final String DEFAULT_ENCODING = StandardCharsets.UTF_8.name();
@@ -89,17 +91,18 @@ public class UnzipFile extends AbstractConnectorOperation {
                     lookupTemplateParamater(messageContext, TARGET_DIRECTORY_PARAM);
             fileNameEncoding = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, FILE_NAME_ENCODING);
+            String timeBetweenSizeCheck = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, TIME_BETWEEN_SIZE_CHECK);
 
             fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
             filePath = fileSystemHandlerConnection.getBaseDirectoryPath() + filePath;
             folderPathToExtract = fileSystemHandlerConnection.getBaseDirectoryPath() + folderPathToExtract;
 
-            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-            compressedFile = fsManager.resolveFile(filePath, fso);
-            targetFolder = fsManager.resolveFile(folderPathToExtract, fso);
+            compressedFile = fileSystemHandlerConnection.resolveFileWithSuspension(filePath);
+            targetFolder = fileSystemHandlerConnection.resolveFileWithSuspension(folderPathToExtract);
 
             //execute validations
 
@@ -116,7 +119,17 @@ public class UnzipFile extends AbstractConnectorOperation {
             }
             validatedFileNameEncoding = validateEncoding(fileNameEncoding);
 
-            executeDecompression(compressedFile, folderPathToExtract, fsManager, fso, validatedFileNameEncoding);
+            // Check file stability if parameter is provided
+            if (!StringUtils.isEmpty(timeBetweenSizeCheck) && compressedFile.isFile()) {
+                if (!isFileStable(compressedFile, timeBetweenSizeCheck)) {
+                    handleError(messageContext, new IllegalPathException("File is not stable (still being written). Cannot unzip at this time."),
+                            Error.OPERATION_ERROR, "File is not stable (still being written). Cannot unzip at this time.",
+                            responseVariable, overwriteBody);
+                    return;
+                }
+            }
+
+            executeDecompression(compressedFile, folderPathToExtract, validatedFileNameEncoding, fileSystemHandlerConnection);
 
             JsonObject resultJSON = generateOperationResult(messageContext,
                     new FileOperationResult(OPERATION_NAME, true));
@@ -163,15 +176,14 @@ public class UnzipFile extends AbstractConnectorOperation {
      */
     private void executeDecompression(FileObject sourceFile,
                                       String folderPathToExtract,
-                                      FileSystemManager fsManager,
-                                      FileSystemOptions fso,
-                                      String fileNameEncoding) throws IOException {
+                                      String fileNameEncoding,
+                                      FileSystemHandler fileSystemHandlerConnection) throws IOException {
         //execute decompression
         String fileExtension = sourceFile.getName().getExtension();
         if (fileExtension.equals("gz")) {
-            FileObject target = fsManager.resolveFile(folderPathToExtract + Const.FILE_SEPARATOR
+            FileObject target = fileSystemHandlerConnection.resolveFileWithSuspension(folderPathToExtract + Const.FILE_SEPARATOR
                     + sourceFile.getName().getBaseName()
-                    .replace("." + sourceFile.getName().getExtension(), ""), fso);
+                    .replace("." + sourceFile.getName().getExtension(), ""));
             extractGzip(sourceFile, target);
             return;
         }
@@ -181,7 +193,7 @@ public class UnzipFile extends AbstractConnectorOperation {
             ZipArchiveEntry entry;
             while ((entry = zipIn.getNextZipEntry()) != null) {
                 String zipEntryPath = folderPathToExtract + Const.FILE_SEPARATOR + entry.getName();
-                FileObject zipEntryTargetFile = fsManager.resolveFile(zipEntryPath, fso);
+                FileObject zipEntryTargetFile = fileSystemHandlerConnection.resolveFileWithSuspension(zipEntryPath);
                 if (!entry.isDirectory()) {
                     // if the entry is a file, extracts it
                     extractFile(zipIn, zipEntryTargetFile);
@@ -243,6 +255,47 @@ public class UnzipFile extends AbstractConnectorOperation {
                 }
             }
             zipEntryTargetFile.close();
+        }
+    }
+
+    /**
+     * Check if file is stable (not being written to) by comparing file sizes
+     * over a specified interval.
+     * 
+     * @param file File to check for stability
+     * @param sizeCheckInterval Time in milliseconds to wait between size checks
+     * @return true if file is stable, false if still being written
+     */
+    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
+        try {
+            long interval = Long.parseLong(sizeCheckInterval);
+            if (interval <= 0) {
+                return true; // No stability check if interval is 0 or negative
+            }
+            
+            long initialSize = file.getContent().getSize();
+            
+            // Wait for the specified interval
+            Thread.sleep(interval);
+            
+            // Re-read file size and compare
+            long finalSize = file.getContent().getSize();
+            
+            // File is stable if size hasn't changed
+            return initialSize == finalSize;
+            
+        } catch (NumberFormatException e) {
+            // If we can't parse the interval, assume file is stable
+            log.warn("Invalid timeBetweenSizeCheck value: " + sizeCheckInterval + ". Skipping stability check.");
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            // If interrupted, assume file is stable
+            return true;
+        } catch (Exception e) {
+            // If we can't check stability, assume file is stable
+            log.warn("Error checking file stability: " + e.getMessage() + ". Assuming file is stable.");
+            return true;
         }
     }
 

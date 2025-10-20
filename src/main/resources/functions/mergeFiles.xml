@@ -20,6 +20,11 @@
     <parameter name="sourceDirectoryPath" description="Path to the source folder containing files to be merged."/>
     <parameter name="targetFilePath" description="Path to create merged file."/>
     <parameter name="filePattern" description="Pattern of files include in merging."/>
+    <parameter name="fileFilterType" description="Type of pattern matching: 'ant' for Ant-style patterns or 'regex' for regular expressions."/>
+    <parameter name="includeFiles" description="Comma-separated patterns for files to include."/>
+    <parameter name="excludeFiles" description="Comma-separated patterns for files to exclude."/>
+    <parameter name="maxFileAge" description="Maximum age of files to merge (e.g., '2h', '30m', '1d')."/>
+    <parameter name="timeBetweenSizeCheck" description="Time in milliseconds to wait between size checks for file stability verification."/>
     <parameter name="writeMode" description="Whether to append or over write if file exists"/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>

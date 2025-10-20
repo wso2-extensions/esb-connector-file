@@ -21,10 +21,10 @@ package org.wso2.carbon.connector.operations;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.integration.connector.core.AbstractConnectorOperation;
@@ -53,6 +53,7 @@ public class ExploreZipFile extends AbstractConnectorOperation {
 
     private static final String ZIP_FILE_PATH = "zipFilePath";
     private static final String ZIP_FILE_CONTENT_ELE = "zipFileContent";
+    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
     private static final String OPERATION_NAME = "exploreZipFile";
     private static final String ERROR_MESSAGE = "Error while performing file:exploreZipFile for file ";
 
@@ -74,6 +75,9 @@ public class ExploreZipFile extends AbstractConnectorOperation {
 
             filePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, ZIP_FILE_PATH);
+            
+            String timeBetweenSizeCheckStr = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, TIME_BETWEEN_SIZE_CHECK);
 
             if (StringUtils.isEmpty(filePath)) {
                 throw new InvalidConfigurationException("Parameter '" + ZIP_FILE_PATH + "' is not provided ");
@@ -86,10 +90,15 @@ public class ExploreZipFile extends AbstractConnectorOperation {
             FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
             FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
             Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-            zipFile = fsManager.resolveFile(filePath, fso);
+            zipFile = fileSystemHandlerConnection.resolveFileWithSuspension(filePath);
 
             if (!zipFile.exists()) {
                 throw new IllegalPathException("Zip file not found at path " + filePath);
+            }
+
+            // Check file stability if timeBetweenSizeCheck is provided
+            if (StringUtils.isNotEmpty(timeBetweenSizeCheckStr) && !isFileStable(zipFile, timeBetweenSizeCheckStr)) {
+                throw new ConnectException("Zip file is still being modified. Cannot explore: " + filePath);
             }
 
             JsonArray zipFileContentEle = new JsonArray();
@@ -148,6 +157,36 @@ public class ExploreZipFile extends AbstractConnectorOperation {
                     handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
                 }
             }
+        }
+    }
+
+    /**
+     * Checks if a file is stable by comparing its size over time.
+     *
+     * @param file The file to check for stability
+     * @param timeBetweenSizeCheckStr Time to wait between size checks (e.g., "2s", "1000ms")
+     * @return true if file size is stable, false otherwise
+     */
+    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
+        try {
+            long interval = Long.parseLong(sizeCheckInterval);
+            if (interval <= 0) {
+                return true; // No stability check if interval is 0 or negative
+            }
+            
+            long initialSize = file.getContent().getSize();
+            
+            // Wait for the specified interval
+            Thread.sleep(interval);
+            
+            // Refresh and check size again
+            file.refresh();
+            long finalSize = file.getContent().getSize();
+            
+            return initialSize == finalSize;
+        } catch (Exception e) {
+            log.warn("Error checking file stability for " + file + ": " + e.getMessage());
+            return true; // Assume stable if we can't check
         }
     }
 

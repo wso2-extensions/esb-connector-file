@@ -48,11 +48,56 @@
                                     "type": "attribute",
                                     "value": {
                                         "name": "matchingPattern",
-                                        "displayName": "Matching Pattern",
+                                        "displayName": "Matching Pattern (Legacy)",
                                         "inputType": "stringOrExpression",
                                         "defaultValue": "",
                                         "required": "false",
-                                        "helpTip": "File pattern to match when listing"
+                                        "helpTip": "Legacy file pattern to match when listing (use Include Files for new implementations)"
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "fileFilterType",
+                                        "displayName": "File Filter Type",
+                                        "inputType": "comboOrExpression",
+                                        "comboValues": ["regex", "ant"],
+                                        "defaultValue": "regex",
+                                        "required": "false",
+                                        "helpTip": "Type of file filtering: 'regex' for regular expressions or 'ant' for Ant-style patterns"
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "includeFiles",
+                                        "displayName": "Include Files",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Pattern for files to include. Ant style: '*.txt,*.csv' or Regex: '.*\\.(txt|csv)'"
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "excludeFiles",
+                                        "displayName": "Exclude Files",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Pattern for files to exclude. Ant style: '*.xml,*.log' or Regex: '.*\\.(xml|log)'"
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "maxFileAge",
+                                        "displayName": "Max File Age",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Maximum age of files to include (e.g., '7d', '2h', '30m', '60s'). Supports units: s (seconds), m (minutes), h (hours), d (days)."
                                     }
                                 },
                                 {
@@ -64,6 +109,17 @@
                                         "defaultValue": "false",
                                         "required": "false",
                                         "helpTip": "List files in sub-directories"
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "subDirectoryMaxDepth",
+                                        "displayName": "Sub-Directory Max Depth",
+                                        "inputType": "integerOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Maximum depth of subdirectories to search when recursive is enabled. Leave empty for unlimited depth."
                                     }
                                 },
                                 {

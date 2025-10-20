@@ -20,12 +20,12 @@ package org.wso2.carbon.connector.operations;
 
 import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.vfs2.FileFilter;
-import org.apache.commons.vfs2.FileFilterSelector;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileFilter;
+import org.wso2.org.apache.commons.vfs2.FileFilterSelector;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.integration.connector.core.AbstractConnectorOperation;
@@ -38,6 +38,7 @@ import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.SimpleFileFiler;
+import org.wso2.carbon.connector.utils.AdvancedFileFilter;
 
 import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
 
@@ -47,6 +48,10 @@ import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
 public class DeleteFileOrFolder extends AbstractConnectorOperation {
 
     private static final String MATCHING_PATTERN_PARAM = "matchingPattern";
+    private static final String FILE_FILTER_TYPE = "fileFilterType";
+    private static final String INCLUDE_FILES = "includeFiles";
+    private static final String EXCLUDE_FILES = "excludeFiles";
+    private static final String MAX_FILE_AGE = "maxFileAge";
     private static final String NUM_OF_DELETED_FILES_ELE = "numOfDeletedFiles";
     private static final String OPERATION_NAME = "deleteFile";
     private static final String ERROR_MESSAGE = "Error while performing file:delete for file/folder ";
@@ -90,13 +95,24 @@ public class DeleteFileOrFolder extends AbstractConnectorOperation {
                         .getConnection(Const.CONNECTOR_NAME, connectionName);
                 fileMatchingPattern = (String) ConnectorUtils.
                         lookupTemplateParamater(messageContext, MATCHING_PATTERN_PARAM);
+                
+                // Read new filtering parameters
+                String fileFilterType = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, FILE_FILTER_TYPE);
+                String includeFiles = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, INCLUDE_FILES);
+                String excludeFiles = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, EXCLUDE_FILES);
+                String maxFileAge = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, MAX_FILE_AGE);
+                        
                 fileOrFolderPath = (String) ConnectorUtils.
                         lookupTemplateParamater(messageContext, Const.FILE_OR_DIRECTORY_PATH);
                 FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
                 FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
                 Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
                 fileOrFolderPath = fileSystemHandlerConnection.getBaseDirectoryPath() + fileOrFolderPath;
-                fileObjectToDelete = fsManager.resolveFile(fileOrFolderPath, fso);
+                fileObjectToDelete = fileSystemHandlerConnection.resolveFileWithSuspension(fileOrFolderPath);
 
                 if (log.isDebugEnabled()) {
                     log.debug("Delete file/folder attempt " + attempt + " of " + maxRetries + " for file/folder "
@@ -113,8 +129,19 @@ public class DeleteFileOrFolder extends AbstractConnectorOperation {
 
                 if (fileObjectToDelete.isFolder()) {
                     int numberOfDeletedFiles;
-                    if (StringUtils.isNotEmpty(fileMatchingPattern)) {
-                        FileFilter fileFilter = new SimpleFileFiler(fileMatchingPattern);
+                    
+                    // Determine which filter to use based on available parameters
+                    FileFilter fileFilter = null;
+                    boolean useAdvancedFilter = !StringUtils.isEmpty(includeFiles) || !StringUtils.isEmpty(excludeFiles) || !StringUtils.isEmpty(maxFileAge);
+                    
+                    if (useAdvancedFilter) {
+                        // Use new advanced filter for include/exclude/age filtering
+                        fileFilter = new AdvancedFileFilter(fileFilterType, includeFiles, excludeFiles, maxFileAge);
+                        FileFilterSelector fileFilterSelector = new FileFilterSelector(fileFilter);
+                        numberOfDeletedFiles = fileObjectToDelete.delete(fileFilterSelector);
+                    } else if (StringUtils.isNotEmpty(fileMatchingPattern)) {
+                        // Use legacy simple filter for backward compatibility
+                        fileFilter = new SimpleFileFiler(fileMatchingPattern);
                         FileFilterSelector fileFilterSelector = new FileFilterSelector(fileFilter);
                         /*
                          * Deletes all descendants of this file that

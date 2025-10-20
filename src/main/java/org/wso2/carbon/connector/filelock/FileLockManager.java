@@ -20,7 +20,7 @@ package org.wso2.carbon.connector.filelock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 
 /**

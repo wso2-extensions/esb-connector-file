@@ -58,6 +58,17 @@
                                 {
                                     "type": "attribute",
                                     "value": {
+                                        "name": "timeBetweenSizeCheck",
+                                        "displayName": "Time Between Size Check",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Time in milliseconds to wait between size checks for file stability verification. Ensures files are not actively being written before renaming."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
                                         "name": "overwrite",
                                         "displayName": "Overwrite Existing Files",
                                         "inputType": "booleanOrExpression",

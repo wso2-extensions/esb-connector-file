@@ -21,12 +21,12 @@ package org.wso2.carbon.connector.operations;
 import com.google.gson.JsonObject;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSelector;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.Selectors;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSelector;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.Selectors;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.integration.connector.core.AbstractConnectorOperation;
@@ -41,6 +41,7 @@ import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.SimpleFileSelector;
+import org.wso2.carbon.connector.utils.AdvancedFileSelector;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -55,6 +56,11 @@ public class CopyFiles extends AbstractConnectorOperation {
     private static final String SOURCE_PATH = "sourcePath";
     private static final String TARGET_PATH = "targetPath";
     private static final String SOURCE_FILE_PATTERN_PARAM = "sourceFilePattern";
+    private static final String FILE_FILTER_TYPE = "fileFilterType";
+    private static final String INCLUDE_FILES = "includeFiles";
+    private static final String EXCLUDE_FILES = "excludeFiles";
+    private static final String MAX_FILE_AGE = "maxFileAge";
+    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
     private static final String INCLUDE_PARENT_PARAM = "includeParent";
     private static final String OVERWRITE_PARAM = "overwrite";
     private static final String RENAME_TO_PARAM = "renameTo";
@@ -113,6 +119,19 @@ public class CopyFiles extends AbstractConnectorOperation {
                         lookupTemplateParamater(messageContext, TARGET_PATH);
                 sourceFilePattern = (String) ConnectorUtils.
                         lookupTemplateParamater(messageContext, SOURCE_FILE_PATTERN_PARAM);
+                
+                // Read new filtering parameters
+                String fileFilterType = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, FILE_FILTER_TYPE);
+                String includeFiles = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, INCLUDE_FILES);
+                String excludeFiles = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, EXCLUDE_FILES);
+                String maxFileAge = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, MAX_FILE_AGE);
+                String timeBetweenSizeCheck = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, TIME_BETWEEN_SIZE_CHECK);
+                        
                 includeParent = Boolean.parseBoolean((String) ConnectorUtils.
                         lookupTemplateParamater(messageContext, INCLUDE_PARENT_PARAM));
                 overwrite = Boolean.parseBoolean((String) ConnectorUtils.
@@ -126,14 +145,24 @@ public class CopyFiles extends AbstractConnectorOperation {
                 if (log.isDebugEnabled()) {
                     log.debug("Copying file/folder from " + sourcePath + " to " + targetPath);
                 }
-                if (StringUtils.isNotEmpty(sourceFilePattern)) {
+                
+                // Determine which selector to use based on available parameters
+                boolean useAdvancedFilter = !StringUtils.isEmpty(includeFiles) || !StringUtils.isEmpty(excludeFiles) 
+                                          || !StringUtils.isEmpty(maxFileAge) || !StringUtils.isEmpty(timeBetweenSizeCheck);
+                
+                if (useAdvancedFilter) {
+                    // Use new advanced selector for include/exclude/age/stability filtering
+                    fileSelector = new AdvancedFileSelector(fileFilterType, includeFiles, excludeFiles, 
+                                                           maxFileAge, timeBetweenSizeCheck);
+                } else if (StringUtils.isNotEmpty(sourceFilePattern)) {
+                    // Use legacy simple selector for backward compatibility
                     fileSelector = new SimpleFileSelector(sourceFilePattern);
                 } else {
                     fileSelector = Selectors.SELECT_ALL;
                 }
 
                 //execute copy
-                sourceFile = fsManager.resolveFile(sourcePath, fso);
+                sourceFile = fileSystemHandlerConnection.resolveFileWithSuspension(sourcePath);
                 if (sourceFile.exists()) {
 
                     if (sourceFile.isFile()) {
@@ -149,7 +178,7 @@ public class CopyFiles extends AbstractConnectorOperation {
                                     + sourceFile.getName().getBaseName();
                         }
 
-                        FileObject targetFile = fsManager.resolveFile(targetFilePath, fso);
+                        FileObject targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetFilePath);
                         boolean success = copyFile(sourceFile, fileSelector, targetFile, overwrite);
                         FileOperationResult result;
                         if (success) {
@@ -173,7 +202,7 @@ public class CopyFiles extends AbstractConnectorOperation {
                             }
                         }
 
-                        FileObject targetFile = fsManager.resolveFile(targetPath, fso);
+                        FileObject targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetPath);
 
                         boolean success = copyFolder(sourceFile, fileSelector, targetFile, overwrite);
                         if (success) {
