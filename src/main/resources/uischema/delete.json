@@ -97,7 +97,7 @@
                                         "inputType": "stringOrExpression",
                                         "defaultValue": "",
                                         "required": "false",
-                                        "helpTip": "Maximum age of files to include in deletion. Format: number with optional suffix (d=days, h=hours, m=minutes) e.g., '7d', '24h', '30m'"
+                                        "helpTip": "Maximum age of files to include in deletion (e.g., '7d', '2h', '30m', '60s'). Supports units: s (seconds), m (minutes), h (hours), d (days)."
                                     }
                                 },
                                 {

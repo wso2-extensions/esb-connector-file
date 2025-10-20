@@ -79,7 +79,8 @@
                             "value": {
                               "name": "fileFilterType",
                               "displayName": "File Filter Type",
-                              "inputType": "stringOrExpression",
+                              "inputType": "comboOrExpression",
+                              "comboValues": ["ant", "regex"],
                               "defaultValue": "ant",
                               "required": "false",
                               "helpTip": "Type of file filtering pattern: 'ant' for Ant-style patterns or 'regex' for regular expressions"
@@ -115,7 +116,7 @@
                               "inputType": "stringOrExpression",
                               "defaultValue": "",
                               "required": "false",
-                              "helpTip": "Maximum age of files to include (e.g., '7d', '2h', '30m'). Files older than this will be excluded."
+                              "helpTip": "Maximum age of files to include (e.g., '7d', '2h', '30m', '60s'). Files older than this will be excluded. Supports units: s (seconds), m (minutes), h (hours), d (days)."
                             }
                           },
                           {

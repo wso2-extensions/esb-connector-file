@@ -60,10 +60,20 @@
                                     "value": {
                                         "name": "permissions",
                                         "displayName": "Permissions",
-                                        "inputType": "stringOrExpression",
-                                        "defaultValue": "",
+                                        "inputType": "comboOrExpression",
+                                        "comboValues": [
+                                            "700",
+                                            "755",
+                                            "750",
+                                            "644",
+                                            "640",
+                                            "600",
+                                            "777",
+                                            "770"
+                                        ],
+                                        "defaultValue": "755",
                                         "required": "false",
-                                        "helpTip": "Permissions to set on the new directory in octal format (e.g., 755, 644). Mainly supported for local file systems."
+                                        "helpTip": "Permissions to set on the new directory in octal format. Common values: 700 (Read/Write/Execute - Owner Only), 755 (Read/Write/Execute - Owner, Read/Execute - Others), 750 (Read/Write/Execute - Owner, Read/Execute - Group), 644 (Read/Write - Owner, Read Only - Others). Mainly supported for local file systems."
                                     }
                                 }
                             ]

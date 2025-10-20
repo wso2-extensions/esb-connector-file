@@ -47,13 +47,15 @@ public class AdvancedFileFilter implements FileFilter {
         // Parse max file age if provided
         if (!StringUtils.isEmpty(maxFileAge)) {
             try {
-                // Assume maxFileAge is in milliseconds, but support time units
+                // Support time units: d (days), h (hours), m (minutes), s (seconds)
                 if (maxFileAge.toLowerCase().endsWith("d")) {
                     this.maxFileAgeMillis = TimeUnit.DAYS.toMillis(Long.parseLong(maxFileAge.substring(0, maxFileAge.length() - 1)));
                 } else if (maxFileAge.toLowerCase().endsWith("h")) {
                     this.maxFileAgeMillis = TimeUnit.HOURS.toMillis(Long.parseLong(maxFileAge.substring(0, maxFileAge.length() - 1)));
                 } else if (maxFileAge.toLowerCase().endsWith("m")) {
                     this.maxFileAgeMillis = TimeUnit.MINUTES.toMillis(Long.parseLong(maxFileAge.substring(0, maxFileAge.length() - 1)));
+                } else if (maxFileAge.toLowerCase().endsWith("s")) {
+                    this.maxFileAgeMillis = TimeUnit.SECONDS.toMillis(Long.parseLong(maxFileAge.substring(0, maxFileAge.length() - 1)));
                 } else {
                     this.maxFileAgeMillis = Long.parseLong(maxFileAge);
                 }
