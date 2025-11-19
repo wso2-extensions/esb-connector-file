@@ -147,7 +147,7 @@
                   "type": "attribute",
                   "value": {
                     "name": "appendFileAttributes",
-                    "displayName": "Append File Attributes to the Response",
+                    "displayName": "Append file attributes to the response",
                     "inputType": "booleanOrExpression",
                     "defaultValue": "false",
                     "required": "false",
