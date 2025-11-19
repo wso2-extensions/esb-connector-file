@@ -78,6 +78,10 @@ public final class Const {
     public static final String FILE_SEPARATOR = "/";
 
     public static final String FILE_ELEMENT = "file";
+    public static final String LAST_MODIFIED_TIME_ELEMENT = "lastModifiedTime";
+    public static final String SIZE_ELEMENT = "size";
+    public static final String CONTENT_TYPE_ELEMENT = "contentType";
+    public static final String CONTENT_ENCODING_ELEMENT = "contentEncoding";
     public static final String STATUS_CODE = "HTTP_SC";
     public static final Object HTTP_STATUS_500 = "500";
     public static final int UNZIP_BUFFER_SIZE = 4096;
