@@ -26,6 +26,7 @@
     <parameter name="maxRetries" description="The maximum number of retry attempts in case of a failure."/>
     <parameter name="retryDelay" description="The delay between retry attempts in milliseconds."/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
+    <parameter name="appendFileAttributes" description="Add file attributes in the response"/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.ListFiles" />
     </sequence>

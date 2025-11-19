@@ -18,9 +18,10 @@
 
 package org.wso2.carbon.connector.operations;
 
-import org.apache.axiom.om.OMAttribute;
 import org.apache.axiom.om.OMElement;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.vfs2.FileContent;
+import org.apache.commons.vfs2.FileContentInfo;
 import org.apache.commons.vfs2.FileFilter;
 import org.apache.commons.vfs2.FileFilterSelector;
 import org.apache.commons.vfs2.FileName;
@@ -74,6 +75,7 @@ public class ListFiles extends AbstractConnector {
 
     private static final String OPERATION_NAME = "listFiles";
     private static final String ERROR_MESSAGE = "Error while performing file:listFiles for folder ";
+    private static final String APPEND_ATTRIBUTES = "appendFileAttributes";
 
     @Override
     public void connect(MessageContext messageContext) throws ConnectException {
@@ -83,6 +85,7 @@ public class ListFiles extends AbstractConnector {
         String responseFormat;
         boolean recursive;
         FileObject folder = null;
+        boolean appendFileAttributes = false;
 
         FileSystemHandler fileSystemHandlerConnection = null;
         ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
@@ -131,6 +134,10 @@ public class ListFiles extends AbstractConnector {
                         lookupTemplateParamater(messageContext, RECURSIVE_PARAM);
                 recursive = Boolean.parseBoolean(recursiveStr);
 
+                String appendFileAttributesStr = (String) ConnectorUtils.
+                        lookupTemplateParamater(messageContext, APPEND_ATTRIBUTES);
+                appendFileAttributes = Boolean.parseBoolean(appendFileAttributesStr);
+
                 String sortingAttribute = Utils.lookUpStringParam(messageContext, SORT_ATTRIB_PARAM, DEFAULT_SORT_ATTRIB);
                 String sortingOrder = Utils.lookUpStringParam(messageContext, SORT_ORDER_PARAM, DEFAULT_SORT_ORDER);
 
@@ -142,7 +149,8 @@ public class ListFiles extends AbstractConnector {
                     if (folder.isFolder()) {
                         //Added debug logs to track the flow and identify bottlenecks
                         OMElement fileListEle = listFilesInFolder(folder, fileMatchingPattern,
-                                recursive, responseFormat, sortingAttribute, sortingOrder);
+                            recursive, responseFormat, sortingAttribute, sortingOrder,
+                            appendFileAttributes);
                         log.debug(Const.CONNECTOR_NAME + ": " + OPERATION_NAME + " operation completed.");
                         FileOperationResult result = new FileOperationResult(
                                 OPERATION_NAME,
@@ -219,19 +227,22 @@ public class ListFiles extends AbstractConnector {
      * @param responseFormat   OMElement returned is formatted depending on this
      * @param sortingAttribute Attribute to use for file sorting
      * @param sortOrder        Sorting order to use
+     * @param appendFileAttributes true, if append file attributes to the response
      * @return OMElement with organized listing
      * @throws FileSystemException           In case of reading the directory
      * @throws InvalidConfigurationException In case issue of config issue
      */
     private OMElement listFilesInFolder(FileObject folder, String pattern, boolean recursive,
-                                        String responseFormat, String sortingAttribute, String sortOrder)
-            throws FileSystemException, InvalidConfigurationException {
-
+        String responseFormat, String sortingAttribute,
+        String sortOrder, boolean appendFileAttributes)
+        throws FileSystemException, InvalidConfigurationException {
         if (responseFormat.equals(HIERARCHICAL_FORMAT)) {
-            return listFilesInHierarchicalFormat(folder, pattern, recursive, sortingAttribute, sortOrder);
+            return listFilesInHierarchicalFormat(folder, pattern, recursive, sortingAttribute,
+                sortOrder, appendFileAttributes);
         } else if (responseFormat.equals(FLAT_FORMAT)) {
             OMElement filesEle = Utils.createOMElement(FILES_ELE_NAME, null);
-            listFilesInFlatFormat(folder, pattern, recursive, sortingAttribute, sortOrder, filesEle);
+            listFilesInFlatFormat(folder, pattern, recursive, sortingAttribute, sortOrder, filesEle,
+                appendFileAttributes);
             return filesEle;
         } else {
             throw new InvalidConfigurationException("Unknown responseFormat found " + responseFormat);
@@ -248,12 +259,13 @@ public class ListFiles extends AbstractConnector {
      * @param recursive        true, if to look into subdirectories
      * @param sortingAttribute Attribute to use for file sorting
      * @param sortOrder        Sorting order to use
+     * @param appendFileAttributes true, if append file attributes to the response
      * @return OMElement with organized listing
      * @throws FileSystemException In case of issue reading the directory
      */
     private OMElement listFilesInHierarchicalFormat(FileObject folder, String pattern,
-                                                    boolean recursive, String sortingAttribute,
-                                                    String sortOrder) throws FileSystemException {
+        boolean recursive, String sortingAttribute, String sortOrder,
+        boolean appendFileAttributes) throws FileSystemException {
 
         String containingFolderName = folder.getName().getBaseName();
         OMElement folderEle = Utils.createOMElement(DIRECTORY_ELE_NAME, null);
@@ -263,13 +275,40 @@ public class ListFiles extends AbstractConnector {
         fileSorter.sort(filesOrFolders);
         for (FileObject fileOrFolder : filesOrFolders) {
             if (fileOrFolder.isFile()) {
-                OMElement fileEle = Utils.createOMElement(Const.FILE_ELEMENT,
+                OMElement fileEle;
+                if (appendFileAttributes) {
+                    fileEle = Utils.createOMElement(Const.FILE_ELEMENT, null);
+                    OMElement nameEle = Utils.createOMElement(FILE_NAME_ELE_NAME,
                         fileOrFolder.getName().getBaseName());
+                    fileEle.addChild(nameEle);
+                    if (fileOrFolder.getContent() != null) {
+                        FileContent content = fileOrFolder.getContent();
+                        OMElement size = Utils.createOMElement(Const.SIZE_ELEMENT,
+                            String.valueOf(content.getSize()));
+                        fileEle.addChild(size);
+                        OMElement lastModifiedTime = Utils.createOMElement(
+                            Const.LAST_MODIFIED_TIME_ELEMENT,
+                            String.valueOf(content.getLastModifiedTime()));
+                        fileEle.addChild(lastModifiedTime);
+                        if (content.getContentInfo() != null) {
+                            FileContentInfo contentInfo = content.getContentInfo();
+                            OMElement contentType = Utils.createOMElement(
+                                Const.CONTENT_TYPE_ELEMENT, contentInfo.getContentType());
+                            fileEle.addChild(contentType);
+                            OMElement contentEncoding = Utils.createOMElement(
+                                Const.CONTENT_ENCODING_ELEMENT, contentInfo.getContentEncoding());
+                            fileEle.addChild(contentEncoding);
+                        }
+                    }
+                } else {
+                    fileEle = Utils.createOMElement(Const.FILE_ELEMENT,
+                        fileOrFolder.getName().getBaseName());
+                }
                 folderEle.addChild(fileEle);
             } else {
                 if (recursive) {
-                    OMElement subFolderEle = listFilesInHierarchicalFormat(fileOrFolder, pattern, recursive,
-                            sortingAttribute, sortOrder);
+                    OMElement subFolderEle = listFilesInHierarchicalFormat(fileOrFolder, pattern,
+                        recursive, sortingAttribute, sortOrder, appendFileAttributes);
                     folderEle.addChild(subFolderEle);
                 }
             }
@@ -288,11 +327,12 @@ public class ListFiles extends AbstractConnector {
      * @param sortingAttribute Attribute to use for file sorting
      * @param sortOrder        Sorting order to use
      * @param parentEle        Parent OMElement to include found files information in
+     * @param appendFileAttributes true, if append file attributes to the response
      * @throws FileSystemException In case of issue reading the directory
      */
     private void listFilesInFlatFormat(FileObject folder, String pattern,
-                                       boolean recursive, String sortingAttribute,
-                                       String sortOrder, OMElement parentEle) throws FileSystemException {
+        boolean recursive, String sortingAttribute, String sortOrder, OMElement parentEle,
+        boolean appendFileAttributes) throws FileSystemException {
 
         FileObject[] filesOrFolders = getFilesAndFolders(folder, pattern);
         FileSorter fileSorter = new FileSorter(sortingAttribute, sortOrder);
@@ -304,11 +344,30 @@ public class ListFiles extends AbstractConnector {
                 OMElement pathEle = Utils.createOMElement(FILE_PATH_ELE_NAME, getFilePath(fileOrFolder.getName()));
                 fileEle.addChild(nameEle);
                 fileEle.addChild(pathEle);
+                if (appendFileAttributes && fileOrFolder.getContent() != null) {
+                    FileContent content = fileOrFolder.getContent();
+                    OMElement size = Utils.createOMElement(Const.SIZE_ELEMENT,
+                        String.valueOf(content.getSize()));
+                    fileEle.addChild(size);
+                    OMElement lastModifiedTime = Utils.createOMElement(
+                        Const.LAST_MODIFIED_TIME_ELEMENT,
+                        String.valueOf(content.getLastModifiedTime()));
+                    fileEle.addChild(lastModifiedTime);
+                    if (content.getContentInfo() != null) {
+                        FileContentInfo contentInfo = content.getContentInfo();
+                        OMElement contentType = Utils.createOMElement(
+                            Const.CONTENT_TYPE_ELEMENT, contentInfo.getContentType());
+                        fileEle.addChild(contentType);
+                        OMElement contentEncoding = Utils.createOMElement(
+                            Const.CONTENT_ENCODING_ELEMENT, contentInfo.getContentEncoding());
+                        fileEle.addChild(contentEncoding);
+                    }
+                }
                 parentEle.addChild(fileEle);
             } else {
                 if (recursive) {
                     listFilesInFlatFormat(fileOrFolder, pattern, recursive,
-                            sortingAttribute, sortOrder, parentEle);
+                            sortingAttribute, sortOrder, parentEle, appendFileAttributes);
                 }
             }
         }
