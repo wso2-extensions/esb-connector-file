@@ -262,10 +262,14 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
                 lookupTemplateParamater(msgContext, Const.KEYSTORE_PATH);
         String keyStorePassword = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.KEYSTORE_PASSWORD);
+        String keyStoreType = (String) ConnectorUtils.
+                lookupTemplateParamater(msgContext, Const.KEYSTORE_TYPE);
         String trustStorePath = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.TRUSTSTORE_PATH);
         String trustStorePassword = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.TRUSTSTORE_PASSWORD);
+        String trustStoreType = (String) ConnectorUtils.
+                lookupTemplateParamater(msgContext, Const.TRUSTSTORE_TYPE);
         String implicitModeEnabled = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.IMPLICIT_MODE_ENABLED);
         String channelProtectionLevel = (String) ConnectorUtils.
@@ -274,8 +278,10 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
         setFTPConnectionConfigsFromContext(msgContext, config);
         config.setKeyStore(keyStorePath);
         config.setKeyStorePassword(keyStorePassword);
+        config.setKeyStoreType(keyStoreType);
         config.setTrustStore(trustStorePath);
         config.setTrustStorePassword(trustStorePassword);
+        config.setTrustStoreType(trustStoreType);
         config.setFtpsModetMode(implicitModeEnabled);
         config.setProtectionMode(channelProtectionLevel);
 
