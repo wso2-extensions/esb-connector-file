@@ -208,6 +208,17 @@
                                     "required": "false",
                                     "helpTip": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
                                   }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "appendFileAttributes",
+                                        "displayName": "Append file attributes to the response",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "false",
+                                        "required": "false",
+                                        "helpTip": "Get file attribute details"
+                                    }
                                 }
                             ]
                         }
