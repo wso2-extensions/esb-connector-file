@@ -136,6 +136,17 @@
                 {
                   "type": "attribute",
                   "value": {
+                    "name": "keyStoreType",
+                    "displayName": "KeyStore Type",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "false",
+                    "helpTip": "KeyStore Type"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
                     "name": "trustStorePath",
                     "displayName": "TrustStore Path",
                     "inputType": "stringOrExpression",
@@ -153,6 +164,17 @@
                     "defaultValue": "",
                     "required": "true",
                     "helpTip": "TrustStore Password"
+                  }
+                },
+                {
+                  "type": "attribute",
+                  "value": {
+                    "name": "trustStoreType",
+                    "displayName": "TrustStore Type",
+                    "inputType": "stringOrExpression",
+                    "defaultValue": "",
+                    "required": "true",
+                    "helpTip": "TrustStore Type"
                   }
                 }
               ]

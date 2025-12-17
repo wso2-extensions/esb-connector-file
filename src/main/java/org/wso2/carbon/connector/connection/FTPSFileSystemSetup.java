@@ -53,6 +53,10 @@ public class FTPSFileSystemSetup implements ProtocolBasedFileSystemSetup {
             ftpsConfigBuilder.setKeyStore(fso, ftpsConnectionConfig.getKeyStore());
         }
 
+        if (StringUtils.isNotEmpty(ftpsConnectionConfig.getKeyStoreType())) {
+            ftpsConfigBuilder.setKeyStoreType(fso, ftpsConnectionConfig.getKeyStoreType());
+        }
+
         if (StringUtils.isNotEmpty(ftpsConnectionConfig.getKeyStorePassword())) {
             ftpsConfigBuilder.setKeyStorePW(fso, ftpsConnectionConfig.getKeyStorePassword());
         }
@@ -63,6 +67,10 @@ public class FTPSFileSystemSetup implements ProtocolBasedFileSystemSetup {
 
         if (StringUtils.isNotEmpty(ftpsConnectionConfig.getTrustStorePassword())) {
             ftpsConfigBuilder.setTrustStorePW(fso, ftpsConnectionConfig.getTrustStorePassword());
+        }
+
+        if (StringUtils.isNotEmpty(ftpsConnectionConfig.getTrustStoreType())) {
+            ftpsConfigBuilder.setTrustStoreType(fso, ftpsConnectionConfig.getTrustStoreType());
         }
 
         return Const.FTPS_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);
