@@ -17,14 +17,12 @@
  ~  under the License.
 -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.integration.connector</groupId>
     <artifactId>mi-connector-file</artifactId>
     <packaging>jar</packaging>
-    <version>3.0.7-SNAPSHOT</version>
+    <version>3.0.7</version>
     <name>WSO2 Carbon - Mediation Library Connector For fileconnector</name>
     <url>http://wso2.org</url>
     <profiles>
@@ -276,7 +274,7 @@
         <connection>scm:git:https://github.com/wso2-extensions/esb-connector-file</connection>
         <url>https://github.com/wso2-extensions/esb-connector-file.git</url>
         <developerConnection>scm:git:https://github.com/wso2-extensions/esb-connector-file</developerConnection>
-        <tag>HEAD</tag>
+        <tag>v3.0.7</tag>
     </scm>
     <build>
         <plugins>
