@@ -1,5 +1,5 @@
 {
-  "connectorName": "file",
+  "connectorName": "fileconnector",
   "operationName": "copy",
   "title": "Copy",
   "help": "<h1>Copy</h1><b>The copy operation copies files from one location to another. This operation can be used when you want to copy any kind of files and large files as well. You can also copy particular files with specified file patterns.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",

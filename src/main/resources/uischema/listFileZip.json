@@ -1,5 +1,5 @@
 {
-  "connectorName": "file",
+  "connectorName": "fileconnector",
   "operationName": "listFileZip",
   "title": "List File Zip",
   "help": "<h1>List File Zip</h1><b>The listFileZip operation lists all the file paths inside a compressed file. This operation supports the ZIP archive type.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",

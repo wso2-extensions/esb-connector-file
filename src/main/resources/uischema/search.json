@@ -1,5 +1,5 @@
 {
-  "connectorName": "file",
+  "connectorName": "fileconnector",
   "operationName": "search",
   "title": "Search",
   "help": "<h1>Search</h1><b>The search operation finds a file or folder based on a given file pattern or directory pattern in a specified location.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
