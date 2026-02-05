@@ -21,10 +21,10 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.wso2.carbon.connector</groupId>
-    <artifactId>org.wso2.carbon.connector.fileconnector</artifactId>
+    <groupId>org.wso2.integration.connector</groupId>
+    <artifactId>mi-connector-file</artifactId>
     <packaging>jar</packaging>
-    <version>3.0.6</version>
+    <version>3.0.7-SNAPSHOT</version>
     <name>WSO2 Carbon - Mediation Library Connector For fileconnector</name>
     <url>http://wso2.org</url>
     <profiles>
@@ -273,10 +273,9 @@
         </dependency>
     </dependencies>
     <scm>
-        <connection>scm:git:https://github.com/wso2-extensions/esb-connector-file.git</connection>
+        <connection>scm:git:https://github.com/wso2-extensions/esb-connector-file</connection>
         <url>https://github.com/wso2-extensions/esb-connector-file.git</url>
-        <developerConnection>scm:git:https://github.com/wso2-extensions/esb-connector-file
-        </developerConnection>
+        <developerConnection>scm:git:https://github.com/wso2-extensions/esb-connector-file</developerConnection>
         <tag>HEAD</tag>
     </scm>
     <build>
@@ -297,7 +296,7 @@
                         <id>email-library</id>
                         <phase>compile</phase>
                         <goals>
-                            <goal>attached</goal>
+                            <goal>single</goal>
                         </goals>
                         <configuration>
                             <finalName>${connector.name}-connector-${version}</finalName>
@@ -492,12 +491,7 @@
         <repository>
             <id>nexus-releases</id>
             <name>WSO2 Release Distribution Repository</name>
-            <url>http://maven.wso2.org/nexus/service/local/staging/deploy/maven2/</url>
+            <url>https://maven.wso2.org/nexus/content/repositories/releases/</url>
         </repository>
-        <snapshotRepository>
-            <id>wso2.snapshots</id>
-            <name>Apache Snapshot Repository</name>
-            <url>http://maven.wso2.org/nexus/content/repositories/snapshots/</url>
-        </snapshotRepository>
     </distributionManagement>
 </project>

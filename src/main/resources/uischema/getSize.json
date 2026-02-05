@@ -1,5 +1,5 @@
 {
-  "connectorName": "file",
+  "connectorName": "fileconnector",
   "operationName": "getSize",
   "title": "Get Size",
   "help": "<h1>Get Size</h1><b>The getSize operation returns the size of a file.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",

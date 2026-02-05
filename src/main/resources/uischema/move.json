@@ -1,5 +1,5 @@
 {
-  "connectorName": "file",
+  "connectorName": "fileconnector",
   "operationName": "move",
   "title": "Move",
   "help": "<h1>Move</h1><b>The move operation moves a file or folder from one location to another.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",

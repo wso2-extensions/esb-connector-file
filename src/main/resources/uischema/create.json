@@ -1,5 +1,5 @@
 {
-  "connectorName": "file",
+  "connectorName": "fileconnector",
   "operationName": "create",
   "title": "Create",
   "help": "<h1>Create</h1><b>The create operation creates a file or folder in a specified location. When creating a file, you can either create the file with content or without content.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",

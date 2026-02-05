@@ -1,5 +1,5 @@
 {
-  "connectorName": "file",
+  "connectorName": "fileconnector",
   "operationName": "isFileExist",
   "title": "Is File Exist",
   "help": "<h1>Is File Exist</h1><b>The isFileExist operation checks the existence of a file in a specified location. This operation returns true if the file exists and returns false if the file does not exist in the specified location.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",

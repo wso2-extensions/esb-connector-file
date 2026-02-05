@@ -1,5 +1,5 @@
 {
-  "connectorName": "file",
+  "connectorName": "fileconnector",
   "operationName": "readSpecifiedLines",
   "title": "Read Specified Lines",
   "help": "<h1>Read Specified Lines</h1><b>The readSpecifiedLines operation reads specific lines between given line numbers from a file.</b><br><br><ul><li><a href=\"https://ei.docs.wso2.com/en/latest/micro-integrator/references/connectors/file-connector/file-connector-config/\"> More Help </a></li></ul>",
