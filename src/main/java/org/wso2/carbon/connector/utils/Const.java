@@ -48,6 +48,7 @@ public final class Const {
     public static final String DISK_SHARE_ACCESS_MASK = "diskShareAccessMask";
     public static final String DISK_SHARE_ACCESS_MASK_MAX_ALLOWED = "MAXIMUM_ALLOWED";
     public static final String USERDIR_IS_ROOT = "userDirIsRoot";
+    public static final String CACHE_FILE_STATS = "cacheFileStats";
 
     public static final String IS_PASSIVE = "isPassive";
     public static final String CONNECTION_TIMEOUT = "ftpConnectionTimeout";

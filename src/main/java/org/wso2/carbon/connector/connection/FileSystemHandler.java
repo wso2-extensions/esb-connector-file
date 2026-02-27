@@ -20,6 +20,7 @@ package org.wso2.carbon.connector.connection;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.vfs2.CacheStrategy;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
@@ -62,6 +63,9 @@ public class FileSystemHandler implements Connection {
         try {
 
             this.fsManager = new StandardFileSystemManager();
+            if (fsConfig.getRemoteServerConfig().isCacheFileStats()) {
+                ((StandardFileSystemManager) fsManager).setCacheStrategy(CacheStrategy.MANUAL);
+            }
             ((StandardFileSystemManager) fsManager).init();
             this.fsOptions = new FileSystemOptions();
             setupFSO(fsOptions, fsConfig);

@@ -50,7 +50,7 @@
                     "name": "matchingPattern",
                     "displayName": "Matching Pattern",
                     "inputType": "stringOrExpression",
-                    "defaultValue": "*.*",
+                    "defaultValue": ".*",
                     "required": "false",
                     "helpTip": "File pattern to match when listing"
                   }

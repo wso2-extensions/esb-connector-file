@@ -224,6 +224,8 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
                 lookupTemplateParamater(msgContext, Const.ENCODE_PASSWORD);
         String userDirIsRoot = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.USERDIR_IS_ROOT);
+        String cacheFileStats = (String) ConnectorUtils.
+                lookupTemplateParamater(msgContext, Const.CACHE_FILE_STATS);
 
         log.info("passwordEncodingRequired: " + passwordEncodingRequired);
 
@@ -240,6 +242,7 @@ public class FileConfig extends AbstractConnector implements ManagedLifecycle {
             handleException("Error while encoding password", e, msgContext);
         }
         remoteServerConfig.setUserDirIsRoot(userDirIsRoot);
+        remoteServerConfig.setCacheFileStats(cacheFileStats);
     }
 
     private void setFTPConnectionConfigsFromContext(MessageContext msgContext, FTPConnectionConfig config)
