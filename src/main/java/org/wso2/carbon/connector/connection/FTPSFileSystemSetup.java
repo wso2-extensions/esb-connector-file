@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.connector.connection;
 
+import java.time.Duration;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.provider.ftps.FtpsFileSystemConfigBuilder;
@@ -38,8 +39,10 @@ public class FTPSFileSystemSetup implements ProtocolBasedFileSystemSetup {
 
         //Set FTP configs
         ftpsConfigBuilder.setPassiveMode(fso, ftpsConnectionConfig.isPassive());
-        ftpsConfigBuilder.setConnectTimeout(fso, ftpsConnectionConfig.getConnectionTimeout());
-        ftpsConfigBuilder.setSoTimeout(fso, ftpsConnectionConfig.getSocketTimeout());
+        ftpsConfigBuilder.setConnectTimeout(fso,
+            Duration.ofMillis(ftpsConnectionConfig.getConnectionTimeout()));
+        ftpsConfigBuilder.setSoTimeout(fso,
+            Duration.ofMillis(ftpsConnectionConfig.getSocketTimeout()));
         ftpsConfigBuilder.setUserDirIsRoot(fso, ftpsConnectionConfig.isUserDirIsRoot());
 
         //Set FTPS specific configs

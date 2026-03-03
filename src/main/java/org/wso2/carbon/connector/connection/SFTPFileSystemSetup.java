@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.connector.connection;
 
+import java.time.Duration;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
@@ -43,7 +44,8 @@ public class SFTPFileSystemSetup implements ProtocolBasedFileSystemSetup {
         SftpFileSystemConfigBuilder sftpConfigBuilder = SftpFileSystemConfigBuilder.getInstance();
         try {
             sftpConfigBuilder.setAvoidPermissionCheck(fso, sftpConnectionConfig.getAvoidPermissionCheck());
-            sftpConfigBuilder.setTimeout(fso, sftpConnectionConfig.getSessionTimeout());
+            sftpConfigBuilder.setSessionTimeout(fso,
+                Duration.ofMillis(sftpConnectionConfig.getSessionTimeout()));
             sftpConfigBuilder.setUserDirIsRoot(fso, sftpConnectionConfig.isUserDirIsRoot());
             
             // Set SFTP path from root if enabled (overrides userDirIsRoot for absolute path access)
