@@ -63,7 +63,7 @@ public class FileSystemHandler implements Connection {
         try {
 
             this.fsManager = new StandardFileSystemManager();
-            if (fsConfig.getRemoteServerConfig().isCacheFileStats()) {
+            if (fsConfig.getRemoteServerConfig() != null && fsConfig.getRemoteServerConfig().isCacheFileStats()) {
                 ((StandardFileSystemManager) fsManager).setCacheStrategy(CacheStrategy.MANUAL);
             }
             ((StandardFileSystemManager) fsManager).init();
