@@ -46,6 +46,7 @@ public class RemoteServerConfig {
      * directory as the root directory
      */
     private boolean userDirIsRoot;
+    private boolean cacheFileStats = false;
 
     public RemoteServerConfig() {
         this.userDirIsRoot = false;
@@ -110,6 +111,18 @@ public class RemoteServerConfig {
     public void setUserDirIsRoot(String userDirIsRoot) {
         if(StringUtils.isNotEmpty(userDirIsRoot)) {
             this.userDirIsRoot = Boolean.parseBoolean(userDirIsRoot);
+        }
+    }
+
+    public boolean isCacheFileStats() {
+
+        return cacheFileStats;
+    }
+
+    public void setCacheFileStats(String cacheFileStats) {
+
+        if (StringUtils.isNotEmpty(cacheFileStats)) {
+            this.cacheFileStats = Boolean.parseBoolean(cacheFileStats);
         }
     }
 }

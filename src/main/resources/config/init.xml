@@ -58,6 +58,7 @@
 	<parameter name="evictionCheckInterval" description="The time interval between runs of the idle object evictor thread"/>
 	<parameter name="minEvictionTime" description="The minimum amount of time an object must sit idle in the pool before it is eligible for eviction by the idle object evictor "/>
 	<parameter name="exhaustedAction" description="Determines the action to take when the borrowObject() method is called, but the pool is exhausted"/>
+	<parameter name="cacheFileStats" description="Whether to cache file stats to improve performance"/>
 	<sequence>
 		<property name="name" expression="$func:name"/>
 		<class name="org.wso2.carbon.connector.operations.FileConfig" />
