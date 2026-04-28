@@ -44,6 +44,7 @@ jobs:
         run: |
           git config --global user.name ${{ secrets.WSO2_INTEGRATION_BOT_USERNAME }}
           git config --global user.email ${{ secrets.WSO2_INTEGRATION_BOT_EMAIL }}
+          git config --global http.https://github.com/.extraHeader "Authorization: Bearer ${{ secrets.WSO2_INTEGRATION_BOT_TOKEN }}"
 
       - name: Update meta.json across connectors
         env:
@@ -133,9 +134,8 @@ jobs:
                   continue
 
               try:
-                  clone_url = repo.clone_url.replace("https://", f"https://{github_token}@")
                   repo_path = os.path.join(repos_dir, repo.name)
-                  subprocess.run(['git', 'clone', '--depth=1', clone_url, repo_path], check=True)
+                  subprocess.run(['git', 'clone', '--depth=1', repo.clone_url, repo_path], check=True)
 
                   meta_json_path = os.path.join(repo_path, '.connector-store', 'meta.json')
                   modified = update_meta_json(meta_json_path, target_version, source_version, update_mode)
