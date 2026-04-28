@@ -1,0 +1,197 @@
+name: Update Connector MI Versions
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_version:
+        description: 'MI version to add (e.g. MI 4.5.0)'
+        required: true
+        type: string
+      update_mode:
+        description: 'Update mode'
+        required: true
+        default: 'if_source_present'
+        type: choice
+        options:
+          - if_source_present
+          - all_active
+      source_version:
+        description: 'Required when mode is if_source_present: only update releases that already have this version (e.g. MI 4.4.0)'
+        required: false
+        type: string
+
+jobs:
+  update-versions:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate inputs
+        run: |
+          if [ "${{ github.event.inputs.update_mode }}" = "if_source_present" ] && [ -z "${{ github.event.inputs.source_version }}" ]; then
+            echo "ERROR: source_version is required when update_mode is 'if_source_present'"
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install PyGithub
+
+      - name: Configure git credentials
+        run: |
+          git config --global user.name ${{ secrets.WSO2_INTEGRATION_BOT_USERNAME }}
+          git config --global user.email ${{ secrets.WSO2_INTEGRATION_BOT_EMAIL }}
+
+      - name: Update meta.json across connectors
+        env:
+          GITHUB_TOKEN: ${{ secrets.WSO2_INTEGRATION_BOT_TOKEN }}
+          TARGET_VERSION: ${{ github.event.inputs.target_version }}
+          SOURCE_VERSION: ${{ github.event.inputs.source_version }}
+          UPDATE_MODE: ${{ github.event.inputs.update_mode }}
+        run: |
+          python3 - <<'EOF'
+          import json
+          import os
+          import subprocess
+          import shutil
+          from github import Github
+          from github.GithubException import GithubException
+
+          github_token = os.environ['GITHUB_TOKEN']
+          organization = 'wso2-extensions'
+          target_version = os.environ['TARGET_VERSION']
+          source_version = os.environ.get('SOURCE_VERSION', '')
+          update_mode = os.environ['UPDATE_MODE']
+
+          g = Github(github_token)
+          org = g.get_organization(organization)
+
+          repos_dir = 'repos'
+          os.makedirs(repos_dir, exist_ok=True)
+
+          pull_request_urls = []
+          skipped = []
+          errors = []
+
+          def should_update_release(release, target_version, source_version, update_mode):
+              products = release.get('products', [])
+              if target_version in products:
+                  return False  # already present
+              if update_mode == 'if_source_present':
+                  return source_version in products
+              return True  # all_active: add to every release missing target
+
+          def update_meta_json(meta_json_path, target_version, source_version, update_mode):
+              with open(meta_json_path, 'r') as f:
+                  meta = json.load(f)
+
+              if 'releases' not in meta or not meta['releases']:
+                  return False
+
+              modified = False
+              for release in meta['releases']:
+                  if should_update_release(release, target_version, source_version, update_mode):
+                      release['products'].append(target_version)
+                      print(f"  Added {target_version} to release {release.get('tagName', 'unknown')}")
+                      modified = True
+
+              if modified:
+                  with open(meta_json_path, 'w') as f:
+                      json.dump(meta, f, indent=4)
+                      f.write('\n')
+
+              return modified
+
+          for repo in org.get_repos():
+              if not (repo.name.startswith('esb-') or repo.name.startswith('mediation-') or repo.name.startswith('mi-')):
+                  continue
+
+              print(f"\nProcessing: {repo.name}")
+
+              try:
+                  contents = repo.get_contents(".connector-store/meta.json")
+                  meta_json = json.loads(contents.decoded_content.decode())
+
+                  if meta_json.get('status') != 'Active':
+                      print(f"  Skipping — status is {meta_json.get('status')}")
+                      skipped.append(repo.name)
+                      continue
+
+              except GithubException as e:
+                  if e.status == 404:
+                      print(f"  Skipping — no .connector-store/meta.json")
+                  else:
+                      print(f"  Error reading meta.json: {e}")
+                      errors.append(repo.name)
+                  continue
+              except Exception as e:
+                  print(f"  Error reading meta.json: {e}")
+                  errors.append(repo.name)
+                  continue
+
+              try:
+                  clone_url = repo.clone_url.replace("https://", f"https://{github_token}@")
+                  repo_path = os.path.join(repos_dir, repo.name)
+                  subprocess.run(['git', 'clone', '--depth=1', clone_url, repo_path], check=True)
+
+                  meta_json_path = os.path.join(repo_path, '.connector-store', 'meta.json')
+                  modified = update_meta_json(meta_json_path, target_version, source_version, update_mode)
+
+                  if not modified:
+                      print(f"  No changes needed")
+                      shutil.rmtree(repo_path)
+                      continue
+
+                  safe_target = target_version.lower().replace(' ', '-').replace('.', '-')
+                  branch_name = f"update-mi-version-{safe_target}"
+
+                  subprocess.run(['git', '-C', repo_path, 'checkout', '-b', branch_name], check=True)
+                  subprocess.run(['git', '-C', repo_path, 'add', '.connector-store/meta.json'], check=True)
+                  subprocess.run(['git', '-C', repo_path, 'commit', '-m',
+                      f'[Workflow] Add {target_version} to supported products in meta.json'], check=True)
+                  subprocess.run(['git', '-C', repo_path, 'push', '--set-upstream', 'origin', branch_name], check=True)
+
+                  pr = repo.create_pull(
+                      title=f'Add {target_version} to supported products',
+                      body=(
+                          f'This PR adds `{target_version}` to the supported products list in `.connector-store/meta.json`.\n\n'
+                          f'**Update mode:** `{update_mode}`'
+                          + (f'\n**Source version:** `{source_version}`' if source_version else '')
+                          + '\n\n_Generated by the [Update Connector MI Versions](.github/workflows/update-connector-mi-versions.yml) workflow._'
+                      ),
+                      head=branch_name,
+                      base=repo.default_branch
+                  )
+                  pull_request_urls.append(pr.html_url)
+                  print(f"  PR created: {pr.html_url}")
+
+                  shutil.rmtree(repo_path)
+
+              except subprocess.CalledProcessError as e:
+                  print(f"  Git error: {e}")
+                  errors.append(repo.name)
+                  if os.path.exists(repo_path):
+                      shutil.rmtree(repo_path)
+              except GithubException as e:
+                  print(f"  GitHub API error: {e}")
+                  errors.append(repo.name)
+                  if os.path.exists(repo_path):
+                      shutil.rmtree(repo_path)
+              except Exception as e:
+                  print(f"  Unexpected error: {e}")
+                  errors.append(repo.name)
+                  if os.path.exists(repo_path):
+                      shutil.rmtree(repo_path)
+
+          print(f"\n{'='*60}")
+          print(f"PRs created ({len(pull_request_urls)}):")
+          for url in pull_request_urls:
+              print(f"  {url}")
+          if skipped:
+              print(f"\nSkipped ({len(skipped)}): {', '.join(skipped)}")
+          if errors:
+              print(f"\nErrors ({len(errors)}): {', '.join(errors)}")
+          EOF
