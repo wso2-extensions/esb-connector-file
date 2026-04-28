@@ -27,8 +27,32 @@ jobs:
     steps:
       - name: Validate inputs
         run: |
-          if [ "${{ github.event.inputs.update_mode }}" = "if_source_present" ] && [ -z "${{ github.event.inputs.source_version }}" ]; then
-            echo "ERROR: source_version is required when update_mode is 'if_source_present'"
+          ERRORS=0
+          VERSION_PATTERN='^MI [0-9]+\.[0-9]+\.[0-9]+$'
+
+          if ! [[ "${{ github.event.inputs.target_version }}" =~ $VERSION_PATTERN ]]; then
+            echo "ERROR: target_version must match 'MI X.Y.Z' (e.g. MI 4.5.0), got: '${{ github.event.inputs.target_version }}'"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [ "${{ github.event.inputs.update_mode }}" = "if_source_present" ]; then
+            if [ -z "${{ github.event.inputs.source_version }}" ]; then
+              echo "ERROR: source_version is required when update_mode is 'if_source_present'"
+              ERRORS=$((ERRORS + 1))
+            elif ! [[ "${{ github.event.inputs.source_version }}" =~ $VERSION_PATTERN ]]; then
+              echo "ERROR: source_version must match 'MI X.Y.Z' (e.g. MI 4.4.0), got: '${{ github.event.inputs.source_version }}'"
+              ERRORS=$((ERRORS + 1))
+            elif [ "${{ github.event.inputs.source_version }}" = "${{ github.event.inputs.target_version }}" ]; then
+              echo "ERROR: source_version and target_version must not be the same"
+              ERRORS=$((ERRORS + 1))
+            fi
+          fi
+
+          if [ "${{ github.event.inputs.update_mode }}" = "all_active" ] && [ -n "${{ github.event.inputs.source_version }}" ]; then
+            echo "WARNING: source_version is ignored when update_mode is 'all_active'"
+          fi
+
+          if [ $ERRORS -gt 0 ]; then
             exit 1
           fi
 
