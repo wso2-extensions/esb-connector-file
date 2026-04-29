@@ -68,7 +68,6 @@ jobs:
         run: |
           git config --global user.name ${{ secrets.WSO2_INTEGRATION_BOT_USERNAME }}
           git config --global user.email ${{ secrets.WSO2_INTEGRATION_BOT_EMAIL }}
-          git config --global http.https://github.com/.extraHeader "Authorization: Bearer ${{ secrets.WSO2_INTEGRATION_BOT_TOKEN }}"
 
       - name: Update meta.json across connectors
         env:
@@ -93,6 +92,18 @@ jobs:
 
           g = Github(github_token)
           org = g.get_organization(organization)
+
+          # Inject auth header directly into each git subprocess environment.
+          # GIT_CONFIG_* vars are honoured by git regardless of the global gitconfig,
+          # so this is reliable inside Actions where the HOME-based gitconfig can be inconsistent.
+          # GIT_TERMINAL_PROMPT=0 ensures git never hangs waiting for a credential prompt.
+          git_env = {
+              **os.environ,
+              'GIT_TERMINAL_PROMPT': '0',
+              'GIT_CONFIG_COUNT': '1',
+              'GIT_CONFIG_KEY_0': 'http.https://github.com/.extraHeader',
+              'GIT_CONFIG_VALUE_0': f'Authorization: Bearer {github_token}',
+          }
 
           repos_dir = 'repos'
           os.makedirs(repos_dir, exist_ok=True)
@@ -159,7 +170,7 @@ jobs:
 
               try:
                   repo_path = os.path.join(repos_dir, repo.name)
-                  subprocess.run(['git', 'clone', '--depth=1', repo.clone_url, repo_path], check=True)
+                  subprocess.run(['git', 'clone', '--depth=1', repo.clone_url, repo_path], check=True, env=git_env)
 
                   meta_json_path = os.path.join(repo_path, '.connector-store', 'meta.json')
                   modified = update_meta_json(meta_json_path, target_version, source_version, update_mode)
@@ -172,11 +183,11 @@ jobs:
                   safe_target = target_version.lower().replace(' ', '-').replace('.', '-')
                   branch_name = f"update-mi-version-{safe_target}"
 
-                  subprocess.run(['git', '-C', repo_path, 'checkout', '-b', branch_name], check=True)
-                  subprocess.run(['git', '-C', repo_path, 'add', '.connector-store/meta.json'], check=True)
+                  subprocess.run(['git', '-C', repo_path, 'checkout', '-b', branch_name], check=True, env=git_env)
+                  subprocess.run(['git', '-C', repo_path, 'add', '.connector-store/meta.json'], check=True, env=git_env)
                   subprocess.run(['git', '-C', repo_path, 'commit', '-m',
-                      f'[Workflow] Add {target_version} to supported products in meta.json'], check=True)
-                  subprocess.run(['git', '-C', repo_path, 'push', '--set-upstream', 'origin', branch_name], check=True)
+                      f'[Workflow] Add {target_version} to supported products in meta.json'], check=True, env=git_env)
+                  subprocess.run(['git', '-C', repo_path, 'push', '--set-upstream', 'origin', branch_name], check=True, env=git_env)
 
                   pr = repo.create_pull(
                       title=f'Add {target_version} to supported products',
