@@ -69,6 +69,13 @@ public class FileSystemHandler implements Connection {
 
             this.fsManager = new StandardFileSystemManager();
 
+            // Use the connector's own classloader so that configurePlugins() only finds
+            // the single META-INF/vfs-providers.xml bundled in this connector's
+            // commons-vfs2-sandbox JAR. Without this, the Thread Context ClassLoader
+            // may span multiple CAPPs and return duplicate vfs-providers.xml resources,
+            // causing "Multiple providers registered for URL scheme 'smb2'" on init().
+            ((StandardFileSystemManager) fsManager).setClassLoader(FileSystemHandler.class.getClassLoader());
+
             // Configure VFS caching at FileSystemManager level based on user preference
             if (fsConfig.isFileCacheEnabled()) {
                 ((StandardFileSystemManager) fsManager).setFilesCache(new DefaultFilesCache());
