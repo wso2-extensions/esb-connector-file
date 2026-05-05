@@ -662,7 +662,7 @@ public class WriteFile extends AbstractConnectorOperation {
                 } else {
                     outputStream = new CountingOutputStream(targetFile.getContent().getOutputStream(append));
                 }
-                messageFormatter.writeTo(axis2MessageContext, format, outputStream, true);
+                messageFormatter.writeTo(axis2MessageContext, format, outputStream, !config.enableStreaming);
                 writtenByesCount = outputStream.getByteCount();
             } finally {
                 if (outputStream != null) {
