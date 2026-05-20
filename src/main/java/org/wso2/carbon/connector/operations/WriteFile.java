@@ -445,8 +445,8 @@ public class WriteFile extends AbstractConnectorOperation {
                     throw new FileOperationException("Target file already exists. Path = "
                             + targetFile.getURL());
                 } else {
-                    try (FileObject tempFile = fileSystemHandlerConnection.resolveFileWithSuspension(
-                            targetFile.getParent().getName().getPath() + Const.FILE_SEPARATOR + targetFile.getName().getBaseName() + ".tmp")) {
+                    try (FileObject tempFile = targetFile.getParent().resolveFile(
+                            targetFile.getName().getBaseName() + ".tmp")) {
 
                         // Create a temporary file with .tmp extension
                         tempFile.createFile();
