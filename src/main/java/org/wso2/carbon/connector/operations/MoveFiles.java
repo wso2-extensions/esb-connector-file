@@ -356,9 +356,13 @@ public class MoveFiles extends AbstractConnectorOperation {
                 if (child.getType() == FileType.FILE) {
                     result = moveFileWithPattern(child, destinationFile, filePattern, fileSystemHandlerConnection);
                 } else if (child.getType() == FileType.FOLDER) {
-                    String newDestination = destinationFile.getPublicURIString() + Const.FILE_SEPARATOR
-                            + child.getName().getBaseName();
-                    result = moveFolder(child, fileSystemHandlerConnection.resolveFileWithSuspension(newDestination),
+                    // Use base-relative resolve via the parent FileObject (issue #5016 follow-up).
+                    // Building a child URI by string concatenation can drop the URI scheme + rootFile
+                    // on Windows (and is fragile for any FileObject implementation whose toString/
+                    // getPublicURIString contract changes). Resolving relative to the parent goes
+                    // through VFS's createName machinery and preserves scheme + host + share/drive.
+                    FileObject newDestination = destinationFile.resolveFile(child.getName().getBaseName());
+                    result = moveFolder(child, newDestination,
                             overWrite, filePattern, fileSelector, isSuccessful, fileSystemHandlerConnection);
                 } else {
                     log.error("Could not move the file: " + child.getName() + "Unsupported file type: "
@@ -393,8 +397,13 @@ public class MoveFiles extends AbstractConnectorOperation {
                 if (!target.exists()) {
                     target.createFolder();
                 }
-                String newTarget = target + Const.FILE_SEPARATOR + remoteFile.getName().getBaseName();
-                remoteFile.moveTo(fileSystemHandlerConnection.resolveFileWithSuspension(newTarget));
+                // Resolve the child name relative to the target FileObject rather than building a
+                // URI via `target.toString()` (issue #5016 follow-up). Relying on
+                // AbstractFileObject.toString() returning the URI is an implementation detail and
+                // string-concat can drop scheme + drive/share on Windows; parent-relative resolve
+                // is the robust idiom that works on file://, UNC, smb2://, sftp:// alike.
+                FileObject newTarget = target.resolveFile(remoteFile.getName().getBaseName());
+                remoteFile.moveTo(newTarget);
             }
         } catch (IOException e) {
             log.error("Error occurred while moving a file. " + e.getMessage(), e);
