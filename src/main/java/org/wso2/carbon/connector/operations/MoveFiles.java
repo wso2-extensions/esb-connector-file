@@ -356,9 +356,8 @@ public class MoveFiles extends AbstractConnectorOperation {
                 if (child.getType() == FileType.FILE) {
                     result = moveFileWithPattern(child, destinationFile, filePattern, fileSystemHandlerConnection);
                 } else if (child.getType() == FileType.FOLDER) {
-                    String newDestination = destinationFile.getPublicURIString() + Const.FILE_SEPARATOR
-                            + child.getName().getBaseName();
-                    result = moveFolder(child, fileSystemHandlerConnection.resolveFileWithSuspension(newDestination),
+                    FileObject newDestination = destinationFile.resolveFile(child.getName().getBaseName());
+                    result = moveFolder(child, newDestination,
                             overWrite, filePattern, fileSelector, isSuccessful, fileSystemHandlerConnection);
                 } else {
                     log.error("Could not move the file: " + child.getName() + "Unsupported file type: "
@@ -393,8 +392,8 @@ public class MoveFiles extends AbstractConnectorOperation {
                 if (!target.exists()) {
                     target.createFolder();
                 }
-                String newTarget = target + Const.FILE_SEPARATOR + remoteFile.getName().getBaseName();
-                remoteFile.moveTo(fileSystemHandlerConnection.resolveFileWithSuspension(newTarget));
+                FileObject newTarget = target.resolveFile(remoteFile.getName().getBaseName());
+                remoteFile.moveTo(newTarget);
             }
         } catch (IOException e) {
             log.error("Error occurred while moving a file. " + e.getMessage(), e);
