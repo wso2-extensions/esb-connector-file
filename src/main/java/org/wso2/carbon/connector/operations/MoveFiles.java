@@ -286,7 +286,10 @@ public class MoveFiles extends AbstractConnectorOperation {
             return false;
         } else {
             if (createNonExistingParents) {
-                destinationFile.createFolder();
+                FileObject parent = destinationFile.getParent();
+                if (parent != null && !parent.exists()) {
+                    parent.createFolder();
+                }
             } else {
                 if (log.isDebugEnabled()) {
                     log.debug("Parent directory creation is skipped.");
