@@ -284,17 +284,23 @@ public class MoveFiles extends AbstractConnectorOperation {
 
         if (!overWrite && destinationFile.exists()) {
             return false;
-        } else {
+        }
+
+        FileObject parent = destinationFile.getParent();
+        if (parent != null && !parent.exists()) {
             if (createNonExistingParents) {
+                // calling createFolder on destinationFile creates all the non-existing
+                // parent directories as well.
                 destinationFile.createFolder();
             } else {
-                if (log.isDebugEnabled()) {
-                    log.debug("Parent directory creation is skipped.");
-                }
+                throw new FileSystemException("Parent directory: " + parent.getName()
+                    + " does not exist and createParentDirectories is set to false");
             }
-            srcFile.moveTo(destinationFile);
-            return true;
+        } else if (log.isDebugEnabled()) {
+            log.debug("Parent directory creation is skipped.");
         }
+        srcFile.moveTo(destinationFile);
+        return true;
     }
 
     /**
