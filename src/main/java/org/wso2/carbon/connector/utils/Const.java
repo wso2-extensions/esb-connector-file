@@ -79,6 +79,7 @@ public final class Const {
     public static final String FILE_SEPARATOR = "/";
 
     public static final String FILE_ELEMENT = "file";
+    public static final String ZIP_FILE_CONTENT_ELEMENT = "zipFileContent";
     public static final String LAST_MODIFIED_TIME_ELEMENT = "lastModifiedTime";
     public static final String SIZE_ELEMENT = "size";
     public static final String CONTENT_TYPE_ELEMENT = "contentType";
@@ -105,6 +106,7 @@ public final class Const {
 
     public static final CharSequence NEW_LINE = "\n";
     public static final String DEFAULT_ENCODING = "UTF-8";
+    public static final String FILE_NAME_ENCODING = "fileNameEncoding";
     public static final String SET_CHARACTER_ENCODING = "setCharacterEncoding";
     public static final String CONTENT_TYPE_BINARY = "application/binary";
     public static final String CONTENT_TYPE_TEXT = "text/plain";

@@ -19,6 +19,8 @@
 package org.wso2.carbon.connector.operations;
 
 import org.apache.axiom.om.OMElement;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -39,8 +41,6 @@ import org.wso2.carbon.connector.utils.Utils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 /**
  * Implements ExploreZip File operation. This goes through
@@ -49,7 +49,6 @@ import java.util.zip.ZipInputStream;
 public class ExploreZipFile extends AbstractConnector {
 
     private static final String ZIP_FILE_PATH = "zipFilePath";
-    private static final String ZIP_FILE_CONTENT_ELE = "zipFileContent";
     private static final String OPERATION_NAME = "exploreZipFile";
     private static final String ERROR_MESSAGE = "Error while performing file:exploreZipFile for file ";
 
@@ -71,6 +70,9 @@ public class ExploreZipFile extends AbstractConnector {
 
             filePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, ZIP_FILE_PATH);
+            String fileNameEncoding = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, Const.FILE_NAME_ENCODING);
+            String validatedFileNameEncoding = Utils.validateEncoding(fileNameEncoding, log);
 
             if (StringUtils.isEmpty(filePath)) {
                 throw new InvalidConfigurationException("Parameter '" + ZIP_FILE_PATH + "' is not provided ");
@@ -90,17 +92,17 @@ public class ExploreZipFile extends AbstractConnector {
             }
 
             OMElement zipFileContentEle = Utils.
-                    createOMElement(ZIP_FILE_CONTENT_ELE, null);
+                    createOMElement(Const.ZIP_FILE_CONTENT_ELEMENT, null);
 
             // open the zip file
             InputStream input = zipFile.getContent().getInputStream();
 
             //Java handles zip.close() - automatic resource mgt
-            try (ZipInputStream zip = new ZipInputStream(input)) {
+            try (ZipArchiveInputStream zip = new ZipArchiveInputStream(input, validatedFileNameEncoding, true, true)) {
                 String zipEntryName;
-                ZipEntry zipEntry;
+                ZipArchiveEntry zipEntry;
                 // iterates over entries in the zip file
-                while ((zipEntry = zip.getNextEntry()) != null) {
+                while ((zipEntry = zip.getNextZipEntry()) != null) {
                     if (!zipEntry.isDirectory()) {
                         zipEntryName = zipEntry.getName();
                         OMElement zipEntryEle = Utils.

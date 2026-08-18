@@ -21,6 +21,7 @@
     <parameter name="targetDirectory" description="Folder to extract"/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <parameter name="fileNameEncoding" description="Encoding for the file name"/>
+    <parameter name="includeFileNames" description="Include extracted file names in the response"/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.UnzipFile" />
     </sequence>
