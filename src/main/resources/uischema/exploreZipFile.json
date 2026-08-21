@@ -73,6 +73,17 @@
                               "required": "false",
                               "helpTip": "Time to wait between file size checks to ensure file stability (e.g., '2s', '1000ms'). This prevents processing files that are still being uploaded or modified."
                             }
+                          },
+                          {
+                            "type": "attribute",
+                            "value": {
+                              "name": "fileNameEncoding",
+                              "displayName": "File Name Encoding",
+                              "inputType": "stringOrExpression",
+                              "defaultValue": "UTF-8",
+                              "required": "false",
+                              "helpTip": "Specifies the character encoding to interpret file names inside the ZIP archive."
+                            }
                           }
                         ]
                       }

@@ -39,6 +39,9 @@ import org.wso2.carbon.connector.pojo.FileOperationResult;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
@@ -272,6 +275,26 @@ public class Utils {
             return Base64.getEncoder().encodeToString(fileInBytes);
         } finally {
             byteArrayOutputStream.close();
+        }
+    }
+
+    /**
+     * Validate a character encoding name, falling back to UTF-8 if it is blank or not a supported charset.
+     *
+     * @param encoding Encoding name to validate
+     * @param log      Log to report a fallback warning to
+     * @return A valid encoding name, either the provided one or the UTF-8 default
+     */
+    public static String validateEncoding(String encoding, Log log) {
+        if (StringUtils.isBlank(encoding)) {
+            return Const.DEFAULT_ENCODING;
+        }
+        try {
+            Charset.forName(encoding);
+            return encoding;
+        } catch (UnsupportedCharsetException | IllegalCharsetNameException e) {
+            log.warn("Invalid encoding '" + encoding + "', falling back to default: " + Const.DEFAULT_ENCODING);
+            return Const.DEFAULT_ENCODING;
         }
     }
 
