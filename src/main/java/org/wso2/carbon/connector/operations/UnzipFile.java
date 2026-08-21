@@ -18,11 +18,9 @@
 
 package org.wso2.carbon.connector.operations;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import java.io.File;
 import java.io.InputStream;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.vfs2.FileObject;
@@ -45,10 +43,7 @@ import org.wso2.carbon.connector.utils.Utils;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.UnsupportedCharsetException;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
 
@@ -60,8 +55,7 @@ public class UnzipFile extends AbstractConnectorOperation {
     private static final String SOURCE_FILE_PATH_PARAM = "sourceFilePath";
     private static final String TARGET_DIRECTORY_PARAM = "targetDirectory";
     private static final String OPERATION_NAME = "unzipFile";
-    private static final String FILE_NAME_ENCODING = "fileNameEncoding";
-    private static final String DEFAULT_ENCODING = StandardCharsets.UTF_8.name();
+    private static final String INCLUDE_FILE_NAMES = "includeFileNames";
     private static final String ERROR_MESSAGE = "Error while performing file:unzip for file ";
 
     @Override
@@ -88,7 +82,9 @@ public class UnzipFile extends AbstractConnectorOperation {
             folderPathToExtract = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, TARGET_DIRECTORY_PARAM);
             fileNameEncoding = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, FILE_NAME_ENCODING);
+                    lookupTemplateParamater(messageContext, Const.FILE_NAME_ENCODING);
+            boolean includeFileNames = Utils.
+                    lookUpBooleanParam(messageContext, INCLUDE_FILE_NAMES, false);
 
             fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
@@ -114,12 +110,19 @@ public class UnzipFile extends AbstractConnectorOperation {
             if (!targetFolder.exists()) {
                 targetFolder.createFolder();
             }
-            validatedFileNameEncoding = validateEncoding(fileNameEncoding);
+            validatedFileNameEncoding = Utils.validateEncoding(fileNameEncoding, log);
 
-            executeDecompression(compressedFile, folderPathToExtract, fsManager, fso, validatedFileNameEncoding);
+            //keep this null when not requested, so no name list is built for large archives
+            JsonArray zipFileContentEle = includeFileNames ? new JsonArray() : null;
+
+            executeDecompression(compressedFile, folderPathToExtract, fsManager, fso, validatedFileNameEncoding,
+                    zipFileContentEle);
 
             JsonObject resultJSON = generateOperationResult(messageContext,
                     new FileOperationResult(OPERATION_NAME, true));
+            if (zipFileContentEle != null) {
+                resultJSON.add(Const.ZIP_FILE_CONTENT_ELEMENT, zipFileContentEle);
+            }
             handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
 
         } catch (InvalidConfigurationException e) {
@@ -155,24 +158,31 @@ public class UnzipFile extends AbstractConnectorOperation {
     /**
      * Execute decompression, iterating over compressed entries.
      *
-     * @param sourceFile             Compressed file
+     * @param sourceFile          Compressed file
      * @param folderPathToExtract Directory path to decompress
      * @param fsManager           File System Manager associated with the file connection
      * @param fso                 File System Options associated with the file connection
+     * @param fileNameEncoding    Encoding to interpret compressed entry names with
+     * @param zipFileContentEle   Array to collect extracted file names into, or null to skip collecting
      * @throws IOException In case of I/O error
      */
     private void executeDecompression(FileObject sourceFile,
                                       String folderPathToExtract,
                                       FileSystemManager fsManager,
                                       FileSystemOptions fso,
-                                      String fileNameEncoding) throws IOException {
+                                      String fileNameEncoding,
+                                      JsonArray zipFileContentEle) throws IOException {
         //execute decompression
         String fileExtension = sourceFile.getName().getExtension();
         if (fileExtension.equals("gz")) {
+            String targetName = sourceFile.getName().getBaseName()
+                    .replace("." + sourceFile.getName().getExtension(), "");
             FileObject target = fsManager.resolveFile(folderPathToExtract + Const.FILE_SEPARATOR
-                    + sourceFile.getName().getBaseName()
-                    .replace("." + sourceFile.getName().getExtension(), ""), fso);
+                    + targetName, fso);
             extractGzip(sourceFile, target);
+            if (zipFileContentEle != null) {
+                zipFileContentEle.add(targetName);
+            }
             return;
         }
 
@@ -185,6 +195,9 @@ public class UnzipFile extends AbstractConnectorOperation {
                 if (!entry.isDirectory()) {
                     // if the entry is a file, extracts it
                     extractFile(zipIn, zipEntryTargetFile);
+                    if (zipFileContentEle != null) {
+                        zipFileContentEle.add(entry.getName());
+                    }
                 } else {
                     // if the entry is a directory, make the directory
                     zipEntryTargetFile.createFolder();
@@ -263,25 +276,5 @@ public class UnzipFile extends AbstractConnectorOperation {
         JsonObject resultJSON = generateOperationResult(msgCtx, result);
         handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
         handleException(errorDetail, e, msgCtx);
-    }
-
-    /**
-     * Validate encoding. If invalid or null/empty, return default encoding.
-     *
-     * @param encoding Encoding to validate
-     * @return Valid encoding
-     */
-    private String validateEncoding(String encoding) {
-        if (encoding == null || encoding.isEmpty()) {
-            return DEFAULT_ENCODING;
-        }
-        try {
-            Charset.forName(encoding);
-            return encoding;
-        } catch (UnsupportedCharsetException e) {
-            // Log a warning and fall back to default
-            log.warn("Invalid encoding '" + encoding + "', falling back to default: " + DEFAULT_ENCODING);
-            return DEFAULT_ENCODING;
-        }
     }
 }

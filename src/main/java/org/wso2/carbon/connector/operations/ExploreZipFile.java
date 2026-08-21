@@ -20,6 +20,8 @@ package org.wso2.carbon.connector.operations;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -40,8 +42,6 @@ import org.wso2.carbon.connector.utils.Utils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
 
@@ -52,7 +52,6 @@ import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
 public class ExploreZipFile extends AbstractConnectorOperation {
 
     private static final String ZIP_FILE_PATH = "zipFilePath";
-    private static final String ZIP_FILE_CONTENT_ELE = "zipFileContent";
     private static final String OPERATION_NAME = "exploreZipFile";
     private static final String ERROR_MESSAGE = "Error while performing file:exploreZipFile for file ";
 
@@ -74,6 +73,9 @@ public class ExploreZipFile extends AbstractConnectorOperation {
 
             filePath = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, ZIP_FILE_PATH);
+            String fileNameEncoding = (String) ConnectorUtils.
+                    lookupTemplateParamater(messageContext, Const.FILE_NAME_ENCODING);
+            String validatedFileNameEncoding = Utils.validateEncoding(fileNameEncoding, log);
 
             if (StringUtils.isEmpty(filePath)) {
                 throw new InvalidConfigurationException("Parameter '" + ZIP_FILE_PATH + "' is not provided ");
@@ -98,11 +100,11 @@ public class ExploreZipFile extends AbstractConnectorOperation {
             InputStream input = zipFile.getContent().getInputStream();
 
             //Java handles zip.close() - automatic resource mgt
-            try (ZipInputStream zip = new ZipInputStream(input)) {
+            try (ZipArchiveInputStream zip = new ZipArchiveInputStream(input, validatedFileNameEncoding, true, true)) {
                 String zipEntryName;
-                ZipEntry zipEntry;
+                ZipArchiveEntry zipEntry;
                 // iterates over entries in the zip file
-                while ((zipEntry = zip.getNextEntry()) != null) {
+                while ((zipEntry = zip.getNextZipEntry()) != null) {
                     if (!zipEntry.isDirectory()) {
                         zipEntryName = zipEntry.getName();
                         zipFileContentEle.add(zipEntryName);
@@ -112,7 +114,7 @@ public class ExploreZipFile extends AbstractConnectorOperation {
 
             JsonObject resultJSON = generateOperationResult(messageContext,
                     new FileOperationResult(OPERATION_NAME, true));
-            resultJSON.add(ZIP_FILE_CONTENT_ELE, zipFileContentEle);
+            resultJSON.add(Const.ZIP_FILE_CONTENT_ELEMENT, zipFileContentEle);
             handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
 
 

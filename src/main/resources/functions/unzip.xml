@@ -23,6 +23,7 @@
     <parameter name="responseVariable" description="The name of the variable to which the response should be stored."/>
     <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
     <parameter name="fileNameEncoding" description="Encoding for the file name"/>
+    <parameter name="includeFileNames" description="Include extracted file names in the response"/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.UnzipFile" />
     </sequence>

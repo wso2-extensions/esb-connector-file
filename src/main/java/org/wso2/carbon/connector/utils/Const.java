@@ -79,6 +79,7 @@ public final class Const {
     public static final String FILE_SEPARATOR = "/";
 
     public static final String FILE_ELEMENT = "file";
+    public static final String ZIP_FILE_CONTENT_ELEMENT = "zipFileContent";
     public static final String STATUS_CODE = "HTTP_SC";
     public static final Object HTTP_STATUS_500 = "500";
     public static final int UNZIP_BUFFER_SIZE = 4096;
@@ -101,6 +102,7 @@ public final class Const {
 
     public static final CharSequence NEW_LINE = "\n";
     public static final String DEFAULT_ENCODING = "UTF-8";
+    public static final String FILE_NAME_ENCODING = "fileNameEncoding";
     public static final String SET_CHARACTER_ENCODING = "setCharacterEncoding";
     public static final String CONTENT_TYPE_BINARY = "application/binary";
     public static final String CONTENT_TYPE_TEXT = "text/plain";
