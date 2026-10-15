@@ -42,6 +42,8 @@ import org.wso2.carbon.connector.utils.Utils;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.Comparator;
 
 /**
  * Implements Merge Files operation.
@@ -121,7 +123,8 @@ public class MergeFiles extends AbstractConnector {
             FileObject[] children = sourceDir.getChildren();
 
             if (children != null && children.length != 0) {
-                MergeFileResult mergeFileResult = mergeFiles(targetFile, filePattern, children);
+                MergeFileResult mergeFileResult = mergeFiles(targetFile, filePattern, children,
+                        Const.OVERWRITE.equals(writeMode));
                 numberOfMergedFiles = mergeFileResult.getNumberOfMergedFiles();
                 numberOfTotalBytesWritten = mergeFileResult.getNumberOfTotalWrittenBytes();
             }
@@ -178,11 +181,13 @@ public class MergeFiles extends AbstractConnector {
      *
      * @param targetFile  Target file to create after merge
      * @param filePattern Specific pattern of files to merge
-     * @param children    Files to merge
+     * @param children    Files to merge; they are merged in the alphabetical order of their names
+     * @param overwrite   True if the target was (re)created for this merge: it is then opened without the append flag
      * @return Info object with result of the operation
      * @throws IOException In case of file operation issue
      */
-    private MergeFileResult mergeFiles(FileObject targetFile, String filePattern, FileObject[] children) throws IOException {
+    MergeFileResult mergeFiles(FileObject targetFile, String filePattern, FileObject[] children, boolean overwrite)
+            throws IOException {
 
         int numberOfMergedFiles = 0;
         long numberOfTotalBytesWritten = 0;
@@ -190,11 +195,16 @@ public class MergeFiles extends AbstractConnector {
         BufferedOutputStream bufferedOutputStream = null;
 
         try {
-            //we'll append all in source files
-            outputStream = targetFile.getContent().getOutputStream(true);
+            // Overwrite: the target was just (re)created and is empty, so it is opened WITHOUT the append flag
+            // (some SFTP servers reject the append flag on a new file). Append: the new content goes after the existing one.
+            outputStream = targetFile.getContent().getOutputStream(!overwrite);
             bufferedOutputStream = new BufferedOutputStream(outputStream);
 
-            for (FileObject child : children) {
+            // FileObject#getChildren() has no defined order: merge by name so the result does not depend on the file system
+            FileObject[] ordered = children.clone();
+            Arrays.sort(ordered, Comparator.comparing(file -> file.getName().getBaseName()));
+
+            for (FileObject child : ordered) {
                 long numberOfBytesWritten = 0;
                 if (StringUtils.isNotEmpty(filePattern)) {
                     if (child.getName().getBaseName().matches(filePattern)) {
