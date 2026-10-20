@@ -116,32 +116,32 @@ public class MergeFilesTest {
                 });
     }
 
-    @Test(description = "files are merged in the alphabetical order of their names, whatever order the file system returns")
+    @Test(description = "files are merged in the order of their names, whatever order the file system returns")
     public void mergesInNameOrder() throws IOException {
         write("p0000002.csv", "C\n");
         write("header.csv", "H\n");
         write("p0000001.csv", "B\n");
         write("ignored.txt", "X\n");
         FileObject target = target("");
-        MergeFileResult result = new MergeFiles().mergeFiles(target, "(header|p[0-9]{7})\\.csv", children(), true);
+        MergeFileResult result = new MergeFiles().mergeFiles(target, "(header|p[0-9]{7})\\.csv", children(), false);
         Assert.assertEquals(new String(Files.readAllBytes(dir.resolve("target.csv")), StandardCharsets.UTF_8), "H\nB\nC\n");
         Assert.assertEquals(result.getNumberOfMergedFiles(), 3);
     }
 
-    @Test(description = "Overwrite opens the target without the append flag")
+    @Test(description = "a new or re-created target (Overwrite) is opened without the append flag")
     public void overwriteOpensWithoutAppendFlag() throws IOException {
         write("a.csv", "A\n");
         List<Boolean> flags = new ArrayList<>();
-        new MergeFiles().mergeFiles(recording(target(""), flags), null, children(), true);
+        new MergeFiles().mergeFiles(recording(target(""), flags), null, children(), false);
         Assert.assertEquals(flags, java.util.Collections.singletonList(false));
         Assert.assertEquals(new String(Files.readAllBytes(dir.resolve("target.csv")), StandardCharsets.UTF_8), "A\n");
     }
 
-    @Test(description = "Append still opens the target with the append flag and keeps what is already there")
+    @Test(description = "an existing target in Append mode is opened with the append flag and keeps what is already there")
     public void appendKeepsTheExistingContent() throws IOException {
         write("a.csv", "A\n");
         List<Boolean> flags = new ArrayList<>();
-        new MergeFiles().mergeFiles(recording(target("OLD\n"), flags), null, children(), false);
+        new MergeFiles().mergeFiles(recording(target("OLD\n"), flags), null, children(), true);
         Assert.assertEquals(flags, java.util.Collections.singletonList(true));
         Assert.assertEquals(new String(Files.readAllBytes(dir.resolve("target.csv")), StandardCharsets.UTF_8), "OLD\nA\n");
     }
