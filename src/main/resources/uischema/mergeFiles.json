@@ -43,7 +43,7 @@
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "true",
-                    "helpTip": "Path to the source folder containing files to be merged."
+                    "helpTip": "Path to the source folder containing files to be merged. The files are merged in the order of their names (case-sensitive string order, so use zero-padded numbers such as part-001, part-002)."
                   }
                 },
                 {

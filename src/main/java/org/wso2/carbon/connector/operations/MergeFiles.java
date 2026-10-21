@@ -42,6 +42,8 @@ import org.wso2.carbon.connector.utils.Utils;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.Comparator;
 
 /**
  * Implements Merge Files operation.
@@ -105,15 +107,20 @@ public class MergeFiles extends AbstractConnector {
                 }
             }
 
+            // Only an existing target in Append mode is opened with the append flag. A new or re-created target is
+            // empty, so it is written from the start: this avoids the append flag on file systems that do not support it.
+            boolean appendToTarget = false;
             if (!targetFile.exists()) {
                 targetFile.createFile();
             } else {
-                if (writeMode.equals(Const.OVERWRITE)) {
-                    boolean deleteDone = targetFile.delete();           //otherwise append is done automatically
+                if (Const.OVERWRITE.equals(writeMode)) {
+                    boolean deleteDone = targetFile.delete();
                     if (!deleteDone) {
                         throw new FileOperationException("Error while overwriting existing file " + targetFilePath);
                     }
                     targetFile.createFile();
+                } else {
+                    appendToTarget = true;
                 }
             }
 
@@ -121,7 +128,7 @@ public class MergeFiles extends AbstractConnector {
             FileObject[] children = sourceDir.getChildren();
 
             if (children != null && children.length != 0) {
-                MergeFileResult mergeFileResult = mergeFiles(targetFile, filePattern, children);
+                MergeFileResult mergeFileResult = mergeFiles(targetFile, filePattern, children, appendToTarget);
                 numberOfMergedFiles = mergeFileResult.getNumberOfMergedFiles();
                 numberOfTotalBytesWritten = mergeFileResult.getNumberOfTotalWrittenBytes();
             }
@@ -178,11 +185,14 @@ public class MergeFiles extends AbstractConnector {
      *
      * @param targetFile  Target file to create after merge
      * @param filePattern Specific pattern of files to merge
-     * @param children    Files to merge
+     * @param children    Files to merge; they are merged in the order of their names (case-sensitive string order)
+     * @param append      True to keep the existing content of the target and write after it; false to write the
+     *                    target from the start (the target is new or was re-created for this merge)
      * @return Info object with result of the operation
      * @throws IOException In case of file operation issue
      */
-    private MergeFileResult mergeFiles(FileObject targetFile, String filePattern, FileObject[] children) throws IOException {
+    MergeFileResult mergeFiles(FileObject targetFile, String filePattern, FileObject[] children, boolean append)
+            throws IOException {
 
         int numberOfMergedFiles = 0;
         long numberOfTotalBytesWritten = 0;
@@ -190,11 +200,17 @@ public class MergeFiles extends AbstractConnector {
         BufferedOutputStream bufferedOutputStream = null;
 
         try {
-            //we'll append all in source files
-            outputStream = targetFile.getContent().getOutputStream(true);
+            // The append flag is only requested when there is existing content to keep: VFS rejects it on file
+            // systems without the APPEND_CONTENT capability (e.g. SFTP on older commons-vfs2 versions)
+            outputStream = targetFile.getContent().getOutputStream(append);
             bufferedOutputStream = new BufferedOutputStream(outputStream);
 
-            for (FileObject child : children) {
+            // FileObject#getChildren() has no defined order: merge by name (case-sensitive string order) so the result
+            // does not depend on the file system
+            FileObject[] ordered = children.clone();
+            Arrays.sort(ordered, Comparator.comparing(file -> file.getName().getBaseName()));
+
+            for (FileObject child : ordered) {
                 long numberOfBytesWritten = 0;
                 if (StringUtils.isNotEmpty(filePattern)) {
                     if (child.getName().getBaseName().matches(filePattern)) {
