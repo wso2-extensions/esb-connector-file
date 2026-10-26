@@ -32,8 +32,10 @@ public class FTPSConnectionConfig extends FTPConnectionConfig {
 
     private String keyStore;
     private String keyStorePassword;
+    private String keyStoreType;
     private String trustStore;
     private String trustStorePassword;
+    private String trustStoreType;
 
     private FtpsMode ftpsMode;    //vfs.implicit. Defaults to "explicit" if not defined
     private FtpsDataChannelProtectionLevel channelProtectionLevel;  //vfs.protection
@@ -64,6 +66,16 @@ public class FTPSConnectionConfig extends FTPConnectionConfig {
         }
     }
 
+    public String getKeyStoreType() {
+        return keyStoreType;
+    }
+
+    public void setKeyStoreType(String keyStoreType) {
+        if (!StringUtils.isEmpty(keyStoreType)) {
+            this.keyStoreType = keyStoreType;
+        }
+    }
+
     public String getTrustStore() {
         return trustStore;
     }
@@ -81,6 +93,16 @@ public class FTPSConnectionConfig extends FTPConnectionConfig {
     public void setTrustStorePassword(String trustStorePassword) {
         if (!StringUtils.isEmpty(trustStorePassword)) {
             this.trustStorePassword = trustStorePassword;
+        }
+    }
+
+    public String getTrustStoreType() {
+        return trustStoreType;
+    }
+
+    public void setTrustStoreType(String trustStoreType) {
+        if (!StringUtils.isEmpty(trustStoreType)) {
+            this.trustStoreType = trustStoreType;
         }
     }
 

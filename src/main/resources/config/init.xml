@@ -40,8 +40,10 @@
 	<!--FTPS specific params-->
 	<parameter name="keyStorePath" description="Path to keyStore"/>
 	<parameter name="keyStorePassword" description="KeyStore password"/>
+	<parameter name="keyStoreType" description="KeyStore type"/>
 	<parameter name="trustStorePath" description="Path to trustStore"/>
 	<parameter name="trustStorePassword" description="TrustStore password"/>
+	<parameter name="trustStoreType" description="TrustStore type"/>
 	<parameter name="implicitModeEnabled" description="True if implicit mode is enabled (https://en.wikipedia.org/wiki/FTPS#Implicit)"/>
 	<parameter name="channelProtectionLevel" description="FTP Data Channel protection level"/>
 	<!--SFTP params-->
