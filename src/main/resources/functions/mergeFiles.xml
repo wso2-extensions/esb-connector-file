@@ -17,10 +17,12 @@
   ~ under the License.
   -->
 <template xmlns="http://ws.apache.org/ns/synapse" name="mergeFiles">
-    <parameter name="sourceDirectoryPath" description="Path to the source folder containing files to be merged. The files are merged in the order of their names (case-sensitive string order, so use zero-padded numbers such as part-001, part-002)."/>
+    <parameter name="sourceDirectoryPath" description="Path to the source folder containing files to be merged. The files are merged in the order defined by sortingAttribute and sortingOrder (by name in ascending order by default)."/>
     <parameter name="targetFilePath" description="Path to create merged file."/>
     <parameter name="filePattern" description="Pattern of files include in merging."/>
     <parameter name="writeMode" description="Whether to append or over write if file exists"/>
+    <parameter name="sortingAttribute" description="Attribute to order the files to merge by: Name, Size or LastModifiedTime"/>
+    <parameter name="sortingOrder" description="Order of the files to merge: Ascending or Descending"/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>
     <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
