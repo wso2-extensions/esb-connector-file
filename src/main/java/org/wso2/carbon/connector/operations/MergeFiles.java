@@ -34,6 +34,7 @@ import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
+import org.wso2.carbon.connector.pojo.FileSorter;
 import org.wso2.carbon.connector.pojo.MergeFileResult;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
@@ -42,8 +43,6 @@ import org.wso2.carbon.connector.utils.Utils;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.Comparator;
 
 /**
  * Implements Merge Files operation.
@@ -54,6 +53,8 @@ public class MergeFiles extends AbstractConnector {
     private static final String TARGET_FILE_PATH_PARAM = "targetFilePath";
     private static final String FILE_PATTERN_PARAM = "filePattern";
     private static final String WRITE_MODE_PARAM = "writeMode";
+    private static final String SORT_ATTRIB_PARAM = "sortingAttribute";
+    private static final String SORT_ORDER_PARAM = "sortingOrder";
     private static final String DETAIL_ELE_NAME = "detail";
     private static final String NUMBER_OF_MERGED_FILES_ELE_NAME = "numberOfMergedFiles";
     private static final String TOTAL_WRITTEN_BYTES_ELE_NAME = "totalWrittenBytes";
@@ -87,6 +88,9 @@ public class MergeFiles extends AbstractConnector {
                     lookupTemplateParamater(messageContext, FILE_PATTERN_PARAM);
             String writeMode = (String) ConnectorUtils.
                     lookupTemplateParamater(messageContext, WRITE_MODE_PARAM);
+            FileSorter fileSorter = new FileSorter(
+                    Utils.lookUpStringParam(messageContext, SORT_ATTRIB_PARAM, FileSorter.SORT_ATTRIB_NAME),
+                    Utils.lookUpStringParam(messageContext, SORT_ORDER_PARAM, FileSorter.SORT_ORDER_ASCENDING));
 
             fileSystemHandlerConnection = (FileSystemHandler) handler
                     .getConnection(Const.CONNECTOR_NAME, connectionName);
@@ -128,7 +132,8 @@ public class MergeFiles extends AbstractConnector {
             FileObject[] children = sourceDir.getChildren();
 
             if (children != null && children.length != 0) {
-                MergeFileResult mergeFileResult = mergeFiles(targetFile, filePattern, children, appendToTarget);
+                MergeFileResult mergeFileResult = mergeFiles(targetFile, filePattern, children, appendToTarget,
+                        fileSorter);
                 numberOfMergedFiles = mergeFileResult.getNumberOfMergedFiles();
                 numberOfTotalBytesWritten = mergeFileResult.getNumberOfTotalWrittenBytes();
             }
@@ -185,14 +190,15 @@ public class MergeFiles extends AbstractConnector {
      *
      * @param targetFile  Target file to create after merge
      * @param filePattern Specific pattern of files to merge
-     * @param children    Files to merge; they are merged in the order of their names (case-sensitive string order)
+     * @param children    Files to merge
      * @param append      True to keep the existing content of the target and write after it; false to write the
      *                    target from the start (the target is new or was re-created for this merge)
+     * @param fileSorter  Defines the order in which the files are merged
      * @return Info object with result of the operation
      * @throws IOException In case of file operation issue
      */
-    MergeFileResult mergeFiles(FileObject targetFile, String filePattern, FileObject[] children, boolean append)
-            throws IOException {
+    MergeFileResult mergeFiles(FileObject targetFile, String filePattern, FileObject[] children, boolean append,
+                               FileSorter fileSorter) throws IOException {
 
         int numberOfMergedFiles = 0;
         long numberOfTotalBytesWritten = 0;
@@ -205,10 +211,10 @@ public class MergeFiles extends AbstractConnector {
             outputStream = targetFile.getContent().getOutputStream(append);
             bufferedOutputStream = new BufferedOutputStream(outputStream);
 
-            // FileObject#getChildren() has no defined order: merge by name (case-sensitive string order) so the result
-            // does not depend on the file system
+            // FileObject#getChildren() has no defined order: sort the files so the result does not depend on the
+            // file system
             FileObject[] ordered = children.clone();
-            Arrays.sort(ordered, Comparator.comparing(file -> file.getName().getBaseName()));
+            fileSorter.sort(ordered);
 
             for (FileObject child : ordered) {
                 long numberOfBytesWritten = 0;
