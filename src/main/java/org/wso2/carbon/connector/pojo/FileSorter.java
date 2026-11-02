@@ -26,142 +26,97 @@ import org.wso2.carbon.connector.utils.Const;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 /**
- * Contains comparators used to compare
- * files and sort
+ * Sorts files by an attribute (name, size or last modified time) in ascending or descending order.
+ * Files with the same attribute value are ordered by name, so the result is always deterministic.
  */
 public class FileSorter {
 
     private static final Log log = LogFactory.getLog(FileSorter.class);
     private static final String LOG_PREFIX = "[" + Const.CONNECTOR_NAME + "]";
-    private static final String SORT_ATTRIB_NAME = "Name";
-    private static final String SORT_ATTRIB_SIZE = "Size";
-    private static final String SORT_ATTRIB_MODIFIED_TIME = "LastModifiedTime";
-    private static final String SORT_ORDER_ASCENDING = "Ascending";
-    private static final String SORT_ORDER_DESCENDING = "Descending";
+    public static final String SORT_ATTRIB_NAME = "Name";
+    public static final String SORT_ATTRIB_SIZE = "Size";
+    public static final String SORT_ATTRIB_MODIFIED_TIME = "LastModifiedTime";
+    public static final String SORT_ORDER_ASCENDING = "Ascending";
+    public static final String SORT_ORDER_DESCENDING = "Descending";
 
+    private static final Comparator<FileObject> BY_NAME =
+            Comparator.comparing((FileObject file) -> file.getName().getBaseName())
+                    .thenComparing(FileObject::getName);
 
-    private String sortAttribute;
-    private boolean isAscending;
+    private final String sortAttribute;
+    private final boolean isAscending;
 
-    public FileSorter(String sortAttribute, String sortOder) {
-        this.sortAttribute = sortAttribute;
-        if (sortOder.equals(SORT_ORDER_ASCENDING)) {
-            this.isAscending = true;
-        } else if (sortOder.equals(SORT_ORDER_DESCENDING)) {
+    public FileSorter(String sortAttribute, String sortOrder) {
+
+        if (SORT_ATTRIB_NAME.equals(sortAttribute) || SORT_ATTRIB_SIZE.equals(sortAttribute)
+                || SORT_ATTRIB_MODIFIED_TIME.equals(sortAttribute)) {
+            this.sortAttribute = sortAttribute;
+        } else {
+            log.warn(LOG_PREFIX + "Unknown sort attribute " + sortAttribute + ". Sorting by " + SORT_ATTRIB_NAME);
+            this.sortAttribute = SORT_ATTRIB_NAME;
+        }
+        if (SORT_ORDER_DESCENDING.equals(sortOrder)) {
             this.isAscending = false;
         } else {
-            log.error(LOG_PREFIX + "Unknown Sort order. Default = " + SORT_ORDER_ASCENDING);
+            if (!SORT_ORDER_ASCENDING.equals(sortOrder)) {
+                log.warn(LOG_PREFIX + "Unknown sort order " + sortOrder + ". Sorting in " + SORT_ORDER_ASCENDING
+                        + " order");
+            }
+            this.isAscending = true;
         }
     }
 
+    /**
+     * Sorts the given files in place.
+     *
+     * @param input Files to sort
+     */
     public void sort(FileObject[] input) {
-        switch (this.sortAttribute) {
-            case SORT_ATTRIB_NAME:
-                sortByName(input);
-                break;
+
+        Comparator<FileObject> comparator;
+        switch (sortAttribute) {
             case SORT_ATTRIB_SIZE:
-                sortBySize(input);
+                comparator = byAttribute(input, file -> file.getContent().getSize());
                 break;
             case SORT_ATTRIB_MODIFIED_TIME:
-                sortByLastModifiedTime(input);
+                comparator = byAttribute(input, file -> file.getContent().getLastModifiedTime());
                 break;
             default:
-                log.error("Unknown Sort Attribute " + sortAttribute);
+                comparator = BY_NAME;
                 break;
         }
+        Arrays.sort(input, isAscending ? comparator : comparator.reversed());
     }
 
-    private void sortByName(FileObject[] input) {
-        if (isAscending) {
-            Arrays.sort(input, new FileNameAscComparator());
-        } else {
-            Arrays.sort(input, new FileNameDesComparator());
-        }
-    }
+    /**
+     * Reads the attribute of each file once, so the comparison stays consistent during the sort. A file whose
+     * attribute cannot be read (e.g. a folder has no size) is treated as having the smallest value.
+     */
+    private static Comparator<FileObject> byAttribute(FileObject[] input, AttributeReader reader) {
 
-    private void sortBySize(FileObject[] input) {
-        if (isAscending) {
-            Arrays.sort(input, new FileSizeAscComparator());
-        } else {
-            Arrays.sort(input, new FileSizeDesComparator());
-        }
-    }
-
-    private void sortByLastModifiedTime(FileObject[] input) {
-        if (isAscending) {
-            Arrays.sort(input, new TimeStampAscComparator());
-        } else {
-            Arrays.sort(input, new TimeStampDesComparator());
-        }
-    }
-
-
-    //By Name
-
-    class FileNameAscComparator implements Comparator<FileObject> {
-        public int compare(FileObject o1, FileObject o2) {
-            return o1.getName().compareTo(o2.getName());
-        }
-    }
-
-    class FileNameDesComparator implements Comparator<FileObject> {
-        public int compare(FileObject o1, FileObject o2) {
-            return o2.getName().compareTo(o1.getName());
-        }
-    }
-
-    //By Size
-
-    class FileSizeAscComparator implements Comparator<FileObject> {
-        public int compare(FileObject o1, FileObject o2) {
-            long lDiff = 0L;
+        Map<FileObject, Long> values = new IdentityHashMap<>();
+        for (FileObject file : input) {
+            long value;
             try {
-                lDiff = o1.getContent().getSize() - o2.getContent().getSize();
+                value = reader.read(file);
             } catch (FileSystemException e) {
-                //ignore as it is expected when comparing folders
+                if (log.isDebugEnabled()) {
+                    log.debug(LOG_PREFIX + "Unable to read the sort attribute of " + file.getName().getBaseName(), e);
+                }
+                value = Long.MIN_VALUE;
             }
-            return (int) lDiff;
+            values.put(file, value);
         }
+        return Comparator.comparingLong((FileObject file) -> values.get(file)).thenComparing(BY_NAME);
     }
 
-    class FileSizeDesComparator implements Comparator<FileObject> {
-        public int compare(FileObject o1, FileObject o2) {
-            long lDiff = 0L;
-            try {
-                lDiff = o2.getContent().getSize() - o1.getContent().getSize();
-            } catch (FileSystemException e) {
-                //ignore as it is expected when comparing folders
-            }
-            return (int) lDiff;
-        }
-    }
+    @FunctionalInterface
+    private interface AttributeReader {
 
-    class TimeStampAscComparator implements Comparator<FileObject> {
-        public int compare(FileObject o1, FileObject o2) {
-            try {
-                long time1 = o1.getContent().getLastModifiedTime();
-                long time2 = o2.getContent().getLastModifiedTime();
-                return Long.compare(time1, time2);
-            } catch (FileSystemException e) {
-                log.warn(LOG_PREFIX + "Unable to compare lastmodified timestamp of the two files.", e);
-            }
-            return 0;
-        }
+        long read(FileObject file) throws FileSystemException;
     }
-
-    class TimeStampDesComparator implements Comparator<FileObject> {
-        public int compare(FileObject o1, FileObject o2) {
-            try {
-                long time1 = o1.getContent().getLastModifiedTime();
-                long time2 = o2.getContent().getLastModifiedTime();
-                return Long.compare(time2, time1);
-            } catch (FileSystemException e) {
-                log.warn(LOG_PREFIX + "Unable to compare lastModified timestamp of the two files.", e);
-            }
-            return 0;
-        }
-    }
-
 }
