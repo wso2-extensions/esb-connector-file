@@ -41,7 +41,7 @@
                                         "inputType": "stringOrExpression",
                                         "defaultValue": "",
                                         "required": "true",
-                                        "helpTip": "Path to the source folder containing files to be merged. The files are merged in the order of their names (case-sensitive string order, so use zero-padded numbers such as part-001, part-002)."
+                                        "helpTip": "Path to the source folder containing files to be merged. The files are merged in the order defined by File Sort Attribute and Sort Order."
                                     }
                                 },
                                 {
@@ -125,6 +125,37 @@
                                 {
                                     "type": "attribute",
                                     "value": {
+                                        "name": "sortingAttribute",
+                                        "displayName": "File Sort Attribute",
+                                        "inputType": "comboOrExpression",
+                                        "defaultValue": "Name",
+                                        "comboValues": [
+                                            "Name",
+                                            "Size",
+                                            "LastModifiedTime"
+                                        ],
+                                        "required": "false",
+                                        "helpTip": "Attribute to order the files to merge by. Name uses the case-sensitive string order of the file names. Files with the same value are ordered by name."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "sortingOrder",
+                                        "displayName": "Sort Order",
+                                        "inputType": "comboOrExpression",
+                                        "defaultValue": "Ascending",
+                                        "comboValues": [
+                                            "Ascending",
+                                            "Descending"
+                                        ],
+                                        "required": "false",
+                                        "helpTip": "Order in which the files are merged."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
                                         "name": "writeMode",
                                         "displayName": "Write Mode",
                                         "inputType": "comboOrExpression",
@@ -134,7 +165,7 @@
                                             "Append"
                                         ],
                                         "required": "true",
-                                        "helpTip": "Pattern of files include in merging."
+                                        "helpTip": "Whether to overwrite or append to the target file if it already exists."
                                     }
                                 }
                             ]

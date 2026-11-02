@@ -28,6 +28,7 @@ import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.wso2.carbon.connector.pojo.FileSorter;
 import org.wso2.carbon.connector.pojo.MergeFileResult;
 import org.wso2.carbon.connector.utils.AdvancedFileFilter;
 
@@ -71,6 +72,14 @@ public class MergeFilesTest {
         try (java.util.stream.Stream<Path> walk = Files.walk(dir)) {
             walk.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
         }
+    }
+
+    private static FileSorter byName() {
+        return new FileSorter(FileSorter.SORT_ATTRIB_NAME, FileSorter.SORT_ORDER_ASCENDING);
+    }
+
+    private String merged() throws IOException {
+        return new String(Files.readAllBytes(dir.resolve("target.csv")), StandardCharsets.UTF_8);
     }
 
     private void write(String name, String text) throws IOException {
@@ -124,7 +133,8 @@ public class MergeFilesTest {
         write("p0000001.csv", "B\n");
         write("ignored.txt", "X\n");
         FileObject target = target("");
-        MergeFileResult result = new MergeFiles().mergeFiles(target, "(header|p[0-9]{7})\\.csv", null, children(), false);
+        MergeFileResult result = new MergeFiles().mergeFiles(target, "(header|p[0-9]{7})\\.csv", null, children(), false,
+                byName());
         Assert.assertEquals(new String(Files.readAllBytes(dir.resolve("target.csv")), StandardCharsets.UTF_8), "H\nB\nC\n");
         Assert.assertEquals(result.getNumberOfMergedFiles(), 3);
     }
@@ -133,7 +143,7 @@ public class MergeFilesTest {
     public void overwriteOpensWithoutAppendFlag() throws IOException {
         write("a.csv", "A\n");
         List<Boolean> flags = new ArrayList<>();
-        new MergeFiles().mergeFiles(recording(target(""), flags), null, null, children(), false);
+        new MergeFiles().mergeFiles(recording(target(""), flags), null, null, children(), false, byName());
         Assert.assertEquals(flags, java.util.Collections.singletonList(false));
         Assert.assertEquals(new String(Files.readAllBytes(dir.resolve("target.csv")), StandardCharsets.UTF_8), "A\n");
     }
@@ -142,7 +152,7 @@ public class MergeFilesTest {
     public void appendKeepsTheExistingContent() throws IOException {
         write("a.csv", "A\n");
         List<Boolean> flags = new ArrayList<>();
-        new MergeFiles().mergeFiles(recording(target("OLD\n"), flags), null, null, children(), true);
+        new MergeFiles().mergeFiles(recording(target("OLD\n"), flags), null, null, children(), true, byName());
         Assert.assertEquals(flags, java.util.Collections.singletonList(true));
         Assert.assertEquals(new String(Files.readAllBytes(dir.resolve("target.csv")), StandardCharsets.UTF_8), "OLD\nA\n");
     }
@@ -155,8 +165,19 @@ public class MergeFilesTest {
         write("ignored.txt", "X\n");
         FileObject target = target("");
         AdvancedFileFilter filter = new AdvancedFileFilter("regex", "(header|p[0-9]{7})\\.csv", null, null);
-        MergeFileResult result = new MergeFiles().mergeFilesWithAdvancedFilter(target, filter, null, children(), false);
+        MergeFileResult result = new MergeFiles().mergeFilesWithAdvancedFilter(target, filter, null, children(), false,
+                byName());
         Assert.assertEquals(new String(Files.readAllBytes(dir.resolve("target.csv")), StandardCharsets.UTF_8), "H\nB\nC\n");
         Assert.assertEquals(result.getNumberOfMergedFiles(), 3);
+    }
+
+    @Test(description = "Descending reverses the merge order")
+    public void mergesInDescendingOrder() throws IOException {
+        write("a.csv", "A\n");
+        write("b.csv", "B\n");
+        write("c.csv", "C\n");
+        new MergeFiles().mergeFiles(target(""), null, null, children(), false,
+                new FileSorter(FileSorter.SORT_ATTRIB_NAME, FileSorter.SORT_ORDER_DESCENDING));
+        Assert.assertEquals(merged(), "C\nB\nA\n");
     }
 }
