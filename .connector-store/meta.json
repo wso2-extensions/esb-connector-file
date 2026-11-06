@@ -15,35 +15,56 @@
     ],
     "releases": [
         {
-            "tagName": "v5.0.5",
+            "tagName": "v5.0.7",
             "products": [
                 "MI 4.4.0"
             ],
             "operations": [
                 {
-                    "name": "compress",
-                    "description": "Archives a File or a Directory",
+                    "name": "splitFile",
+                    "description": "Split a file into multiple smaller files",
                     "params": [
                         {
-                            "name": "sourceDirectoryPath",
+                            "name": "sourceFilePath",
                             "type": "stringOrExpression",
                             "required": true,
                             "defaultValue": "",
-                            "description": "Path to file/folder to compress"
+                            "description": "Path to the file to split"
                         },
                         {
-                            "name": "targetFilePath",
+                            "name": "targetDirectory",
                             "type": "stringOrExpression",
                             "required": true,
                             "defaultValue": "",
-                            "description": "Path to the Zip file to create."
+                            "description": "Folder to place split files. If already exists, it will get overwritten."
                         },
                         {
-                            "name": "includeSubDirectories",
-                            "type": "booleanOrExpression",
+                            "name": "splitMode",
+                            "type": "comboOrExpression",
+                            "required": true,
+                            "defaultValue": "Chunk Size",
+                            "description": "The chunk size in bytes to split the file. Supported values: Chunk Size, Line Count, XPATH Expression"
+                        },
+                        {
+                            "name": "chunkSize",
+                            "type": "stringOrExpression",
                             "required": false,
-                            "defaultValue": "true",
-                            "description": "Whether to include sub-directories when compressing."
+                            "defaultValue": "",
+                            "description": "The chunk size in bytes to split the file."
+                        },
+                        {
+                            "name": "lineCount",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "",
+                            "description": "The number of lines per file."
+                        },
+                        {
+                            "name": "xpathExpression",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "",
+                            "description": "The XPATH expression used to split file."
                         },
                         {
                             "name": "diskShareAccessMask",
@@ -51,48 +72,6 @@
                             "required": false,
                             "defaultValue": "MAXIMUM_ALLOWED",
                             "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
-                        },
-                        {
-                            "name": "responseVariable",
-                            "type": "string",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Name of the variable to which the output of the operation should be assigned"
-                        },
-                        {
-                            "name": "overwriteBody",
-                            "type": "checkbox",
-                            "required": false,
-                            "defaultValue": "false",
-                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
-                        }
-                    ],
-                    "isHidden": false
-                },
-                {
-                    "name": "exploreZipFile",
-                    "description": "List Items In ZIP File Without Extracting",
-                    "params": [
-                        {
-                            "name": "zipFilePath",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Path to zip file to explore"
-                        },
-                        {
-                            "name": "diskShareAccessMask",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "MAXIMUM_ALLOWED",
-                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
-                        },
-                        {
-                            "name": "fileNameEncoding",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "UTF-8",
-                            "description": "Specifies the character encoding to interpret file names inside the ZIP archive."
                         },
                         {
                             "name": "responseVariable",
@@ -189,6 +168,391 @@
                     "isHidden": false
                 },
                 {
+                    "name": "checkExist",
+                    "description": "Check Existence of a File or Directory",
+                    "params": [
+                        {
+                            "name": "path",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Path to zip file to extract"
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "MAXIMUM_ALLOWED",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": false,
+                            "defaultValue": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "exploreZipFile",
+                    "description": "List Items In ZIP File Without Extracting",
+                    "params": [
+                        {
+                            "name": "zipFilePath",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Path to zip file to explore"
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "MAXIMUM_ALLOWED",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "fileNameEncoding",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "UTF-8",
+                            "description": "Specifies the character encoding to interpret file names inside the ZIP archive."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": false,
+                            "defaultValue": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "compress",
+                    "description": "Archives a File or a Directory",
+                    "params": [
+                        {
+                            "name": "sourceDirectoryPath",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Path to file/folder to compress"
+                        },
+                        {
+                            "name": "targetFilePath",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Path to the Zip file to create."
+                        },
+                        {
+                            "name": "includeSubDirectories",
+                            "type": "booleanOrExpression",
+                            "required": false,
+                            "defaultValue": "true",
+                            "description": "Whether to include sub-directories when compressing."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "MAXIMUM_ALLOWED",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": false,
+                            "defaultValue": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "delete",
+                    "description": "Delete File Or Folder",
+                    "params": [
+                        {
+                            "name": "path",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Path to file or directory to delete."
+                        },
+                        {
+                            "name": "matchingPattern",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "",
+                            "description": "Pattern (regex) to match file name. Matching files will get removed. If not provided all files will get removed"
+                        },
+                        {
+                            "name": "maxRetries",
+                            "type": "integerOrExpression",
+                            "required": false,
+                            "defaultValue": "0",
+                            "description": "The maximum number of retries to be done in case of a failure."
+                        },
+                        {
+                            "name": "retryDelay",
+                            "type": "integerOrExpression",
+                            "required": false,
+                            "defaultValue": "0",
+                            "description": "The time interval between retries in milliseconds."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "MAXIMUM_ALLOWED",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": false,
+                            "defaultValue": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "listFiles",
+                    "description": "List Files In Directory",
+                    "params": [
+                        {
+                            "name": "directoryPath",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Path to directory to list files in."
+                        },
+                        {
+                            "name": "matchingPattern",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "",
+                            "description": "File pattern to match when listing"
+                        },
+                        {
+                            "name": "recursive",
+                            "type": "booleanOrExpression",
+                            "required": false,
+                            "defaultValue": "false",
+                            "description": "List files in sub-directories"
+                        },
+                        {
+                            "name": "responseFormat",
+                            "type": "comboOrExpression",
+                            "required": true,
+                            "defaultValue": "Hierarchical",
+                            "description": "Response will be formatted as per this attribute. Supported values: Hierarchical, Flat"
+                        },
+                        {
+                            "name": "sortingAttribute",
+                            "type": "comboOrExpression",
+                            "required": true,
+                            "defaultValue": "Name",
+                            "description": "Files will be listed as per attribute. Supported values: Name, Size, LastModifiedTime"
+                        },
+                        {
+                            "name": "sortingOrder",
+                            "type": "comboOrExpression",
+                            "required": true,
+                            "defaultValue": "Ascending",
+                            "description": "Order you need to sort in ascending or descending order Supported values: Ascending, Descending"
+                        },
+                        {
+                            "name": "maxRetries",
+                            "type": "integerOrExpression",
+                            "required": false,
+                            "defaultValue": "0",
+                            "description": "The maximum number of retries to be done in case of a failure."
+                        },
+                        {
+                            "name": "retryDelay",
+                            "type": "integerOrExpression",
+                            "required": false,
+                            "defaultValue": "0",
+                            "description": "The time interval between retries in milliseconds."
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "MAXIMUM_ALLOWED",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": false,
+                            "defaultValue": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "mergeFiles",
+                    "description": "Merge Multiple Files into a Single File",
+                    "params": [
+                        {
+                            "name": "sourceDirectoryPath",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Path to the source folder containing files to be merged. The files are merged in the order defined by File Sort Attribute and Sort Order."
+                        },
+                        {
+                            "name": "targetFilePath",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Path to create merged file. If already exists, it will get overwritten."
+                        },
+                        {
+                            "name": "filePattern",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "",
+                            "description": "Pattern of files include in merging."
+                        },
+                        {
+                            "name": "sortingAttribute",
+                            "type": "comboOrExpression",
+                            "required": false,
+                            "defaultValue": "Name",
+                            "description": "Attribute to order the files to merge by. Name uses the case-sensitive string order of the file names. Files with the same value are ordered by name. Supported values: Name, Size, LastModifiedTime"
+                        },
+                        {
+                            "name": "sortingOrder",
+                            "type": "comboOrExpression",
+                            "required": false,
+                            "defaultValue": "Ascending",
+                            "description": "Order in which the files are merged. Supported values: Ascending, Descending"
+                        },
+                        {
+                            "name": "writeMode",
+                            "type": "comboOrExpression",
+                            "required": true,
+                            "defaultValue": "Overwrite",
+                            "description": "Whether to overwrite or append to the target file if it already exists. Supported values: Overwrite, Append"
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "MAXIMUM_ALLOWED",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": false,
+                            "defaultValue": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
+                    "name": "rename",
+                    "description": "Rename the file to the new name specified",
+                    "params": [
+                        {
+                            "name": "path",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "The path to the file or folder to rename"
+                        },
+                        {
+                            "name": "renameTo",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "New name of the file or folder"
+                        },
+                        {
+                            "name": "overwrite",
+                            "type": "booleanOrExpression",
+                            "required": false,
+                            "defaultValue": "false",
+                            "description": "Whether or not to overwrite the file if a file with new name already exists"
+                        },
+                        {
+                            "name": "diskShareAccessMask",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "MAXIMUM_ALLOWED",
+                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                        },
+                        {
+                            "name": "responseVariable",
+                            "type": "string",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Name of the variable to which the output of the operation should be assigned"
+                        },
+                        {
+                            "name": "overwriteBody",
+                            "type": "checkbox",
+                            "required": false,
+                            "defaultValue": "false",
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                        }
+                    ],
+                    "isHidden": false
+                },
+                {
                     "name": "copy",
                     "description": "Copies the File or Folder Specified by SourcePath into TargetPath",
                     "params": [
@@ -273,50 +637,15 @@
                     "isHidden": false
                 },
                 {
-                    "name": "splitFile",
-                    "description": "Split a file into multiple smaller files",
+                    "name": "createDirectory",
+                    "description": "Create Directory",
                     "params": [
                         {
-                            "name": "sourceFilePath",
+                            "name": "directoryPath",
                             "type": "stringOrExpression",
                             "required": true,
                             "defaultValue": "",
-                            "description": "Path to the file to split"
-                        },
-                        {
-                            "name": "targetDirectory",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Folder to place split files. If already exists, it will get overwritten."
-                        },
-                        {
-                            "name": "splitMode",
-                            "type": "comboOrExpression",
-                            "required": true,
-                            "defaultValue": "Chunk Size",
-                            "description": "The chunk size in bytes to split the file. Supported values: Chunk Size, Line Count, XPATH Expression"
-                        },
-                        {
-                            "name": "chunkSize",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "",
-                            "description": "The chunk size in bytes to split the file."
-                        },
-                        {
-                            "name": "lineCount",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "",
-                            "description": "The number of lines per file."
-                        },
-                        {
-                            "name": "xpathExpression",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "",
-                            "description": "The XPATH expression used to split file."
+                            "description": "Path to new directory."
                         },
                         {
                             "name": "diskShareAccessMask",
@@ -434,78 +763,78 @@
                     "isHidden": false
                 },
                 {
-                    "name": "unzip",
-                    "description": "Unzip File to Target Directory",
-                    "params": [
-                        {
-                            "name": "sourceFilePath",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Path to zip file to extract"
-                        },
-                        {
-                            "name": "targetDirectory",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Folder to extract. If already exists, it will get overwritten."
-                        },
-                        {
-                            "name": "diskShareAccessMask",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "MAXIMUM_ALLOWED",
-                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
-                        },
-                        {
-                            "name": "fileNameEncoding",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "UTF-8",
-                            "description": "Specifies the character encoding to interpret file names inside the ZIP archive."
-                        },
-                        {
-                            "name": "includeFileNames",
-                            "type": "booleanOrExpression",
-                            "required": false,
-                            "defaultValue": "false",
-                            "description": "If enabled, the names of the extracted files are returned in the response."
-                        },
-                        {
-                            "name": "responseVariable",
-                            "type": "string",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Name of the variable to which the output of the operation should be assigned"
-                        },
-                        {
-                            "name": "overwriteBody",
-                            "type": "checkbox",
-                            "required": false,
-                            "defaultValue": "false",
-                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
-                        }
-                    ],
-                    "isHidden": false
-                },
-                {
-                    "name": "delete",
-                    "description": "Delete File Or Folder",
+                    "name": "read",
+                    "description": "Read a file or files in a directory",
                     "params": [
                         {
                             "name": "path",
                             "type": "stringOrExpression",
                             "required": true,
                             "defaultValue": "",
-                            "description": "Path to file or directory to delete."
+                            "description": "Path to the file or folder to read."
                         },
                         {
-                            "name": "matchingPattern",
+                            "name": "filePattern",
                             "type": "stringOrExpression",
                             "required": false,
                             "defaultValue": "",
-                            "description": "Pattern (regex) to match file name. Matching files will get removed. If not provided all files will get removed"
+                            "description": "File pattern to match when choosing files to read in a folder. Not applicable when reading a file."
+                        },
+                        {
+                            "name": "readMode",
+                            "type": "comboOrExpression",
+                            "required": true,
+                            "defaultValue": "Complete File",
+                            "description": "Read mode to use.  Supported values: Complete File, Starting From Line, Up To Line, Between Lines, Specific Line, Metadata Only"
+                        },
+                        {
+                            "name": "startLineNum",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "0",
+                            "description": "Read file starting from this line."
+                        },
+                        {
+                            "name": "endLineNum",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "0",
+                            "description": "Read file up to this line."
+                        },
+                        {
+                            "name": "lineNum",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "0",
+                            "description": "Specific line number to read"
+                        },
+                        {
+                            "name": "contentType",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "",
+                            "description": "MIME type of the message generated. If not provided it will try to interpret."
+                        },
+                        {
+                            "name": "encoding",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "UTF-8",
+                            "description": "Encoding of the message generated."
+                        },
+                        {
+                            "name": "enableStreaming",
+                            "type": "booleanOrExpression",
+                            "required": true,
+                            "defaultValue": "false",
+                            "description": "Read the file in streaming manner."
+                        },
+                        {
+                            "name": "enableLock",
+                            "type": "booleanOrExpression",
+                            "required": true,
+                            "defaultValue": "false",
+                            "description": "Whether to lock the file when reading"
                         },
                         {
                             "name": "maxRetries",
@@ -520,146 +849,6 @@
                             "required": false,
                             "defaultValue": "0",
                             "description": "The time interval between retries in milliseconds."
-                        },
-                        {
-                            "name": "diskShareAccessMask",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "MAXIMUM_ALLOWED",
-                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
-                        },
-                        {
-                            "name": "responseVariable",
-                            "type": "string",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Name of the variable to which the output of the operation should be assigned"
-                        },
-                        {
-                            "name": "overwriteBody",
-                            "type": "checkbox",
-                            "required": false,
-                            "defaultValue": "false",
-                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
-                        }
-                    ],
-                    "isHidden": false
-                },
-                {
-                    "name": "rename",
-                    "description": "Rename the file to the new name specified",
-                    "params": [
-                        {
-                            "name": "path",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "The path to the file or folder to rename"
-                        },
-                        {
-                            "name": "renameTo",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "New name of the file or folder"
-                        },
-                        {
-                            "name": "overwrite",
-                            "type": "booleanOrExpression",
-                            "required": false,
-                            "defaultValue": "false",
-                            "description": "Whether or not to overwrite the file if a file with new name already exists"
-                        },
-                        {
-                            "name": "diskShareAccessMask",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "MAXIMUM_ALLOWED",
-                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
-                        },
-                        {
-                            "name": "responseVariable",
-                            "type": "string",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Name of the variable to which the output of the operation should be assigned"
-                        },
-                        {
-                            "name": "overwriteBody",
-                            "type": "checkbox",
-                            "required": false,
-                            "defaultValue": "false",
-                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
-                        }
-                    ],
-                    "isHidden": false
-                },
-                {
-                    "name": "mergeFiles",
-                    "description": "Merge Multiple Files into a Single File",
-                    "params": [
-                        {
-                            "name": "sourceDirectoryPath",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Path to the source folder containing files to be merged."
-                        },
-                        {
-                            "name": "targetFilePath",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Path to create merged file. If already exists, it will get overwritten."
-                        },
-                        {
-                            "name": "filePattern",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "",
-                            "description": "Pattern of files include in merging."
-                        },
-                        {
-                            "name": "writeMode",
-                            "type": "comboOrExpression",
-                            "required": true,
-                            "defaultValue": "Overwrite",
-                            "description": "Pattern of files include in merging. Supported values: Overwrite, Append"
-                        },
-                        {
-                            "name": "diskShareAccessMask",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "MAXIMUM_ALLOWED",
-                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
-                        },
-                        {
-                            "name": "responseVariable",
-                            "type": "string",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Name of the variable to which the output of the operation should be assigned"
-                        },
-                        {
-                            "name": "overwriteBody",
-                            "type": "checkbox",
-                            "required": false,
-                            "defaultValue": "false",
-                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
-                        }
-                    ],
-                    "isHidden": false
-                },
-                {
-                    "name": "checkExist",
-                    "description": "Check Existence of a File or Directory",
-                    "params": [
-                        {
-                            "name": "path",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Path to zip file to extract"
                         },
                         {
                             "name": "diskShareAccessMask",
@@ -805,15 +994,22 @@
                     "isHidden": false
                 },
                 {
-                    "name": "createDirectory",
-                    "description": "Create Directory",
+                    "name": "unzip",
+                    "description": "Unzip File to Target Directory",
                     "params": [
                         {
-                            "name": "directoryPath",
+                            "name": "sourceFilePath",
                             "type": "stringOrExpression",
                             "required": true,
                             "defaultValue": "",
-                            "description": "Path to new directory."
+                            "description": "Path to zip file to extract"
+                        },
+                        {
+                            "name": "targetDirectory",
+                            "type": "stringOrExpression",
+                            "required": true,
+                            "defaultValue": "",
+                            "description": "Folder to extract. If already exists, it will get overwritten."
                         },
                         {
                             "name": "diskShareAccessMask",
@@ -823,200 +1019,18 @@
                             "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
                         },
                         {
-                            "name": "responseVariable",
-                            "type": "string",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Name of the variable to which the output of the operation should be assigned"
-                        },
-                        {
-                            "name": "overwriteBody",
-                            "type": "checkbox",
-                            "required": false,
-                            "defaultValue": "false",
-                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
-                        }
-                    ],
-                    "isHidden": false
-                },
-                {
-                    "name": "listFiles",
-                    "description": "List Files In Directory",
-                    "params": [
-                        {
-                            "name": "directoryPath",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Path to directory to list files in."
-                        },
-                        {
-                            "name": "matchingPattern",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "",
-                            "description": "File pattern to match when listing"
-                        },
-                        {
-                            "name": "recursive",
-                            "type": "booleanOrExpression",
-                            "required": false,
-                            "defaultValue": "false",
-                            "description": "List files in sub-directories"
-                        },
-                        {
-                            "name": "responseFormat",
-                            "type": "comboOrExpression",
-                            "required": true,
-                            "defaultValue": "Hierarchical",
-                            "description": "Response will be formatted as per this attribute. Supported values: Hierarchical, Flat"
-                        },
-                        {
-                            "name": "sortingAttribute",
-                            "type": "comboOrExpression",
-                            "required": true,
-                            "defaultValue": "Name",
-                            "description": "Files will be listed as per attribute. Supported values: Name, Size, LastModifiedTime"
-                        },
-                        {
-                            "name": "sortingOrder",
-                            "type": "comboOrExpression",
-                            "required": true,
-                            "defaultValue": "Ascending",
-                            "description": "Order you need to sort in ascending or descending order Supported values: Ascending, Descending"
-                        },
-                        {
-                            "name": "maxRetries",
-                            "type": "integerOrExpression",
-                            "required": false,
-                            "defaultValue": "0",
-                            "description": "The maximum number of retries to be done in case of a failure."
-                        },
-                        {
-                            "name": "retryDelay",
-                            "type": "integerOrExpression",
-                            "required": false,
-                            "defaultValue": "0",
-                            "description": "The time interval between retries in milliseconds."
-                        },
-                        {
-                            "name": "diskShareAccessMask",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "MAXIMUM_ALLOWED",
-                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
-                        },
-                        {
-                            "name": "responseVariable",
-                            "type": "string",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Name of the variable to which the output of the operation should be assigned"
-                        },
-                        {
-                            "name": "overwriteBody",
-                            "type": "checkbox",
-                            "required": false,
-                            "defaultValue": "false",
-                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
-                        }
-                    ],
-                    "isHidden": false
-                },
-                {
-                    "name": "read",
-                    "description": "Read a file or files in a directory",
-                    "params": [
-                        {
-                            "name": "path",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "",
-                            "description": "Path to the file or folder to read."
-                        },
-                        {
-                            "name": "filePattern",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "",
-                            "description": "File pattern to match when choosing files to read in a folder. Not applicable when reading a file."
-                        },
-                        {
-                            "name": "readMode",
-                            "type": "comboOrExpression",
-                            "required": true,
-                            "defaultValue": "Complete File",
-                            "description": "Read mode to use.  Supported values: Complete File, Starting From Line, Up To Line, Between Lines, Specific Line, Metadata Only"
-                        },
-                        {
-                            "name": "startLineNum",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "0",
-                            "description": "Read file starting from this line."
-                        },
-                        {
-                            "name": "endLineNum",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "0",
-                            "description": "Read file up to this line."
-                        },
-                        {
-                            "name": "lineNum",
-                            "type": "stringOrExpression",
-                            "required": true,
-                            "defaultValue": "0",
-                            "description": "Specific line number to read"
-                        },
-                        {
-                            "name": "contentType",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "",
-                            "description": "MIME type of the message generated. If not provided it will try to interpret."
-                        },
-                        {
-                            "name": "encoding",
+                            "name": "fileNameEncoding",
                             "type": "stringOrExpression",
                             "required": false,
                             "defaultValue": "UTF-8",
-                            "description": "Encoding of the message generated."
+                            "description": "Specifies the character encoding to interpret file names inside the ZIP archive."
                         },
                         {
-                            "name": "enableStreaming",
+                            "name": "includeFileNames",
                             "type": "booleanOrExpression",
-                            "required": true,
+                            "required": false,
                             "defaultValue": "false",
-                            "description": "Read the file in streaming manner."
-                        },
-                        {
-                            "name": "enableLock",
-                            "type": "booleanOrExpression",
-                            "required": true,
-                            "defaultValue": "false",
-                            "description": "Whether to lock the file when reading"
-                        },
-                        {
-                            "name": "maxRetries",
-                            "type": "integerOrExpression",
-                            "required": false,
-                            "defaultValue": "0",
-                            "description": "The maximum number of retries to be done in case of a failure."
-                        },
-                        {
-                            "name": "retryDelay",
-                            "type": "integerOrExpression",
-                            "required": false,
-                            "defaultValue": "0",
-                            "description": "The time interval between retries in milliseconds."
-                        },
-                        {
-                            "name": "diskShareAccessMask",
-                            "type": "stringOrExpression",
-                            "required": false,
-                            "defaultValue": "MAXIMUM_ALLOWED",
-                            "description": "Comma separated access mask values for disk share. This is only applicable for SMB2 connection type."
+                            "description": "If enabled, the names of the extracted files are returned in the response."
                         },
                         {
                             "name": "responseVariable",
@@ -1131,6 +1145,33 @@
                             "required": false,
                             "defaultValue": "",
                             "description": "Determines the action to take when the borrowObject() method is called, but the pool is exhausted"
+                        }
+                    ]
+                },
+                {
+                    "name": "LOCAL",
+                    "description": "Local File",
+                    "params": [
+                        {
+                            "name": "connectionName",
+                            "type": "string",
+                            "required": true,
+                            "defaultValue": "FILE_CONNECTION_1",
+                            "description": "The name for the file connection"
+                        },
+                        {
+                            "name": "workingDir",
+                            "type": "string",
+                            "required": false,
+                            "defaultValue": "/",
+                            "description": "Working directory. File paths in operations should be given w.r.t this folder. Eg: /Users/username/Downloads"
+                        },
+                        {
+                            "name": "fileLockScheme",
+                            "type": "comboOrExpression",
+                            "required": true,
+                            "defaultValue": "Local",
+                            "description": "File Locking Behaviour to use in operations associated with this connection. Supported values: Local, Cluster"
                         }
                     ]
                 },
@@ -1353,33 +1394,6 @@
                             "required": false,
                             "defaultValue": "150000",
                             "description": "Socket timeout for FTP client"
-                        },
-                        {
-                            "name": "fileLockScheme",
-                            "type": "comboOrExpression",
-                            "required": true,
-                            "defaultValue": "Local",
-                            "description": "File Locking Behaviour to use in operations associated with this connection. Supported values: Local, Cluster"
-                        }
-                    ]
-                },
-                {
-                    "name": "LOCAL",
-                    "description": "Local File",
-                    "params": [
-                        {
-                            "name": "connectionName",
-                            "type": "string",
-                            "required": true,
-                            "defaultValue": "FILE_CONNECTION_1",
-                            "description": "The name for the file connection"
-                        },
-                        {
-                            "name": "workingDir",
-                            "type": "string",
-                            "required": false,
-                            "defaultValue": "/",
-                            "description": "Working directory. File paths in operations should be given w.r.t this folder. Eg: /Users/username/Downloads"
                         },
                         {
                             "name": "fileLockScheme",
