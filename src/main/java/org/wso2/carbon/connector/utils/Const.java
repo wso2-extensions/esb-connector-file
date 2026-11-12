@@ -124,6 +124,7 @@ public final class Const {
     public static final String MATCH_ALL_REGEX = ".*";
     public static final String EMPTY_STRING = "";
     public static final CharSequence CONNECTOR_LIBRARY_NAME = "file-connector";
+    public static final CharSequence CONNECTOR_LIBRARY_NAME_PATTEN2 = "connector-file";
     public static final String CONNECTOR_LIBRARY_PACKAGE_TYPE = "org.wso2.carbon.connector";
     public static final String LOCAL_FILE_LOCK_SCHEME = "Local";
     public static final String CLUSTER_FILE_LOCK_SCHEME = "Cluster";

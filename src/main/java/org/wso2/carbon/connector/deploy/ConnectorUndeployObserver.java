@@ -45,7 +45,8 @@ public class ConnectorUndeployObserver extends AbstractSynapseObserver {
         String libraryPath = library.getFileName();
         // No need to use File.separator here since libraryPath we are getting from synapse is formatted with "/"
         String libraryName = libraryPath.substring(libraryPath.lastIndexOf("/"));
-        if (libraryName.contains(Const.CONNECTOR_LIBRARY_NAME)
+        if ((libraryName.contains(Const.CONNECTOR_LIBRARY_NAME)
+                || libraryName.contains(Const.CONNECTOR_LIBRARY_NAME_PATTEN2))
                 && library.getPackage().equals(Const.CONNECTOR_LIBRARY_PACKAGE_TYPE)) {
             if (log.isDebugEnabled()) {
                 log.debug("File Connector is being un deployed. Closing all file connections created.");
