@@ -328,6 +328,42 @@ public class FileTreeOperationTest {
         }
     }
 
+    @Test
+    public void namedMoveChecksActiveLegacyGuardBeforeChangingEitherPath() throws Exception {
+        Path root = WriteFileTest.directory();
+        Path source = Files.writeString(root.resolve("one.txt"), "only");
+        Path target = Files.createDirectory(root.resolve("out")).resolve("one.txt");
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", root.toString())) {
+            error(invoke(new MoveFiles(), WriteFileTest.message(files), "sourcePath", "/one.txt", "targetPath", "/out",
+                    "filePattern", ".*[.]csv", "includeFiles", ".*[.]txt"), "700108");
+            Assert.assertEquals(Files.readString(source), "only");
+            Assert.assertFalse(Files.exists(target));
+            error(invoke(new MoveFiles(), WriteFileTest.message(files), "sourcePath", "/one.txt", "targetPath", "/out",
+                    "filePattern", "[", "includeFiles", ".*[.]txt"), "700107");
+            Assert.assertEquals(Files.readString(source), "only");
+            Assert.assertFalse(Files.exists(target));
+            success(invoke(new MoveFiles(), WriteFileTest.message(files), "sourcePath", "/one.txt", "targetPath", "/out",
+                    "filePattern", "one[.]txt", "includeFiles", ".*[.]txt"));
+            Assert.assertFalse(Files.exists(source));
+            Assert.assertEquals(Files.readString(target), "only");
+        }
+    }
+
+    @Test
+    public void appendMergePreparesMissingParentsForAtomicAndDirectWrites() throws Exception {
+        Path root = WriteFileTest.directory();
+        Files.writeString(Files.createDirectory(root.resolve("src")).resolve("one"), "A");
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", root.toString(),
+                "fileLockScheme", "Cluster")) {
+            for (boolean atomic : new boolean[]{true, false}) {
+                String target = "new" + atomic + "/sub/joined";
+                success(invoke(new MergeFiles(), WriteFileTest.message(files), "sourceDirectoryPath", "/src",
+                        "targetFilePath", "/" + target, "writeMode", "Append", "atomicWrite", String.valueOf(atomic)));
+                Assert.assertEquals(Files.readString(root.resolve(target)), "A");
+            }
+        }
+    }
+
     @DataProvider
     public Object[][] mergeWriters() {
         return new Object[][] {{"A", "B", ""}, {"B", "A", ""}, {"A", "B", "old"}, {"B", "A", "old"}};
@@ -337,8 +373,9 @@ public class FileTreeOperationTest {
     public void cooperatingAppendWritersKeepBothContributions(String slow, String fast, String initial)
             throws Exception {
         Path root = WriteFileTest.directory();
-        Path target = root.resolve("joined");
+        Path target = root.resolve("new/joined");
         if (!initial.isEmpty()) {
+            Files.createDirectory(target.getParent());
             Files.writeString(target, initial);
         }
         for (String writer : new String[]{slow, fast}) {
@@ -395,7 +432,7 @@ public class FileTreeOperationTest {
         try (FilePoolFixture fixture = new FilePoolFixture("LOCAL", "workingDir", root.toString(),
                 "fileLockScheme", "Cluster")) {
             JsonObject result = invoke(merge, WriteFileTest.message(fixture), "sourceDirectoryPath", "/" + writer,
-                    "targetFilePath", "/joined", "writeMode", "Append");
+                    "targetFilePath", "/new/joined", "writeMode", "Append");
             success(result);
             Assert.assertEquals(result.getAsJsonObject("detail").get("totalWrittenBytes").getAsInt(), 1);
         }

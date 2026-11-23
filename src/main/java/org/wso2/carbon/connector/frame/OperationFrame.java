@@ -389,7 +389,8 @@ public final class OperationFrame {
                 continue;
             }
             StreamLease.Lending lending = lent.get(path);
-            if (item.getValue() == Lock.WHOLE && (lending == null || lending.lock() == null)) {
+            boolean whole = item.getValue() == Lock.WHOLE || item.getValue() == Lock.LOCAL && idle.contains(path);
+            if (whole && (lending == null || lending.lock() == null)) {
                 op.beforeWholeLock(attempt, path);
             }
             lock(attempt, path, item.getValue(), idle.contains(path));

@@ -231,24 +231,7 @@ public class WriteFile extends OperationFrame.Mediator {
 
         @Override
         public void beforeWholeLock(Attempt attempt, String targetPath) throws Exception {
-            // The sibling lock marker needs a directory even when the new target has no parent yet.
-            attempt.progress().reset("prepare parent");
-            try (FileObject target = attempt.handler().resolveFile(targetPath); FileObject parent = target.getParent()) {
-                if (parent != null) {
-                    try {
-                        parent.createFolder();
-                    } catch (IOException failure) {
-                        if (classify(attempt, failure).getKind().isTransport()) {
-                            throw failure;
-                        }
-                        // A writer of a different target can create the same parent on another handler.
-                        parent.refresh();
-                        if (!parent.isFolder()) {
-                            throw failure;
-                        }
-                    }
-                }
-            }
+            FileOperation.prepareTargetParent(attempt, targetPath);
         }
 
         public Long steps(Attempt attempt) throws Exception {

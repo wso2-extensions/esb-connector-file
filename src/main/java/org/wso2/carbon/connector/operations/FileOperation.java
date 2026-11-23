@@ -108,6 +108,7 @@ abstract class FileOperation extends OperationFrame.Mediator {
         int retries;
         OperationFrame.Use sourceUse;
         boolean knownOutput;
+        boolean prepareParentBeforeLock;
         Runnable onSuccess;
         long partSize;
         OperationFrame.Retry retry = OperationFrame.Retry.READ;
@@ -167,6 +168,12 @@ abstract class FileOperation extends OperationFrame.Mediator {
                 paths.put(target, flag("atomicWrite", true) ? OperationFrame.Lock.LOCAL : OperationFrame.Lock.WHOLE);
             }
             return paths;
+        }
+
+        @Override public void beforeWholeLock(Attempt attempt, String path) throws IOException {
+            if (prepareParentBeforeLock) {
+                prepareTargetParent(attempt, path);
+            }
         }
 
         @Override public OperationFrame.Use use(String path) {
@@ -256,6 +263,27 @@ abstract class FileOperation extends OperationFrame.Mediator {
             }
             attempt.releasePath(path);
             attempt.memberDone();
+        }
+    }
+
+    static void prepareTargetParent(Attempt attempt, String targetPath) throws IOException {
+        // The sibling lock marker needs a directory even when the new target has no parent yet.
+        attempt.progress().reset("prepare parent");
+        try (FileObject target = attempt.handler().resolveFile(targetPath); FileObject parent = target.getParent()) {
+            if (parent != null) {
+                try {
+                    parent.createFolder();
+                } catch (IOException failure) {
+                    if (FileTreeOperation.Walk.transport(attempt, failure)) {
+                        throw failure;
+                    }
+                    // A writer of a different target can create the same parent on another handler.
+                    parent.refresh();
+                    if (!parent.isFolder()) {
+                        throw failure;
+                    }
+                }
+            }
         }
     }
 

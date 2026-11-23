@@ -48,6 +48,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 abstract class FileTreeOperation extends OperationFrame.Mediator {
     abstract Walk operation(MessageContext message) throws InvalidConfigurationException;
@@ -92,6 +93,7 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
         private final boolean own;
         private final boolean includeParent;
         private final Pattern pattern;
+        private final String namedMovePattern;
         private final AdvancedFileFilter filter;
         private final long interval;
         private String root;
@@ -130,6 +132,7 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             boolean advanced = include != null || exclude != null || minAge != null || maxAge != null || stability != null;
             boolean advancedCopyOrMove = advanced && ("copyFiles".equals(name) || "moveFiles".equals(name));
             pattern = legacy == null || advancedCopyOrMove ? null : Pattern.compile(legacy);
+            namedMovePattern = advanced && "moveFiles".equals(name) ? legacy : null;
             filter = new AdvancedFileFilter(option(message, "fileFilterType"), include, exclude, maxAge, minAge);
             retries = Integer.parseInt(Utils.lookUpStringParam(message, "maxRetries", "1"));
         }
@@ -224,6 +227,15 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             folder = source.isFolder() && walksFolder();
             if (source.isSymbolicLink() || source.isFolder() && guard.reservedDirectory(source)) {
                 throw failure(Error.OPERATION_ERROR, "The source did not pass the file guards", root);
+            }
+            if (!folder && namedMovePattern != null) {
+                try {
+                    if (!source.getName().getBaseName().matches(namedMovePattern)) {
+                        throw failure(Error.OPERATION_ERROR, "The source did not pass the file guards", root);
+                    }
+                } catch (PatternSyntaxException invalid) {
+                    throw failure(Error.INVALID_CONFIGURATION, invalid.getMessage(), root);
+                }
             }
             String baseName = newName == null ? escape(source.getName().getBaseName()) : newName;
             FileObject target = null;

@@ -43,8 +43,8 @@ public class MergeFiles extends FileOperation {
     void configure(Call call) {
         call.prepareGuard("filePattern");
         call.knownOutput = true;
-        call.retry = Const.OVERWRITE.equals(call.option("writeMode"))
-                ? OperationFrame.Retry.SAFE : OperationFrame.Retry.APPEND;
+        call.prepareParentBeforeLock = !Const.OVERWRITE.equals(call.option("writeMode"));
+        call.retry = call.prepareParentBeforeLock ? OperationFrame.Retry.APPEND : OperationFrame.Retry.SAFE;
     }
 
     @Override
@@ -63,6 +63,9 @@ public class MergeFiles extends FileOperation {
             }
             boolean appendMode = !Const.OVERWRITE.equals(call.option("writeMode"));
             if (appendMode) {
+                if (!attempt.hasShare(call.target)) {
+                    call.beforeWholeLock(attempt, call.target);
+                }
                 attempt.lockTarget(call.target, OperationFrame.Lock.WHOLE);
             }
             boolean appendExisting = appendMode && AtomicOps.existsNow(target);
