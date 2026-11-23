@@ -20,6 +20,7 @@ package org.wso2.carbon.connector.utils;
 
 import org.apache.commons.lang.StringUtils;
 import org.wso2.org.apache.commons.vfs2.FileFilter;
+import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSelectInfo;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 
@@ -35,36 +36,23 @@ public class AdvancedFileFilter implements FileFilter {
     private String filterType;
     private String includePattern;
     private String excludePattern;
-    private long maxFileAgeMillis;
+    private final long maxFileAgeMillis;
+    private final long minFileAgeMillis;
     private Pattern includeRegex;
     private Pattern excludeRegex;
 
     public AdvancedFileFilter(String filterType, String includePattern, String excludePattern, String maxFileAge) {
+        this(filterType, includePattern, excludePattern, maxFileAge, null);
+    }
+
+    public AdvancedFileFilter(String filterType, String includePattern, String excludePattern,
+                              String maxFileAge, String minFileAge) {
         this.filterType = StringUtils.isEmpty(filterType) ? "regex" : filterType.toLowerCase();
         this.includePattern = includePattern;
         this.excludePattern = excludePattern;
         
-        // Parse max file age if provided
-        if (!StringUtils.isEmpty(maxFileAge)) {
-            try {
-                // Support time units: d (days), h (hours), m (minutes), s (seconds)
-                if (maxFileAge.toLowerCase().endsWith("d")) {
-                    this.maxFileAgeMillis = TimeUnit.DAYS.toMillis(Long.parseLong(maxFileAge.substring(0, maxFileAge.length() - 1)));
-                } else if (maxFileAge.toLowerCase().endsWith("h")) {
-                    this.maxFileAgeMillis = TimeUnit.HOURS.toMillis(Long.parseLong(maxFileAge.substring(0, maxFileAge.length() - 1)));
-                } else if (maxFileAge.toLowerCase().endsWith("m")) {
-                    this.maxFileAgeMillis = TimeUnit.MINUTES.toMillis(Long.parseLong(maxFileAge.substring(0, maxFileAge.length() - 1)));
-                } else if (maxFileAge.toLowerCase().endsWith("s")) {
-                    this.maxFileAgeMillis = TimeUnit.SECONDS.toMillis(Long.parseLong(maxFileAge.substring(0, maxFileAge.length() - 1)));
-                } else {
-                    this.maxFileAgeMillis = Long.parseLong(maxFileAge);
-                }
-            } catch (NumberFormatException e) {
-                this.maxFileAgeMillis = -1; // Invalid age, ignore filter
-            }
-        } else {
-            this.maxFileAgeMillis = -1; // No age filter
-        }
+        this.maxFileAgeMillis = duration(maxFileAge);
+        this.minFileAgeMillis = duration(minFileAge);
 
         // Compile patterns based on filter type
         if ("regex".equals(this.filterType)) {
@@ -85,10 +73,34 @@ public class AdvancedFileFilter implements FileFilter {
         }
     }
 
+    private static long duration(String age) {
+        if (StringUtils.isEmpty(age)) {
+            return -1;
+        }
+        TimeUnit unit;
+        switch (Character.toLowerCase(age.charAt(age.length() - 1))) {
+            case 'd': unit = TimeUnit.DAYS; break;
+            case 'h': unit = TimeUnit.HOURS; break;
+            case 'm': unit = TimeUnit.MINUTES; break;
+            case 's': unit = TimeUnit.SECONDS; break;
+            default: unit = TimeUnit.MILLISECONDS;
+        }
+        String value = unit == TimeUnit.MILLISECONDS ? age : age.substring(0, age.length() - 1);
+        try {
+            return unit.toMillis(Long.parseLong(value));
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
+    }
+
     @Override
     public boolean accept(FileSelectInfo fileSelectInfo) {
+        return accepts(fileSelectInfo.getFile());
+    }
+
+    boolean accepts(FileObject file) {
         try {
-            String fileName = fileSelectInfo.getFile().getName().getBaseName();
+            String fileName = file.getName().getBaseName();
             
             // Check include pattern first
             if (includeRegex != null && !includeRegex.matcher(fileName).matches()) {
@@ -101,13 +113,14 @@ public class AdvancedFileFilter implements FileFilter {
             }
             
             // Check file age if specified and file is a regular file
-            if (maxFileAgeMillis > 0 && fileSelectInfo.getFile().isFile()) {
-                long fileLastModified = fileSelectInfo.getFile().getContent().getLastModifiedTime();
+            if ((maxFileAgeMillis > 0 || minFileAgeMillis > 0) && file.isFile()) {
+                long fileLastModified = file.getContent().getLastModifiedTime();
                 long currentTime = System.currentTimeMillis();
                 long fileAge = currentTime - fileLastModified;
                 
-                if (fileAge > maxFileAgeMillis) {
-                    return false; // File is too old
+                if (maxFileAgeMillis > 0 && fileAge > maxFileAgeMillis
+                        || minFileAgeMillis > 0 && fileAge <= minFileAgeMillis) {
+                    return false;
                 }
             }
             

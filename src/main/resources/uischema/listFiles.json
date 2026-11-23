@@ -182,9 +182,9 @@
                                         "name": "maxRetries",
                                         "displayName": "Max Retries",
                                         "inputType": "integerOrExpression",
-                                        "defaultValue": "0",
+                                        "defaultValue": "1",
                                         "required": "false",
-                                        "helpTip": "The maximum number of retries to be done in case of a failure."
+                                        "helpTip": "Number of retries after a fast transport failure."
                                     }
                                 },
                                 {
@@ -196,6 +196,28 @@
                                         "defaultValue": "0",
                                         "required": "false",
                                         "helpTip": "The time interval between retries in milliseconds."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "includeSystemFiles",
+                                        "displayName": "Include System Files",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "false",
+                                        "required": "false",
+                                        "helpTip": "Include connector lock, failure and temporary files."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "minFileAge",
+                                        "displayName": "Min File Age",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Minimum file age in the same units as maxFileAge."
                                     }
                                 },
                                 {

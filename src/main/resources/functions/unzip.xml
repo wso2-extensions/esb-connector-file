@@ -25,6 +25,8 @@
     <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
     <parameter name="fileNameEncoding" description="Encoding for the file name"/>
     <parameter name="includeFileNames" description="Include extracted file names in the response"/>
+    <parameter name="maxRetries" description="Number of retries after a fast transport failure."/>
+    <parameter name="atomicWrite" description="Write to a temporary file before committing the target."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.UnzipFile" />
     </sequence>

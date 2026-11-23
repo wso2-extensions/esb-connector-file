@@ -109,7 +109,7 @@
                     "name": "maxActiveConnections",
                     "displayName": "maxActiveConnections",
                     "inputType": "string",
-                    "defaultValue": "",
+                    "defaultValue": "8",
                     "required": "false",
                     "helpTip": " The maximum number of objects (including both idle and active/borrowed) that can exist within the pool at the same time"
                   }
@@ -120,7 +120,7 @@
                     "name": "maxIdleConnections",
                     "displayName": "maxIdleConnections",
                     "inputType": "string",
-                    "defaultValue": "",
+                    "defaultValue": "8",
                     "required": "false",
                     "helpTip": "The maximum number of objects that can remain idle in the pool"
                   }
@@ -131,7 +131,7 @@
                     "name": "maxWaitTime",
                     "displayName": "maxWaitTime",
                     "inputType": "string",
-                    "defaultValue": "",
+                    "defaultValue": "10000",
                     "required": "false",
                     "helpTip": "The maximum amount of time that the borrowObject() method should block"
                   }
@@ -142,7 +142,7 @@
                     "name": "evictionCheckInterval",
                     "displayName": "evictionCheckInterval",
                     "inputType": "string",
-                    "defaultValue": "",
+                    "defaultValue": "60000",
                     "required": "false",
                     "helpTip": "The time interval between runs of the idle object evictor thread"
                   }
@@ -153,7 +153,7 @@
                     "name": "minEvictionTime",
                     "displayName": "minEvictionTime",
                     "inputType": "string",
-                    "defaultValue": "",
+                    "defaultValue": "300000",
                     "required": "false",
                     "helpTip": "The minimum amount of time an object must sit idle in the pool before it is eligible for eviction by the idle object evictor "
                   }
@@ -164,7 +164,7 @@
                     "name": "exhaustedAction",
                     "displayName": "exhaustedAction",
                     "inputType": "string",
-                    "defaultValue": "",
+                    "defaultValue": "WHEN_EXHAUSTED_BLOCK",
                     "required": "false",
                     "helpTip": "Determines the action to take when the borrowObject() method is called, but the pool is exhausted"
                   }
@@ -183,13 +183,156 @@
           {
             "type": "attribute",
             "value": {
+              "name": "streamIdleTimeout",
+              "displayName": "Stream Idle Timeout",
+              "inputType": "integerOrExpression",
+              "defaultValue": "60000",
+              "required": "false",
+              "helpTip": "Idle time for a stream or its retained lock in milliseconds."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "autoLockRelease",
+              "displayName": "Auto Lock Release",
+              "inputType": "booleanOrExpression",
+              "defaultValue": "true",
+              "required": "false",
+              "helpTip": "Allow stale locks to be released."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "lockStaleAge",
+              "displayName": "Lock Stale Age",
+              "inputType": "integerOrExpression",
+              "defaultValue": "900000",
+              "required": "false",
+              "helpTip": "Stale lock age in milliseconds. Use -1 to disable stale age expiry."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "lockReleaseSameNode",
+              "displayName": "Lock Release Same Node",
+              "inputType": "booleanOrExpression",
+              "defaultValue": "true",
+              "required": "false",
+              "helpTip": "Lock release preference for a migrated interval. An explicit stale age takes precedence."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "useTempFolder",
+              "displayName": "Use Temp Folder",
+              "inputType": "booleanOrExpression",
+              "defaultValue": "true",
+              "required": "false",
+              "helpTip": "Write temporary files in a subfolder."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "tempFolderName",
+              "displayName": "Temp Folder Name",
+              "inputType": "stringOrExpression",
+              "defaultValue": ".part",
+              "required": "false",
+              "helpTip": "Name of the temporary subfolder."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "tempFileSuffix",
+              "displayName": "Temp File Suffix",
+              "inputType": "stringOrExpression",
+              "defaultValue": ".part",
+              "required": "false",
+              "helpTip": "Suffix of temporary files."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "maxFailureRetryCount",
+              "displayName": "Max Failure Retry Count",
+              "inputType": "integerOrExpression",
+              "defaultValue": "",
+              "required": "false",
+              "helpTip": "Deprecated. This setting has no effect."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "userDirIsRoot",
+              "displayName": "User Dir Is Root",
+              "inputType": "booleanOrExpression",
+              "defaultValue": "false",
+              "required": "false",
+              "helpTip": "Treat the user directory as the root directory."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "smb2ReadTimeout",
+              "displayName": "Smb2 Read Timeout",
+              "inputType": "integerOrExpression",
+              "defaultValue": "",
+              "required": "false",
+              "helpTip": "SMB2 read timeout in milliseconds."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "smb2WriteTimeout",
+              "displayName": "Smb2 Write Timeout",
+              "inputType": "integerOrExpression",
+              "defaultValue": "",
+              "required": "false",
+              "helpTip": "SMB2 write timeout in milliseconds."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "smb2TransactTimeout",
+              "displayName": "Smb2 Transact Timeout",
+              "inputType": "integerOrExpression",
+              "defaultValue": "",
+              "required": "false",
+              "helpTip": "SMB2 transaction timeout in milliseconds."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "writeStallTimeout",
+              "displayName": "Write Stall Timeout",
+              "inputType": "integerOrExpression",
+              "defaultValue": "",
+              "required": "false",
+              "helpTip": "Socket write stall timeout in milliseconds. Set to zero to disable it."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
               "name": "fileLockScheme",
               "displayName": "File Locking Behaviour",
               "inputType": "comboOrExpression",
               "comboValues": ["Local", "Cluster"],
               "defaultValue": "Local",
-              "required": "true",
-              "helpTip":"File Locking Behaviour to use in operations associated with this connection."
+              "required": "false",
+              "helpTip":"Deprecated. Both Local and Cluster use the share lock."
             }
           },
           {
@@ -198,9 +341,9 @@
               "name": "fileCacheEnabled",
               "displayName": "File Cache Enabled",
               "inputType": "booleanOrExpression",
-              "defaultValue": "true",
+              "defaultValue": "false",
               "required": "false",
-              "helpTip":"Enable file caching for better performance"
+              "helpTip":"Enable the bounded file object cache."
             }
           },
           {

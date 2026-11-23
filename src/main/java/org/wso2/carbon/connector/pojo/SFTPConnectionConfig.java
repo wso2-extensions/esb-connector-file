@@ -28,10 +28,11 @@ import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 public class SFTPConnectionConfig extends RemoteServerConfig {
 
     //Jsch connection timeout
-    private int connectionTimeout;
+    private Integer connectionTimeout;
 
     //Jsch session timeout
-    private int sessionTimeout;
+    private Integer sessionTimeout;
+    private Integer keepAliveCount;
     /**
      * Host key checking to use
      * Possible values yes, no, ask
@@ -54,12 +55,9 @@ public class SFTPConnectionConfig extends RemoteServerConfig {
      */
     public SFTPConnectionConfig() {
         this.strictHostKeyChecking = false;
-        this.connectionTimeout = 100000;
-        this.sessionTimeout = 150000;
-        this.setAvoidPermission = "true";
     }
 
-    public int getConnectionTimeout() {
+    public Integer getConnectionTimeout() {
         return connectionTimeout;
     }
 
@@ -73,7 +71,7 @@ public class SFTPConnectionConfig extends RemoteServerConfig {
         }
     }
 
-    public int getSessionTimeout() {
+    public Integer getSessionTimeout() {
         return sessionTimeout;
     }
 
@@ -83,6 +81,20 @@ public class SFTPConnectionConfig extends RemoteServerConfig {
                 this.sessionTimeout = Integer.parseInt(sessionTimeout);
             } else {
                 throw new InvalidConfigurationException("Parameter 'sessionTimeout' does not contain a numeric value");
+            }
+        }
+    }
+
+    public Integer getKeepAliveCount() {
+        return keepAliveCount;
+    }
+
+    public void setKeepAliveCount(String value) throws InvalidConfigurationException {
+        if (StringUtils.isNotEmpty(value)) {
+            try {
+                keepAliveCount = Integer.valueOf(value);
+            } catch (NumberFormatException e) {
+                throw new InvalidConfigurationException("Parameter 'sftpKeepAliveCount' must be a number.");
             }
         }
     }

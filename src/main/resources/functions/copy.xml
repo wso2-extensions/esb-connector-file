@@ -33,6 +33,9 @@
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>
     <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
+    <parameter name="enableLock" description="Acquire a lock on the source file."/>
+    <parameter name="atomicWrite" description="Write to a temporary file before committing the target."/>
+    <parameter name="minFileAge" description="Minimum file age in the same units as maxFileAge."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.CopyFiles" />
     </sequence>

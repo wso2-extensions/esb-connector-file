@@ -9,6 +9,18 @@ dependencies:
   - groupId: "org.wso2.org.apache.commons"
     artifactId: "commons-vfs2-sandbox"
     version: "${commons.vfs.version}"
+  - groupId: "org.wso2.org.apache.commons"
+    artifactId: "commons-vfs2-shared"
+    version: "${commons.vfs.version}"
+  - groupId: "com.hierynomus.wso2"
+    artifactId: "smbj"
+    version: "${hierynomus.smbj.version}"
+  - groupId: "org.wso2.orbit.com.jcraft"
+    artifactId: "jsch"
+    version: "2.27.7.wso2v1"
+  - groupId: "org.wso2.orbit.commons-net"
+    artifactId: "commons-net"
+    version: "3.9.0.wso2v1"
 
 repositories:
   - id: "wso2-nexus"

@@ -18,18 +18,32 @@
 
 package org.wso2.carbon.connector.operations;
 
+import org.wso2.vfs.shared.log.UriMask;
 import com.google.gson.JsonObject;
 import org.apache.axis2.AxisFault;
 import org.apache.commons.lang.StringUtils;
+import org.wso2.carbon.connector.connection.FileServerProtocol;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileType;
+import org.wso2.org.apache.commons.vfs2.provider.ftps.FtpsFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileSystemConfigBuilder;
+import org.wso2.vfs.shared.log.NamedLog;
+import org.wso2.vfs.shared.log.RepeatLimiter;
+
+import java.time.Duration;
+import java.util.function.Consumer;
 import org.apache.synapse.ManagedLifecycle;
+import org.wso2.org.apache.commons.vfs2.util.TestPoints;
+import org.wso2.vfs.shared.health.EndpointHealth;
+import org.apache.synapse.libraries.model.Library;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.core.SynapseEnvironment;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
-import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.carbon.connector.connection.SFTPConnectionFactory;
-import org.wso2.carbon.connector.connection.SMBConnectionFactory;
+import org.wso2.carbon.connector.connection.FileSystemHandlerFactory;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.integration.connector.core.AbstractConnectorOperation;
 import org.wso2.integration.connector.core.ConnectException;
@@ -37,7 +51,6 @@ import org.wso2.integration.connector.core.connection.ConnectionHandler;
 import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.integration.connector.core.pool.Configuration;
 import org.wso2.carbon.connector.deploy.ConnectorUndeployObserver;
-import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.carbon.connector.pojo.FTPConnectionConfig;
@@ -47,6 +60,8 @@ import org.wso2.carbon.connector.pojo.SFTPConnectionConfig;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Utils;
+
+import javax.xml.namespace.QName;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
@@ -66,6 +81,7 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
 
     @Override
     public void init(SynapseEnvironment synapseEnvironment) {
+        TestPoints.copy("connector", FileConfig.class, EndpointHealth.class);
         SynapseConfiguration synapseConfig = synapseEnvironment.getSynapseConfiguration();
         synapseConfig.registerObserver(new ConnectorUndeployObserver(synapseConfig));
     }
@@ -88,46 +104,30 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         String connectionName = (String) ConnectorUtils.
                 lookupTemplateParamater(messageContext, Const.CONNECTION_NAME);
         String tenantSpecificConnectionName = Utils.getTenantSpecificConnectionName(connectionName, messageContext);
+        NamedLog connectionLog = tenantSpecificConnectionName == null ? null :
+                NamedLog.connection(log, tenantSpecificConnectionName, new RepeatLimiter());
         try {
-            ConnectionConfiguration configuration = getConnectionConfigFromContext(messageContext);
+            ConnectionConfiguration configuration = getConnectionConfigFromContext(messageContext, connectionLog);
 
             ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
-            if ("SFTP".equalsIgnoreCase(configuration.getProtocol().getName())) {
-                try {
-                    handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName,
-                            new SFTPConnectionFactory(configuration), configuration.getConfiguration(), messageContext);
-                } catch (NoSuchMethodError e) {
-                    handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName,
-                            new SFTPConnectionFactory(configuration), configuration.getConfiguration());
-                }
-            } else if ("SMB".equalsIgnoreCase(configuration.getProtocol().getName())
-                    || "SMB2".equalsIgnoreCase(configuration.getProtocol().getName())) {
-                try {
-                    handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName,
-                            new SMBConnectionFactory(configuration), configuration.getConfiguration(), messageContext);
-                } catch (NoSuchMethodError e) {
-                    handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName,
-                            new SMBConnectionFactory(configuration), configuration.getConfiguration());
-                }
-            } else if (!handler.checkIfConnectionExists(connectorName, tenantSpecificConnectionName)) {
-                FileSystemHandler fileSystemHandler = new FileSystemHandler(configuration);
-                try {
-                    handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName, fileSystemHandler
-                            , messageContext);
-                } catch (NoSuchMethodError e) {
-                    handler.createConnection(Const.CONNECTOR_NAME, tenantSpecificConnectionName, fileSystemHandler);
-                }
-            }
+            handler.createConnection(connectorName, tenantSpecificConnectionName,
+                    new FileSystemHandlerFactory(configuration, deployedKey(messageContext), tenantSpecificConnectionName), configuration.getConfiguration(), messageContext);
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = "[" + connectionName + "]Failed to initiate file connector configuration.";
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail);
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, connectionLog);
 
-        } catch (FileServerConnectionException e) {
-
-            String errorDetail = "[" + connectionName + "]Failed to connect to configured file server.";
-            handleError(messageContext, e, Error.CONNECTION_ERROR, errorDetail);
         }
+    }
+
+    private String deployedKey(MessageContext messageContext) {
+        for (Library library : messageContext.getConfiguration().getSynapseLibraries().values()) {
+            if (library.getLibClassLoader() == FileConfig.class.getClassLoader()) {
+                QName name = library.getQName();
+                return "{" + name.getNamespaceURI() + "}" + name.getLocalPart();
+            }
+        }
+        return Const.CONNECTOR_NAME;
     }
 
     /**
@@ -138,7 +138,7 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
      * @return Created config object
      * @throws InvalidConfigurationException If any input validation failed
      */
-    private ConnectionConfiguration getConnectionConfigFromContext(MessageContext msgContext)
+    private ConnectionConfiguration getConnectionConfigFromContext(MessageContext msgContext, NamedLog connectionLog)
             throws InvalidConfigurationException {
 
         String connectionName = (String) ConnectorUtils.
@@ -147,8 +147,7 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
                 lookupTemplateParamater(msgContext, Const.PROTOCOL);
         String workingDir = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.WORKING_DIR);
-        String fileLockScheme = (String) ConnectorUtils.
-                lookupTemplateParamater(msgContext, Const.FILE_LOCK_SCHEME);
+        String fileLockScheme = Utils.lookUpStringParam(msgContext, Const.FILE_LOCK_SCHEME, Const.LOCAL_FILE_LOCK_SCHEME);
         String maxFailureRetryCount = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.MAX_FAILURE_RETRY_COUNT);
         String sftpPoolConnectionAgedTimeout = (String) ConnectorUtils.lookupTemplateParamater(msgContext, Const.SFTP_POOL_CONNECTION_AGED_TIMEOUT);
@@ -170,24 +169,26 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         ConnectionConfiguration connectionConfig = new ConnectionConfiguration(msgContext);
         if (sftpPoolConnectionAgedTimeout != null) {
             try {
-                connectionConfig.setPoolConnectionAgedTimeout(Long.parseLong(sftpPoolConnectionAgedTimeout));
-            } catch (NumberFormatException numberFormatException) {
-                log.warn("Ignore setting SFTP_POOL_CONNECTION_AGED_TIMEOUT property. Since the value is not set " +
-                        "properly");
+                connectionConfig.setPoolConnectionAgedTimeout(
+                        Math.multiplyExact(Long.parseLong(sftpPoolConnectionAgedTimeout), 1000L));
+            } catch (NumberFormatException | ArithmeticException invalidAge) {
+                warn(connectionLog, "Invalid sftpPoolConnectionAgedTimeout. Ignoring the value.");
             }
         }
         if (retryCount != null) {
             try {
                 connectionConfig.setRetryCount(Integer.parseInt(retryCount));
             } catch (NumberFormatException numberFormatException) {
-                log.warn("Ignore setting RETRY_COUNT property. Since the value is not set properly");
+                warn(connectionLog, "Invalid retryCount. Ignoring the value.");
             }
         }
         connectionConfig.setConnectionName(connectionName);
         connectionConfig.setProtocol(protocol);
         connectionConfig.setWorkingDir(workingDir);
         connectionConfig.setClusterLockingEnabled(fileLockScheme);
-        connectionConfig.setMaxFailureRetryCount(maxFailureRetryCount);
+        if (StringUtils.isNotEmpty(maxFailureRetryCount)) {
+            warn(connectionLog, "maxFailureRetryCount is deprecated and has no effect.");
+        }
         connectionConfig.setEnableEncryption(enableEncryption);
         
         // Set file caching configuration (handled by VFS)
@@ -206,14 +207,14 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
             config.setCircuitBreakerEnabled(true);
             config.setFailureThreshold(connectionConfig.getRetriesBeforeSuspension());
             config.setOpenDurationMillis(connectionConfig.getSuspendInitialDuration());
-            config.setOpenDurationProgressFactor((int) connectionConfig.getSuspendProgressionFactor());
+            config.setOpenDurationProgressFactor(connectionConfig.getSuspendProgressionFactor());
             config.setMaxOpenDurationMillis(connectionConfig.getSuspendMaximumDuration());
             
-            if (log.isDebugEnabled()) {
-                log.debug("Circuit breaker enabled for connection: " + connectionName + 
+            if (connectionLog != null && connectionLog.isDebugEnabled()) {
+                connectionLog.debug("Circuit breaker enabled" +
                     ", failureThreshold: " + connectionConfig.getRetriesBeforeSuspension() +
                     ", initialDuration: " + connectionConfig.getSuspendInitialDuration() +
-                    ", progressionFactor: " + (int) connectionConfig.getSuspendProgressionFactor() +
+                    ", progressionFactor: " + connectionConfig.getSuspendProgressionFactor() +
                     ", maxDuration: " + connectionConfig.getSuspendMaximumDuration());
             }
         }
@@ -228,32 +229,35 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
     private RemoteServerConfig getRemoteServerConfig(MessageContext msgContext, ConnectionConfiguration configuration)
             throws InvalidConfigurationException {
 
-        RemoteServerConfig remoteServerConfig = null;
+        RemoteServerConfig remoteServerConfig;
+        FileSystemOptions options = configuration.getProviderOptions();
 
         switch (configuration.getProtocol()) {
             case FTP:
                 remoteServerConfig = new FTPConnectionConfig();
                 setCommonRemoteServerConfigs(msgContext, remoteServerConfig);
                 setFTPConnectionConfigsFromContext(msgContext, (FTPConnectionConfig) remoteServerConfig);
-                configuration.setRemoteServerConfig(remoteServerConfig);
+                setFtpOptions(msgContext, options, FtpFileSystemConfigBuilder.getInstance());
                 break;
             case FTPS:
                 remoteServerConfig = new FTPSConnectionConfig();
                 setCommonRemoteServerConfigs(msgContext, remoteServerConfig);
                 setFTPSConnectionConfigsFromContext(msgContext, (FTPSConnectionConfig) remoteServerConfig);
-                configuration.setRemoteServerConfig(remoteServerConfig);
+                setFtpOptions(msgContext, options, FtpsFileSystemConfigBuilder.getInstance());
                 break;
             case SFTP:
                 remoteServerConfig = new SFTPConnectionConfig();
                 setCommonRemoteServerConfigs(msgContext, remoteServerConfig);
                 setSFTPConnectionConfigsFromContext(msgContext, (SFTPConnectionConfig) remoteServerConfig);
-                configuration.setRemoteServerConfig(remoteServerConfig);
+                setSftpOptions(msgContext, options);
                 break;
             case SMB:
             case SMB2:
+                if (configuration.getProtocol() == FileServerProtocol.SMB2) {
+                    setSmb2Options(msgContext, options);
+                }
                 remoteServerConfig = new RemoteServerConfig();
                 setCommonRemoteServerConfigs(msgContext, remoteServerConfig);
-                configuration.setRemoteServerConfig(remoteServerConfig);
                 break;
             default:
                 throw new InvalidConfigurationException("Unknown File Connector protocol");
@@ -261,6 +265,62 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
 
         return remoteServerConfig;
 
+    }
+
+    private static void setFtpOptions(MessageContext message, FileSystemOptions options,
+                                      FtpFileSystemConfigBuilder builder) throws InvalidConfigurationException {
+        String type = Utils.lookUpStringParam(message, "ftpTransferType", "BINARY");
+        if ("ASCII".equalsIgnoreCase(type)) {
+            builder.setFileType(options, FtpFileType.ASCII);
+        } else if ("BINARY".equalsIgnoreCase(type)) {
+            builder.setFileType(options, FtpFileType.BINARY);
+        } else {
+            throw new InvalidConfigurationException("Parameter 'ftpTransferType' must be BINARY or ASCII.");
+        }
+        setTimeout(message, "ftpDataTimeout", value -> builder.setDataTimeout(options, value));
+        setTimeout(message, "writeStallTimeout", value -> builder.setWriteStallTimeout(options, value));
+    }
+
+    private static void setSftpOptions(MessageContext message, FileSystemOptions options)
+            throws InvalidConfigurationException {
+        SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder.getInstance();
+        setOption(message, "sftpKeyExchangeAlgorithms", value -> builder.setKeyExchangeAlgorithm(options, value));
+        setOption(message, "sftpHostKeyAlgorithms", value -> builder.setHostKeyAlgorithms(options, value));
+        setOption(message, "sftpCiphers", value -> builder.setCiphers(options, value));
+        setOption(message, "sftpMacs", value -> builder.setMacs(options, value));
+        setOption(message, "sftpPubkeyAcceptedAlgorithms", value -> builder.setPubkeyAcceptedAlgorithms(options, value));
+        setTimeout(message, "writeStallTimeout", value -> builder.setWriteStallTimeout(options, value));
+    }
+
+    private static void setSmb2Options(MessageContext message, FileSystemOptions options)
+            throws InvalidConfigurationException {
+        setTimeout(message, "smb2ReadTimeout", value -> Smb2FileSystemConfigBuilder.getInstance().setReadTimeout(options, value));
+        setTimeout(message, "smb2WriteTimeout", value -> Smb2FileSystemConfigBuilder.getInstance().setWriteTimeout(options, value));
+        setTimeout(message, "smb2TransactTimeout", value -> Smb2FileSystemConfigBuilder.getInstance().setTransactTimeout(options, value));
+        setTimeout(message, "writeStallTimeout", value -> Smb2FileSystemConfigBuilder.getInstance().setWriteStallTimeout(options, value));
+    }
+
+    private static void setOption(MessageContext message, String name, Consumer<String> apply) {
+        String value = Utils.lookUpStringParam(message, name, null);
+        if (value != null) {
+            apply.accept(value);
+        }
+    }
+
+    private static void setTimeout(MessageContext message, String name, Consumer<Duration> apply)
+            throws InvalidConfigurationException {
+        String value = Utils.lookUpStringParam(message, name, null);
+        if (value != null) {
+            try {
+                int millis = Integer.parseInt(value);
+                if (millis < 0) {
+                    throw new NumberFormatException();
+                }
+                apply.accept(Duration.ofMillis(millis));
+            } catch (NumberFormatException e) {
+                throw new InvalidConfigurationException("Parameter '" + name + "' must be a nonnegative number of milliseconds.");
+            }
+        }
     }
 
     private void setCommonRemoteServerConfigs(MessageContext msgContext, RemoteServerConfig remoteServerConfig)
@@ -279,8 +339,6 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
                 lookupTemplateParamater(msgContext, Const.ENCODE_PASSWORD);
         String userDirIsRoot = (String) ConnectorUtils.
                 lookupTemplateParamater(msgContext, Const.USERDIR_IS_ROOT);
-
-        log.info("passwordEncodingRequired: " + passwordEncodingRequired);
 
         remoteServerConfig.setProtocol(protocol);
         remoteServerConfig.setHost(host);
@@ -358,6 +416,7 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
 
         config.setConnectionTimeout(sftpConnectionTimeout);
         config.setSessionTimeout(sftpSessionTimeout);
+        config.setKeepAliveCount((String) ConnectorUtils.lookupTemplateParamater(msgContext, "sftpKeepAliveCount"));
         config.setStrictHostKeyChecking(strictHostKeyChecking);
         config.setPrivateKeyFilePath(privateKeyFilePath);
         config.setPrivateKeyPassword(privateKeyPassword);
@@ -373,7 +432,7 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
      * @param error       Error code
      * @param errorDetail Error detail
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail, NamedLog connectionLog) {
         errorDetail = Utils.maskURLPassword(errorDetail);
         FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
         JsonObject resultJSON = generateOperationResult(msgCtx, result);
@@ -381,9 +440,22 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
             JsonUtil.getNewJsonPayload(((Axis2MessageContext)msgCtx).getAxis2MessageContext(), resultJSON.toString(),
                     false, false);
         } catch (AxisFault axisFault) {
-            log.error("Error while setting the error payload", axisFault);
+            String detail = "Error while setting the error payload: " + axisFault.getMessage();
+            if (connectionLog == null) {
+                log.error(UriMask.mask(detail));
+            } else {
+                connectionLog.error(detail);
+            }
         }
-        handleException(errorDetail, e, msgCtx);
+        handleException(errorDetail, new InvalidConfigurationException(UriMask.mask(e.getMessage())), msgCtx);
+    }
+
+    private void warn(NamedLog connectionLog, String message) {
+        if (connectionLog == null) {
+            log.warn(UriMask.mask(message));
+        } else {
+            connectionLog.warn(message);
+        }
     }
 
     public static String encodePassword(String password) throws UnsupportedEncodingException {

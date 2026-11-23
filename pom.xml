@@ -20,14 +20,14 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.integration.connector</groupId>
     <artifactId>mi-connector-file</artifactId>
-    <version>6.0.10-SNAPSHOT</version>
+    <version>7.0.0</version>
     <packaging>jar</packaging>
     <name>WSO2 Carbon - Connector For esb-connector-file</name>
     <url>http://wso2.org</url>
 
     <properties>
         <connector.name>file</connector.name>
-        <commons.vfs.version>2.10.0-wso2v8</commons.vfs.version>
+        <commons.vfs.version>2.10.0-wso2v10-SNAPSHOT</commons.vfs.version>
         <integration.base.version>1.0.2</integration.base.version>
         <product.ei.version>6.1.1</product.ei.version>
         <carbon.kernel.version>4.4.17</carbon.kernel.version>
@@ -42,9 +42,10 @@
         <bouncycastle.version>1.55</bouncycastle.version>
         <rampart.apache.version>1.6.1-wso2v18</rampart.apache.version>
         <rampart.wso2.version>1.6.1.wso2v18</rampart.wso2.version>
-        <connector.core.version>0.9.3</connector.core.version>
-        <skip-tests>true</skip-tests>
-        <hierynomus.smbj.version>0.11.3</hierynomus.smbj.version>
+        <connector.core.version>0.9.6</connector.core.version>
+        <skip-tests>false</skip-tests>
+        <hierynomus.smbj.version>0.14.0.wso2v2</hierynomus.smbj.version>
+        <excluded.test.groups>testbuild</excluded.test.groups>
         <commons.compress.version>1.28.0</commons.compress.version>
     </properties>
 
@@ -58,6 +59,12 @@
             <groupId>org.apache.synapse</groupId>
             <artifactId>synapse-commons</artifactId>
             <version>${synapse.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-pool</groupId>
+                    <artifactId>commons-pool</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.wso2.org.apache.commons</groupId>
@@ -67,6 +74,11 @@
         <dependency>
             <groupId>org.wso2.org.apache.commons</groupId>
             <artifactId>commons-vfs2-sandbox</artifactId>
+            <version>${commons.vfs.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.org.apache.commons</groupId>
+            <artifactId>commons-vfs2-shared</artifactId>
             <version>${commons.vfs.version}</version>
         </dependency>
         <dependency>
@@ -207,9 +219,22 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.hierynomus</groupId>
+            <groupId>com.hierynomus.wso2</groupId>
             <artifactId>smbj</artifactId>
             <version>${hierynomus.smbj.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.mwiede</groupId>
+            <artifactId>jsch</artifactId>
+            <version>2.27.7</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- The pack supplies this optional VFS dependency for the bounded file cache. -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>4.5.0</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -273,10 +298,8 @@
                     <argLine>-Xms512m -Xmx1024m -XX:MaxPermSize=128m</argLine>
                     <disableXmlReport>false</disableXmlReport>
                     <parallel>false</parallel>
-                    <testFailureIgnore>true</testFailureIgnore>
-                    <suiteXmlFiles>
-                        <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
-                    </suiteXmlFiles>
+                    <testFailureIgnore>false</testFailureIgnore>
+                    <excludedGroups>${excluded.test.groups}</excludedGroups>
                     <systemProperties>
                         <property>
                             <name>framework.resource.location</name>
@@ -342,6 +365,7 @@
                     </execution>
                     <execution>
                         <id>copy-mi-connector-core</id>
+                        <phase>generate-resources</phase>
                         <goals>
                             <goal>copy</goal>
                         </goals>
@@ -407,6 +431,14 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>testbuild</id>
+            <properties>
+                <excluded.test.groups></excluded.test.groups>
+            </properties>
+        </profile>
+    </profiles>
     <repositories>
         <repository>
             <id>wso2-nexus</id>

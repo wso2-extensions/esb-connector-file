@@ -27,6 +27,8 @@
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>
     <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
+    <parameter name="maxRetries" description="Number of retries after a fast transport failure."/>
+    <parameter name="atomicWrite" description="Write to a temporary file before committing the target."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.SplitFile" />
     </sequence>

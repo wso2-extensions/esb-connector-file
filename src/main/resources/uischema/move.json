@@ -61,7 +61,7 @@
                                         "name": "createParentDirectories",
                                         "displayName": "Create Parent Directories",
                                         "inputType": "booleanOrExpression",
-                                        "defaultValue": "true",
+                                        "defaultValue": "false",
                                         "required": "false",
                                         "helpTip": "Whether or not to create parent directories if they don\u2019t exist in the target path."
                                     }
@@ -196,6 +196,50 @@
                         "value": {
                             "groupName": "Advanced",
                             "elements": [
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "maxRetries",
+                                        "displayName": "Max Retries",
+                                        "inputType": "integerOrExpression",
+                                        "defaultValue": "1",
+                                        "required": "false",
+                                        "helpTip": "Number of retries after a fast transport failure."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "enableLock",
+                                        "displayName": "Enable Lock",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "false",
+                                        "required": "false",
+                                        "helpTip": "Acquire a lock on the source file."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "updateLastModified",
+                                        "displayName": "Update Last Modified",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "true",
+                                        "required": "false",
+                                        "helpTip": "Carry the source modification time to the target."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "minFileAge",
+                                        "displayName": "Min File Age",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Minimum file age in the same units as maxFileAge."
+                                    }
+                                },
                                 {
                                     "type": "attribute",
                                     "value": {

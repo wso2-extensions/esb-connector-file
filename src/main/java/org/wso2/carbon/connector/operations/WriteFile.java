@@ -28,665 +28,599 @@ import org.apache.axis2.transport.base.BaseConstants;
 import org.apache.axis2.transport.base.BaseTransportException;
 import org.apache.axis2.transport.base.BaseUtils;
 import org.apache.axis2.util.MessageProcessorSelector;
-import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.output.CloseShieldOutputStream;
 import org.apache.commons.io.output.CountingOutputStream;
-import org.apache.commons.lang.StringUtils;
-import org.wso2.org.apache.commons.vfs2.FileObject;
-import org.wso2.org.apache.commons.vfs2.FileSystemException;
-import org.wso2.org.apache.commons.vfs2.FileSystemManager;
-import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
+import org.apache.synapse.commons.vfs.VFSUtils;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.util.InlineExpressionUtil;
 import org.jaxen.JaxenException;
+import org.wso2.carbon.connector.connection.ConnectionContext;
+import org.wso2.carbon.connector.connection.FileServerProtocol;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.integration.connector.core.AbstractConnectorOperation;
-import org.wso2.integration.connector.core.ConnectException;
-import org.wso2.integration.connector.core.connection.ConnectionHandler;
-import org.wso2.integration.connector.core.util.ConnectorUtils;
-import org.wso2.carbon.connector.exception.FileLockException;
-import org.wso2.carbon.connector.exception.FileOperationException;
-import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
-import org.wso2.carbon.connector.filelock.FileLockManager;
+import org.wso2.carbon.connector.frame.Attempt;
+import org.wso2.carbon.connector.frame.OperationFrame;
+import org.wso2.carbon.connector.frame.StreamLease;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.FileWriteMode;
-import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.relay.ExpandingMessageFormatter;
+import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
+import org.wso2.org.apache.commons.vfs2.provider.CommitStep;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileObject;
+import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
+import org.wso2.org.apache.commons.vfs2.util.TestPoints;
+import org.wso2.vfs.shared.error.Classification;
+import org.wso2.vfs.shared.error.ErrorClassifier;
+import org.wso2.vfs.shared.lock.LockIo;
+import org.wso2.vfs.shared.log.NamedLog;
+import org.wso2.vfs.shared.log.UriMask;
+import org.wso2.vfs.shared.write.AtomicWriter;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FilterInputStream;
+import java.io.FilterOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.URISyntaxException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
 
-/**
- * Implements Write file connector operation
- */
-public class WriteFile extends AbstractConnectorOperation {
-
-    private static final String FILE_PATH_PARAM = "filePath";
-    private static final String ENABLE_LOCK_PARAM = "enableLock";
-    private static final String UPDATE_LAST_MODIFIED_TIMESTAMP = "updateLastModified";
-    private static final String COMPRESS_PARAM = "compress";
-    private static final String WRITE_MODE_PARAM = "writeMode";
-    private static final String CONTENT_OR_EXPRESSION_PARAM = "contentOrExpression";
-    private static final String ENCODING_PARAM = "encoding";
-    private static final String MIME_TYPE_PARAM = "mimeType";
-    private static final String APPEND_NEW_LINE_PARAM = "appendNewLine";
-    private static final String ENABLE_STREAMING_PARAM = "enableStreaming";
-    private static final String APPEND_POSITION_PARAM = "appendPosition";
-    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
-    private static final String UPDATE_FILE_PERMISSION = "updateFilePermission";
-    private static final String OPERATION_NAME = "write";
-    private static final String ERROR_MESSAGE = "Error while performing file:write for file ";
+public class WriteFile extends OperationFrame.Mediator {
+    private static final int BUFFER_BYTES = 8192;
 
     @Override
-    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
-            throws ConnectException {
-
-        String targetFilePath = null;
-        FileObject targetFile = null;
-        FileOperationResult result;
-        FileLockManager fileLockManager = null;
-        boolean lockAcquired = false;
-        FileSystemHandler fileSystemHandlerConnection = null;
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
-        String connectionName = Utils.getConnectionName(messageContext);
-        String connectorName = Const.CONNECTOR_NAME;
-        int maxRetries;
-        int retryDelay;
-        int attempt = 0;
-        boolean successOperation = false;
-
-        String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
-                (messageContext, Const.DISK_SHARE_ACCESS_MASK);
-        //read max retries and retry delay
+    public void execute(MessageContext message, String responseVariable, Boolean overwriteBody) throws ConnectException {
+        Write write;
         try {
-            maxRetries = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                    Const.MAX_RETRY_PARAM));
-            retryDelay = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                    Const.RETRY_DELAY_PARAM));
-            if (log.isDebugEnabled()) {
-                log.debug("Max retries: " + maxRetries + " Retry delay: " + retryDelay);
-            }
-        } catch (Exception e) {
-            maxRetries = 0;
-            retryDelay = 0;
+            write = new Write(message);
+        } catch (InvalidConfigurationException | IllegalArgumentException | JaxenException invalid) {
+            FileOperationResult result = new FileOperationResult("write", false, Error.INVALID_CONFIGURATION,
+                    invalid.getMessage());
+            handleConnectorResponse(message, responseVariable, overwriteBody, generateOperationResult(message, result),
+                    null, null);
+            handleException("Invalid write parameters",
+                    new InvalidConfigurationException(UriMask.mask(invalid.getMessage())), message);
+            return;
         }
-        while (attempt <= maxRetries && !successOperation) {
-            try {
-                Config config = readAndValidateInputs(messageContext);
-                targetFilePath = config.targetFilePath;
-                fileSystemHandlerConnection = Utils.getFileSystemHandler(connectionName);
-
-                //if compress is enabled we need to resolve a zip file
-                targetFilePath = getModifiedFilePathForCompress(targetFilePath, messageContext);
-
-                targetFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetFilePath;
-
-                FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
-                Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-                // Use suspension-enabled file resolution for FTP/FTPS
-                targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetFilePath);
-
-                if (log.isDebugEnabled()) {
-                    log.debug("Write file attempt " + attempt + " of " + maxRetries + " for file " + targetFilePath);
-                }
-                fileLockManager = fileSystemHandlerConnection.getFileLockManager();
-
-                if (targetFile.isFolder()) {
-                    throw new IllegalPathException("Path does not point to a file " + targetFilePath);
-                }
-
-                // Check file stability if timeBetweenSizeCheck is provided and file exists
-                if (StringUtils.isNotEmpty(config.timeBetweenSizeCheck) && targetFile.exists() && 
-                    !isFileStable(targetFile, config.timeBetweenSizeCheck)) {
-                    throw new FileOperationException("File is not stable (still being written). Cannot write at this time: " + targetFilePath);
-                }
-
-                //lock the file if enabled
-                if (config.enableLocking) {
-                    lockAcquired = fileLockManager.tryAndAcquireLock(targetFilePath, Const.DEFAULT_LOCK_TIMEOUT);
-                    if (!lockAcquired) {
-                        throw new FileLockException("Failed to acquire lock for file "
-                                + targetFilePath + ". Another process maybe processing it. ");
-                    }
-                }
-
-                int byteCountWritten;
-
-                byteCountWritten = (int) writeToFile(targetFile, messageContext, config, fileSystemHandlerConnection);
-                
-                // Update last modified time if requested
-                if (!targetFile.getURL().toString().startsWith(Const.FTP_PROTOCOL_PREFIX) && config.updateLastModified) {
-                    targetFile.getContent().setLastModifiedTime(System.currentTimeMillis());
-                }
-                
-                // Update file permissions if requested
-                if (StringUtils.isNotEmpty(config.updateFilePermission)) {
-                    updateFilePermissions(targetFile, config.updateFilePermission);
-                }
-                result = new FileOperationResult(
-                        OPERATION_NAME,
-                        true,
-                        byteCountWritten);
-
-
-                JsonObject resultJSON = generateOperationResult(messageContext,
-                        new FileOperationResult(OPERATION_NAME, true, byteCountWritten));
-                handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
-                successOperation = true;
-            } catch (InvalidConfigurationException e) {
-
-                String errorDetail = ERROR_MESSAGE + targetFilePath;
-                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
-
-            } catch (IllegalPathException e) {
-
-                String errorDetail = ERROR_MESSAGE + targetFilePath;
-                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
-
-            } catch (FileOperationException | IOException e) { //FileSystemException also handled here
-                String errorDetail = ERROR_MESSAGE + targetFilePath;
-                log.error(errorDetail, e);
-                Utils.closeFileSystem(targetFile);
-                if (attempt >= maxRetries - 1) {
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
-                }
-                // Log the retry attempt
-                log.warn(Const.CONNECTOR_NAME + ":Error while write "
-                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
-                        + " out of " + maxRetries);
-                attempt++;
-                try {
-                    Thread.sleep(retryDelay); // Wait before retrying
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + targetFilePath,
-                            responseVariable, overwriteBody);
-                }
-            } catch (FileLockException e) {
-                String errorDetail = ERROR_MESSAGE + targetFilePath;
-                handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail, responseVariable, overwriteBody);
-            } catch (Exception e) {
-                String errorDetail = ERROR_MESSAGE + targetFilePath;
-                log.error(errorDetail, e);
-                Utils.closeFileSystem(targetFile);
-                if (attempt >= maxRetries - 1) {
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
-                }
-                // Log the retry attempt
-                log.warn(Const.CONNECTOR_NAME + ":Error while write "
-                        + targetFilePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
-                        + " out of " + maxRetries);
-                attempt++;
-                try {
-                    Thread.sleep(retryDelay); // Wait before retrying
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + targetFilePath,
-                            responseVariable, overwriteBody);
-                }
-            } finally {
-                if (targetFile != null) {
-                    try {
-                        targetFile.close();
-                    } catch (FileSystemException e) {
-                        log.error(Const.CONNECTOR_NAME
-                                + ":Error while closing folder object while reading files in "
-                                + targetFile);
-                    }
-                }
-                if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
-                    if (fileSystemHandlerConnection != null) {
-                        Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
-                        handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
-                    }
-                }
-
-                if (fileLockManager != null && lockAcquired) {
-                    fileLockManager.releaseLock(targetFilePath);
-                }
+        try {
+            long bytes = runFrame(message, Utils.getConnectionName(message), write.retries, write,
+                    "write", responseVariable, overwriteBody);
+            JsonObject result = generateOperationResult(message, new FileOperationResult("write", true, (int) bytes));
+            handleConnectorResponse(message, responseVariable, overwriteBody, result, null, null);
+        } finally {
+            for (AtomicWriter.Temp temp : write.names) {
+                temp.close();
             }
         }
     }
 
-    private Config readAndValidateInputs(MessageContext msgCtx) throws InvalidConfigurationException, JaxenException {
-        Config config = new Config();
-        config.targetFilePath = Utils.lookUpStringParam(msgCtx, FILE_PATH_PARAM);
-        config.enableLocking = Utils.lookUpBooleanParam(msgCtx, ENABLE_LOCK_PARAM, false);
-        config.updateLastModified = Utils.lookUpBooleanParam(msgCtx, UPDATE_LAST_MODIFIED_TIMESTAMP, true);
-        config.compress = Utils.lookUpBooleanParam(msgCtx, COMPRESS_PARAM, false);
-        config.writeMode = FileWriteMode.fromString(Utils.lookUpStringParam(msgCtx, WRITE_MODE_PARAM, FileWriteMode.OVERWRITE.toString()));
-        String rawContent = Utils.lookUpStringParam(msgCtx, CONTENT_OR_EXPRESSION_PARAM, Const.EMPTY_STRING);
-        config.contentToWrite = InlineExpressionUtil.processInLineSynapseExpressionTemplate(msgCtx, rawContent);
-        config.encoding = Utils.lookUpStringParam(msgCtx, ENCODING_PARAM, Const.DEFAULT_ENCODING);
-        config.mimeType = Utils.lookUpStringParam(msgCtx, MIME_TYPE_PARAM, Const.EMPTY_STRING);
-        config.appendNewLine = Utils.lookUpBooleanParam(msgCtx, APPEND_NEW_LINE_PARAM, false);
-        config.enableStreaming = Utils.lookUpBooleanParam(msgCtx, ENABLE_STREAMING_PARAM, false);
-        String appendPosition = Utils.lookUpStringParam(msgCtx, APPEND_POSITION_PARAM, String.valueOf(Integer.MAX_VALUE));
-        config.appendPosition = Integer.parseInt(appendPosition);
-        config.timeBetweenSizeCheck = Utils.lookUpStringParam(msgCtx, TIME_BETWEEN_SIZE_CHECK, Const.EMPTY_STRING);
-        config.updateFilePermission = Utils.lookUpStringParam(msgCtx, UPDATE_FILE_PERMISSION, Const.EMPTY_STRING);
+    private final class Write implements OperationFrame.Operation<Long> {
+        private NamedLog operationLog;
+        final MessageContext message;
+        final String relative;
+        final String filename;
+        final String content;
+        final String mime;
+        final Charset encoding;
+        final boolean compress;
+        final boolean streaming;
+        final boolean newline;
+        final boolean locking;
+        final boolean atomic;
+        final FileWriteMode mode;
+        final Integer position;
+        final boolean carryTime;
+        final Long timestamp;
+        final String permission;
+        final long interval;
+        final int retries;
+        final String access;
+        final List<AtomicWriter.Temp> names = new ArrayList<>();
+        String path;
+        AtomicWriter.Temp previous;
+        boolean ready;
+        long bytes;
 
-        config.fileNameWithExtension = config.targetFilePath.
-                substring(config.targetFilePath.lastIndexOf(Const.FILE_SEPARATOR) + 1);
-
-        return config;
-
-    }
-
-    private class Config {
-        String targetFilePath;
-        String fileNameWithExtension;
-        boolean enableLocking = false;
-        boolean compress = false;
-        FileWriteMode writeMode = FileWriteMode.OVERWRITE;
-        String contentToWrite;
-        String encoding = Const.DEFAULT_ENCODING;
-        String mimeType;
-        boolean appendNewLine = false;
-        boolean enableStreaming = false;
-        int appendPosition = Integer.MAX_VALUE;
-        boolean updateLastModified = true;
-        String timeBetweenSizeCheck;
-        String updateFilePermission;
-    }
-
-    /**
-     * Checks if a file is stable by comparing its size over time.
-     *
-     * @param file The file to check for stability
-     * @param sizeCheckInterval Time to wait between size checks in milliseconds
-     * @return true if file size is stable, false otherwise
-     */
-    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
-        try {
-            long interval = Long.parseLong(sizeCheckInterval);
-            if (interval <= 0) {
-                return true; // No stability check if interval is 0 or negative
+        Write(MessageContext message) throws InvalidConfigurationException, JaxenException {
+            this.message = message;
+            String operand = Utils.lookUpStringParam(message, "filePath");
+            mode = FileWriteMode.fromString(Utils.lookUpStringParam(message, "writeMode", "Overwrite"));
+            if (mode == null) {
+                throw new InvalidConfigurationException("Unknown write mode");
             }
-            
-            long initialSize = file.getContent().getSize();
-            
-            // Wait for the specified interval
-            Thread.sleep(interval);
-            
-            // Refresh and check size again
-            file.refresh();
-            long finalSize = file.getContent().getSize();
-            
-            return initialSize == finalSize;
-        } catch (Exception e) {
-            log.warn("Error checking file stability for " + file + ": " + e.getMessage());
-            return true; // Assume stable if we can't check
-        }
-    }
-
-    /**
-     * Updates file permissions if supported by the file system.
-     *
-     * @param file The file to update permissions for
-     * @param permissionString Permission string (e.g., "755", "644")
-     */
-    private void updateFilePermissions(FileObject file, String permissionString) {
-        try {
-            // Convert permission string to octal and set permissions
-            if (permissionString.matches("\\d{3,4}")) {
-                int permissionValue = Integer.parseInt(permissionString, 8);
-                Utils.setFilePermissions(file, permissionValue);
-                log.info("Successfully set file permissions " + permissionString + " for file: " + file.getName().getBaseName());
+            int slash = operand.lastIndexOf('/');
+            filename = operand.substring(slash + 1);
+            compress = Utils.lookUpBooleanParam(message, "compress", false);
+            if (compress && mode != FileWriteMode.APPEND) {
+                int dot = filename.indexOf('.');
+                relative = operand.substring(0, slash + 1) + (dot < 0 ? filename : filename.substring(0, dot))
+                        + Const.ZIP_FILE_EXTENSION;
             } else {
-                log.warn("Invalid permission format: " + permissionString + ". Expected format: XXX (e.g., 755, 644)");
+                relative = operand;
             }
-        } catch (Exception e) {
-            log.warn("Could not set permissions " + permissionString + " on file " + file.getName().getPath() + 
-                     ". Permissions setting may not be supported on this file system.", e);
-        }
-    }
-
-    /**
-     * Sets error to context and handle.
-     *
-     * @param msgCtx      Message Context to set info
-     * @param e           Exception associated
-     * @param error       Error code
-     * @param errorDetail Error detail
-     * @param responseVariable Response variable name
-     * @param overwriteBody Overwrite body
-     */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
-                             String responseVariable, boolean overwriteBody) {
-        errorDetail = Utils.maskURLPassword(errorDetail);
-        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
-        JsonObject resultJSON = generateOperationResult(msgCtx, result);
-        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
-        handleException(errorDetail, e, msgCtx);
-    }
-
-
-    /**
-     * Modify passed targetFilePath as per conditions if file compress is enabled.
-     * Otherwise return same targetFilePath as passed.
-     *
-     * @param targetFilePath Path to consider and modify
-     * @param msgCtx         MessageContext to read operation configs
-     * @return Same or modified path as per configs
-     * @throws InvalidConfigurationException In case of config error
-     */
-    private String getModifiedFilePathForCompress(String targetFilePath, MessageContext msgCtx)
-            throws InvalidConfigurationException {
-
-        boolean compress = Boolean.parseBoolean((String) ConnectorUtils.
-                lookupTemplateParamater(msgCtx, COMPRESS_PARAM));
-        String fileWriteModeAsStr = (String) ConnectorUtils.
-                lookupTemplateParamater(msgCtx, WRITE_MODE_PARAM);
-        FileWriteMode writeMode;
-        if (StringUtils.isNotEmpty(fileWriteModeAsStr)) {
-            writeMode = FileWriteMode.fromString(fileWriteModeAsStr);
-        } else {
-            throw new InvalidConfigurationException("Mandatory parameter '" + WRITE_MODE_PARAM + "' is not provided");
+            content = InlineExpressionUtil.processInLineSynapseExpressionTemplate(message,
+                    Utils.lookUpStringParam(message, "contentOrExpression", ""));
+            mime = Utils.lookUpStringParam(message, "mimeType", "");
+            encoding = Charset.forName(Utils.lookUpStringParam(message, "encoding", Const.DEFAULT_ENCODING));
+            streaming = Utils.lookUpBooleanParam(message, "enableStreaming", false);
+            newline = !streaming && Utils.lookUpBooleanParam(message, "appendNewLine", false);
+            String line = Utils.lookUpStringParam(message, "appendPosition", null);
+            position = mode == FileWriteMode.APPEND && !streaming && hasContent() && line != null
+                    ? Integer.valueOf(line) : null;
+            if (position != null && position < 1) {
+                throw new InvalidConfigurationException("The append position must be positive");
+            }
+            locking = Utils.lookUpBooleanParam(message, "enableLock", true);
+            atomic = Utils.lookUpBooleanParam(message, "atomicWrite", true);
+            Long time = null;
+            carryTime = Utils.lookUpBooleanParam(message, "updateLastModified", true);
+            if (carryTime) {
+                String supplied = Utils.lookUpStringParam(message, "lastModified", null);
+                if (supplied != null) {
+                    time = Long.valueOf(supplied);
+                } else if (message instanceof Axis2MessageContext) {
+                    time = VFSUtils.getLastModified(((Axis2MessageContext) message).getAxis2MessageContext());
+                }
+            }
+            timestamp = time;
+            permission = Utils.lookUpStringParam(message, "updateFilePermission", null);
+            interval = Long.parseLong(Utils.lookUpStringParam(message, "timeBetweenSizeCheck", "0"));
+            retries = Integer.parseInt(Utils.lookUpStringParam(message, Const.MAX_RETRY_PARAM, "1"));
+            access = Utils.lookUpStringParam(message, Const.DISK_SHARE_ACCESS_MASK, null);
         }
 
-        String fileNameWithExtension = targetFilePath.substring(targetFilePath.lastIndexOf(Const.FILE_SEPARATOR));
-
-        if ((!Objects.equals(writeMode, FileWriteMode.APPEND)) && compress) {
-            String fileName = fileNameWithExtension.split("\\.")[0];
-            String parentFolder = targetFilePath.substring(0, targetFilePath.lastIndexOf(Const.FILE_SEPARATOR));
-            targetFilePath = parentFolder + fileName + Const.ZIP_FILE_EXTENSION;
+        boolean hasContent() {
+            return content != null && !content.isEmpty();
         }
 
-        return targetFilePath;
-
-    }
-
-    /**
-     * Perform file writing.
-     *
-     * @param targetFile File to write to
-     * @param msgCtx     MessageContext to read configs from
-     * @return Written Bytes count
-     * @throws IOException            In case of I/O error
-     * @throws FileOperationException In case of any application error
-     * @throws IllegalPathException   In case if invalid file path
-     */
-    private long writeToFile(FileObject targetFile, MessageContext msgCtx, Config config, FileSystemHandler fileSystemHandlerConnection)
-            throws IOException, FileOperationException, IllegalPathException {
-
-        long writtenBytesCount;
-
-        //TODO: how to write an attachment to a file?
-
-        if (config.enableStreaming) {
-            config.appendPosition = Integer.MAX_VALUE;
-            config.appendNewLine = false;
+        public void bind(String baseUri) {
+            path = baseUri + relative;
         }
 
-        boolean contentToWriteIsProvided = false;
-        if (StringUtils.isNotEmpty(config.contentToWrite)) {
-            contentToWriteIsProvided = true;
-            if (config.appendNewLine) {
-                config.contentToWrite = config.contentToWrite + Const.NEW_LINE;
+        public LinkedHashMap<String, OperationFrame.Lock> paths() {
+            LinkedHashMap<String, OperationFrame.Lock> paths = new LinkedHashMap<>();
+            boolean whole = locking && (mode == FileWriteMode.APPEND || !atomic);
+            paths.put(path, whole ? OperationFrame.Lock.WHOLE : OperationFrame.Lock.LOCAL);
+            return paths;
+        }
+
+        public OperationFrame.Use use(String ignored) {
+            return OperationFrame.Use.WRITE;
+        }
+
+        public OperationFrame.Retry retry() {
+            switch (mode) {
+                case APPEND: return position == null ? OperationFrame.Retry.APPEND : OperationFrame.Retry.INSERT;
+                case CREATE_NEW: return OperationFrame.Retry.CREATE_NEW;
+                default: return hasContent() ? OperationFrame.Retry.SAFE : OperationFrame.Retry.BODY;
             }
         }
 
-        switch (config.writeMode) {
-            case CREATE_NEW:
-                if (targetFile.exists()) {
-                    throw new FileOperationException("Target file already exists. Path = "
-                            + targetFile.getURL());
-                } else {
-                    try (FileObject tempFile = targetFile.getParent().resolveFile(
-                            targetFile.getName().getBaseName() + ".tmp")) {
+        public Long removed(String removedPath) throws OperationFrame.Failure {
+            throw new OperationFrame.Failure(Error.ILLEGAL_PATH, "The target was removed");
+        }
 
-                        // Create a temporary file with .tmp extension
-                        tempFile.createFile();
+        public void options(FileSystemHandler handler) {
+            operationLog = handler.getContext().getHealth().namedLog();
+            Utils.addDiskShareAccessMaskToFSO(handler.getFsOptions(), access, operationLog);
+            if (TestPoints.enabled() && handler.getContext().getConfiguration().getProtocol() == FileServerProtocol.LOCAL) {
+                String name = handler.getContext().getName();
+                observeAndWait("write.local.after-borrow", name, "connection=" + name);
+            }
+        }
 
-                        // Write content to the temporary file based on a condition
-                        if (contentToWriteIsProvided) {
-                            writtenBytesCount = performContentWrite(tempFile, config);
-                        } else {
-                            writtenBytesCount = performBodyWrite(tempFile, msgCtx, false, config);
+        @Override
+        public void beforeWholeLock(Attempt attempt, String targetPath) throws Exception {
+            // The sibling lock marker needs a directory even when the new target has no parent yet.
+            attempt.progress().reset("prepare parent");
+            try (FileObject target = attempt.handler().resolveFile(targetPath); FileObject parent = target.getParent()) {
+                if (parent != null) {
+                    try {
+                        parent.createFolder();
+                    } catch (IOException failure) {
+                        if (classify(attempt, failure).getKind().isTransport()) {
+                            throw failure;
                         }
-
-                        // Rename temporary file to original file
-                        tempFile.moveTo(targetFile);
-
+                        // A writer of a different target can create the same parent on another handler.
+                        parent.refresh();
+                        if (!parent.isFolder()) {
+                            throw failure;
+                        }
                     }
                 }
-                break;
-            case OVERWRITE:
-                targetFile.createFile();
-                if (contentToWriteIsProvided) {
-                    writtenBytesCount = performContentWrite(targetFile, config);
-                } else {
-                    writtenBytesCount = performBodyWrite(targetFile, msgCtx, false, config);
-                }
-                break;
-            case APPEND:
-                if (config.appendPosition <= 0) {
-                    throw new FileOperationException("Invalid file append position. Expecting a positive value");
-                }
-                if (!targetFile.exists()) {
-                    throw new IllegalPathException("File to append is not found: " + targetFile.getURL());
-                } else {
-                    if (contentToWriteIsProvided) {
-                        writtenBytesCount = performContentAppend(targetFile, config);
-                    } else {
-                        writtenBytesCount = performBodyWrite(targetFile, msgCtx, true, config);
-                    }
-                }
-                break;
-
-            default:
-                throw new FileOperationException("Unexpected File Write Mode: " + config.writeMode);
+            }
         }
 
-        return writtenBytesCount;
-    }
-
-    /**
-     * Execute writing static of evaluated content.
-     *
-     * @param targetFile File to write to
-     * @param config     Input configs
-     * @return Bytes written to file
-     * @throws IOException In case of I/O error
-     */
-    private long performContentWrite(FileObject targetFile, Config config) throws IOException {
-        CountingOutputStream out = null;
-        try {
-            if (config.compress) {
-                ZipEntry zipEntry = new ZipEntry(config.fileNameWithExtension);
-                ZipOutputStream zipOutputStream = new ZipOutputStream(targetFile.getContent().getOutputStream());
-                zipOutputStream.putNextEntry(zipEntry);
-                out = new CountingOutputStream(zipOutputStream);
-            } else {
-                out = new CountingOutputStream(targetFile.getContent().getOutputStream());
-            }
-            if (Objects.equals(config.mimeType, Const.CONTENT_TYPE_BINARY)) {
-                // Write binary content decoded from a base64 string
-                byte[] decoded = Base64.getDecoder().decode(config.contentToWrite);
-                out.write(decoded);
-            } else if (StringUtils.isNotEmpty(config.encoding)) {
-                IOUtils.write(config.contentToWrite, out, config.encoding);
-            } else {
-                IOUtils.write(config.contentToWrite, out, Const.DEFAULT_ENCODING);
-            }
-            return out.getByteCount();
-        } finally {
+        public Long steps(Attempt attempt) throws Exception {
+            attempt.progress().reset("resolve");
+            LockIo io = StreamLease.io(attempt.handler());
+            FileObject target = attempt.handler().resolveFile(path);
+            boolean healthy = true;
             try {
-                if (out != null) {
-                    out.close();
+                attempt.progress().reset("stat");
+                if (target.isFolder()) {
+                    throw new OperationFrame.Failure(Error.ILLEGAL_PATH, "Path points to a folder");
                 }
-            } catch (IOException e) {
-                log.error("FileConnector:write - Error while closing OutputStream: "
-                        + targetFile.getName().getBaseName(), e);
-            }
-        }
-    }
-
-    /**
-     * Append new line at the end of the file.
-     *
-     * @param targetFile File to append
-     * @return number of bytes written
-     * @throws IOException In case of I/O error
-     */
-    private long appendNewLine(FileObject targetFile) throws IOException {
-        CountingOutputStream outputStream = null;
-        try {
-            outputStream = new CountingOutputStream(targetFile.getContent().getOutputStream(true));
-            IOUtils.write(Const.NEW_LINE, outputStream);
-            return outputStream.getByteCount();
-        } finally {
-            try {
-                if (outputStream != null) {
-                    outputStream.close();
-                }
-            } catch (IOException e) {
-                log.error("FileConnector:write - Error while closing output stream for file "
-                        + targetFile.getName().getBaseName() + " when appending new line");
-            }
-        }
-    }
-
-
-    /**
-     * Append static content to a file.
-     *
-     * @param targetFile File to append to
-     * @param config     Input configs
-     * @return Number of bytes written
-     * @throws IOException In case of I/O error
-     */
-    private long performContentAppend(FileObject targetFile, Config config) throws IOException {
-        BufferedReader reader = null;
-        CountingOutputStream out = null;
-        try {
-            reader = new BufferedReader(new InputStreamReader(targetFile.getContent().getInputStream()));
-            List<String> lines = reader.lines().collect(Collectors.toList());
-            if (config.appendPosition <= lines.size()) {
-                String contentToWrite = lines.get(config.appendPosition - 1) + config.contentToWrite;
-                lines.set(config.appendPosition - 1, contentToWrite);
-            } else {
-                if (config.appendPosition != Integer.MAX_VALUE) {
-                    log.warn("FileConnector:write - Append position is greater than the existing line count of file "
-                            + targetFile.getName().getBaseName()
-                            + ". Hence appending the content at EOF.");
-                }
-                if (lines.size() > 0) {
-                    String contentToWrite = lines.get(lines.size() - 1) + config.contentToWrite;
-                    lines.set(lines.size() - 1, contentToWrite);
-                } else {
-                    // handle empty files
-                    lines.add(config.contentToWrite);
-                }
-            }
-
-            out = new CountingOutputStream(targetFile.getContent().getOutputStream());
-            IOUtils.writeLines(lines, null, out, config.encoding);
-            return out.getByteCount();
-        } finally {
-            try {
-                if (reader != null) {
-                    reader.close();
-                }
-            } catch (IOException e) {
-                log.error("FileConnector:write - Error while closing BufferedReader for file: "
-                        + targetFile.getName().getBaseName(), e);
-            }
-            try {
-                if (out != null) {
-                    out.close();
-                }
-            } catch (IOException e) {
-                log.error("FileConnector:write - Error while closing OutputStream: for file "
-                        + targetFile.getName().getBaseName(), e);
-            }
-        }
-    }
-
-    /**
-     * Write message in MessageContext to a given file.
-     *
-     * @param targetFile     File to write to
-     * @param messageContext MessageContext to extract message from
-     * @param append         True if to append content to file
-     * @param config         Input config
-     * @return Number of bytes written
-     * @throws FileOperationException In case of connector error
-     * @throws IOException            In case of I/O error
-     */
-    private long performBodyWrite(FileObject targetFile, MessageContext messageContext,
-                                  boolean append, Config config) throws FileOperationException, IOException {
-
-        org.apache.axis2.context.MessageContext axis2MessageContext = ((Axis2MessageContext) messageContext).
-                getAxis2MessageContext();
-        //override message type set
-        if (StringUtils.isNotEmpty(config.mimeType) &&
-                !(config.mimeType.equals(Const.CONTENT_TYPE_AUTOMATIC))) {
-
-            axis2MessageContext.setProperty(Const.MESSAGE_TYPE, config.mimeType);
-        }
-        MessageFormatter messageFormatter;
-        if (config.enableStreaming) {
-            //this will get data handler and access input stream set
-            messageFormatter = new ExpandingMessageFormatter();
-        } else {
-            messageFormatter = getMessageFormatter(axis2MessageContext);
-        }
-        OMOutputFormat format = BaseUtils.getOMOutputFormat(axis2MessageContext);
-        if (Objects.isNull(messageFormatter)) {
-            throw new FileOperationException("Error while determining message "
-                    + "formatter to use when writing file" + targetFile.getName().getBaseName());
-        } else {
-            CountingOutputStream outputStream = null;
-            long writtenByesCount = 0;
-            try {
-                if (config.compress) {
-                    ZipOutputStream zipOutputStream = new ZipOutputStream(targetFile.getContent().
-                            getOutputStream(append));
-                    ZipEntry zipEntry = new ZipEntry(config.fileNameWithExtension);
-                    zipOutputStream.putNextEntry(zipEntry);
-                    outputStream = new CountingOutputStream(zipOutputStream);
-                } else {
-                    outputStream = new CountingOutputStream(targetFile.getContent().getOutputStream(append));
-                }
-                messageFormatter.writeTo(axis2MessageContext, format, outputStream, true);
-                writtenByesCount = outputStream.getByteCount();
-            } finally {
-                if (outputStream != null) {
+                if (interval > 0 && AtomicOps.existsNow(target)) {
+                    long before = target.getContent().getSize();
                     try {
-                        outputStream.close();
-                    } catch (IOException e) {
-                        log.error("FileConnector:write - error "
-                                + "while closing output stream for file " + targetFile.getName().getBaseName());
+                        Thread.sleep(interval);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        throw interrupted;
+                    }
+                    attempt.progress().reset("stat");
+                    target.refresh();
+                    if (target.getContent().getSize() != before) {
+                        throw new OperationFrame.Failure(Error.OPERATION_ERROR, "The file size changed");
                     }
                 }
+                if (mode == FileWriteMode.CREATE_NEW && AtomicOps.existsNow(target)) {
+                    throw exists();
+                }
+                boolean insert = position != null && AtomicOps.existsNow(target);
+                if (insert || atomic && mode != FileWriteMode.APPEND) {
+                    healthy = publish(attempt, io, target, insert);
+                } else {
+                    boolean append = mode == FileWriteMode.APPEND;
+                    if (append && attempt.hasShare(path)) {
+                        appendPoint("append.after-share-lock");
+                    }
+                    attempt.progress().reset("open");
+                    try (OutputStream output = target.getContent().getOutputStream(append)) {
+                        if (mode == FileWriteMode.CREATE_NEW || position != null) {
+                            attempt.commitCalled();
+                        }
+                        bytes = transfer(attempt, output, append);
+                    }
+                    if (append) {
+                        appendPoint("append.after-bytes");
+                    }
+                    healthy = metadata(attempt, target, false);
+                }
+                return bytes;
+            } catch (Exception failure) {
+                healthy = !classify(attempt, failure).getKind().isTransport();
+                throw failure;
+            } finally {
+                if (healthy && !attempt.handlerDiscarded()) {
+                    target.close();
+                }
             }
-            if (!config.compress && config.appendNewLine) {
-                writtenByesCount = writtenByesCount + appendNewLine(targetFile);
+        }
+
+        private boolean publish(Attempt attempt, LockIo io, FileObject target, boolean insert) throws Exception {
+            AtomicWriter writer = attempt.handler().getContext().getWriter();
+            if (previous != null) {
+                attempt.progress().reset("stat");
+                FileObject temp = io.resolve(previous.uri);
+                boolean reuse = ready && mode == FileWriteMode.OVERWRITE && AtomicOps.existsNow(temp);
+                if (!ready) {
+                    temp.delete();
+                }
+                temp.close();
+                if (reuse) {
+                    return commit(attempt, io, writer, previous, false);
+                }
             }
-            return writtenByesCount;
+            ready = false;
+            attempt.progress().reset("prepare");
+            previous = writer.prepare(io, path);
+            names.add(previous);
+            attempt.tempPath(previous.uri);
+            try {
+                attempt.progress().reset("transfer");
+                writer.transfer(io, previous, output -> {
+                    if (insert) {
+                        bytes = insert(target, output, attempt);
+                    } else {
+                        bytes = transfer(attempt, output, false);
+                    }
+                });
+                FileObject staged = io.resolve(previous.uri);
+                metadata(attempt, staged, true);
+                staged.close();
+            } catch (Exception failure) {
+                if (!classify(attempt, failure).getKind().isTransport()) {
+                    discard(attempt, io, previous);
+                }
+                throw failure;
+            }
+            ready = true;
+            return commit(attempt, io, writer, previous, insert);
+        }
+
+        private boolean commit(Attempt attempt, LockIo io, AtomicWriter writer, AtomicWriter.Temp temp,
+                               boolean insert) throws OperationFrame.Failure {
+            boolean take = locking && !attempt.hasShare(path);
+            CommitStep.Mode publishMode = mode == FileWriteMode.CREATE_NEW ? CommitStep.Mode.CREATE_NEW
+                    : CommitStep.Mode.OVERWRITE;
+            if (take) {
+                // Charge the share wait to the same budget as local admission.
+                attempt.progress().reset("lock");
+                try {
+                    attempt.acquireCommitLock(path);
+                } catch (OperationFrame.Failure failure) {
+                    if (!attempt.handlerDiscarded()) {
+                        discard(attempt, io, temp);
+                    }
+                    throw failure;
+                }
+            }
+            attempt.progress().reset("commit");
+            AtomicWriter.Result result = writer.commit(io, attempt.lock(path), temp, publishMode, take,
+                    1, 0, !insert, () -> filePoint("temp.before-delete-after-app-error"));
+            if (result.lock == null) {
+                attempt.commitCalled();
+            }
+            if (result.connectionLost()) {
+                attempt.discardHandler();
+            }
+            if (result.outcome == AtomicWriter.Outcome.COMMITTED) {
+                return !result.connectionLost();
+            }
+            if (result.outcome == AtomicWriter.Outcome.TARGET_EXISTS) {
+                throw exists();
+            }
+            if (result.outcome == AtomicWriter.Outcome.LOCK_BUSY) {
+                throw new OperationFrame.Failure(Error.FILE_LOCKING_ERROR, "The target is locked");
+            }
+            if (result.failure != null) {
+                throw new OperationFrame.Failure(Error.OPERATION_ERROR, result.failure);
+            }
+            String reason = result.commit == null ? result.outcome.name() : result.commit.getAtomicResult().getDetail();
+            throw new OperationFrame.Failure(Error.OPERATION_ERROR, reason == null ? result.outcome.name() : reason);
+        }
+
+        private OperationFrame.Failure exists() {
+            return new OperationFrame.Failure(Error.FILE_ALREADY_EXISTS, "The target file already exists");
+        }
+
+        private void discard(Attempt attempt, LockIo io, AtomicWriter.Temp temp) {
+            try {
+                filePoint("temp.before-delete-after-app-error");
+                attempt.progress().reset("delete temp");
+                FileObject staged = io.resolve(temp.uri);
+                if (!staged.delete() && AtomicOps.existsNow(staged)) {
+                    operationLog.warn("The temp file was left at " + UriMask.mask(temp.uri));
+                }
+                staged.close();
+            } catch (Exception cleanup) {
+                operationLog.warn("The temp file was left at " + UriMask.mask(temp.uri));
+                if (classify(attempt, cleanup).getKind().isTransport()) {
+                    attempt.discardHandler();
+                }
+            }
+        }
+
+        private Classification classify(Attempt attempt, Exception error) {
+            return new ErrorClassifier(attempt.handler().getContext().getHealth().namedLog())
+                    .classify(error, attempt.progress().elapsedMillis(), ErrorClassifier.CallType.CHANGE);
+        }
+
+        private void filePoint(String point) {
+            if (TestPoints.enabled()) {
+                TestPoints.event(point, LockIo.pointKey(path));
+            }
+        }
+
+        private void appendPoint(String point) {
+            if (TestPoints.enabled()) {
+                observeAndWait(point, LockIo.pointKey(path));
+            }
+        }
+
+        private void observeAndWait(String point, String key, String... fields) {
+            TestPoints.event(point, key, fields);
+            TestPoints.hold(point, key, fields);
+        }
+
+        private boolean metadata(Attempt attempt, FileObject file, boolean staged) throws IOException {
+            ConnectionContext context = attempt.handler().getContext();
+            if (carryTime) {
+                if (file.getFileSystem().hasCapability(Capability.SET_LAST_MODIFIED_FILE)) {
+                    if (timestamp != null && !attribute(attempt, file, staged, true)) {
+                        return false;
+                    }
+                } else if (context.firstTimeWarning()) {
+                    operationLog.debug("The file system does not support setting the file time");
+                }
+            }
+            return permission == null || attribute(attempt, file, staged, false);
+        }
+
+        private boolean attribute(Attempt attempt, FileObject file, boolean staged, boolean time) throws IOException {
+            String name = attempt.handler().getContext().getName();
+            String scheme = file.getName().getScheme();
+            if (!time && !("file".equals(scheme) || "sftp".equals(scheme))) {
+                operationLog.warn("Cannot set POSIX permissions on " + UriMask.mask(path));
+                return true;
+            }
+            if (TestPoints.enabled() && (staged || time && mode == FileWriteMode.APPEND)) {
+                String point = staged ? (time ? "temp.before-time-set" : "temp.before-permission-set")
+                        : "append.before-time-set";
+                observeAndWait(point, name, "connection=" + name);
+            }
+            attempt.progress().reset(time ? "set time" : "set permissions");
+            try {
+                if (time) {
+                    file.getContent().setLastModifiedTime(timestamp);
+                } else {
+                    if (!permission.matches("[0-7]{3,4}")) {
+                        throw new IllegalArgumentException("Invalid POSIX mode");
+                    }
+                    int mode = Integer.parseInt(permission, 8);
+                    if ("sftp".equals(scheme)) {
+                        ((SftpFileObject) FileObjectUtils.getAbstractFileObject(file)).setPosixMode(mode);
+                    } else {
+                        try {
+                            Files.setAttribute(Paths.get(file.getURL().toURI()), "unix:mode", mode);
+                        } catch (URISyntaxException invalid) {
+                            throw new IOException(invalid);
+                        }
+                    }
+                }
+                return true;
+            } catch (IOException | RuntimeException failure) {
+                boolean lost = classify(attempt, failure).getKind().isTransport();
+                if (lost && staged) {
+                    throw failure;
+                }
+                operationLog.warn("Could not set " + (time ? "time" : "permissions") + " on " + UriMask.mask(path));
+                if (lost) {
+                    attempt.discardHandler();
+                }
+                return !lost;
+            }
+        }
+
+        private OutputStream progressOutput(Attempt attempt, OutputStream destination, boolean append, String cause) {
+            return new FilterOutputStream(destination) {
+                boolean first = true;
+
+                @Override
+                public void write(int value) throws IOException {
+                    write(new byte[]{(byte) value}, 0, 1);
+                }
+
+                @Override
+                public void write(byte[] buffer, int offset, int length) throws IOException {
+                    while (length > 0) {
+                        int size = Math.min(length, BUFFER_BYTES);
+                        attempt.progress().reset(cause);
+                        attempt.bytesSent();
+                        out.write(buffer, offset, size);
+                        if (append && first) {
+                            first = false;
+                            appendPoint("append.in-transfer");
+                        }
+                        offset += size;
+                        length -= size;
+                    }
+                }
+            };
+        }
+
+        private long transfer(Attempt attempt, OutputStream destination, boolean append) throws IOException {
+            OutputStream progress = progressOutput(attempt, destination, append, "write");
+            boolean zip = compress && (!append || !hasContent());
+            if (!zip) {
+                return payload(attempt, progress);
+            }
+            try (ZipOutputStream output = new ZipOutputStream(new CloseShieldOutputStream(progress))) {
+                output.putNextEntry(new ZipEntry(filename));
+                return payload(attempt, output);
+            }
+        }
+
+        private long payload(Attempt attempt, OutputStream destination) throws IOException {
+            CountingOutputStream output = new CountingOutputStream(destination);
+            if (hasContent()) {
+                if (!Const.CONTENT_TYPE_BINARY.equals(mime)) {
+                    // The separator belongs to the same encoded value, including for encodings with a BOM.
+                    try (OutputStreamWriter text = new OutputStreamWriter(new CloseShieldOutputStream(output), encoding)) {
+                        text.write(content);
+                        if (newline) {
+                            text.append(Const.NEW_LINE);
+                        }
+                    }
+                    return output.getByteCount();
+                }
+                output.write(Base64.getDecoder().decode(content));
+            } else {
+                org.apache.axis2.context.MessageContext axis = ((Axis2MessageContext) message).getAxis2MessageContext();
+                if (!mime.isEmpty() && !Const.CONTENT_TYPE_AUTOMATIC.equals(mime)) {
+                    axis.setProperty(Const.MESSAGE_TYPE, mime);
+                }
+                MessageFormatter formatter = streaming ? new ExpandingMessageFormatter() : getMessageFormatter(axis);
+                OMOutputFormat format = BaseUtils.getOMOutputFormat(axis);
+                attempt.payloadStarted();
+                formatter.writeTo(axis, format, output, false);
+            }
+            if (newline && (hasContent() || !compress)) {
+                output.write(Const.NEW_LINE.toString().getBytes(encoding));
+            }
+            return output.getByteCount();
+        }
+
+        private long insert(FileObject target, OutputStream destination, Attempt attempt) throws IOException {
+            CountingOutputStream count = new CountingOutputStream(progressOutput(attempt, destination, false, "insert"));
+            attempt.progress().reset("insert");
+            InputStream source = new FilterInputStream(target.getContent().getInputStream()) {
+                @Override
+                public int read(byte[] buffer, int offset, int length) throws IOException {
+                    attempt.progress().reset("insert");
+                    return super.read(buffer, offset, Math.min(length, BUFFER_BYTES));
+                }
+            };
+            try (BufferedReader input = new BufferedReader(new InputStreamReader(source, encoding));
+                 BufferedWriter output = new BufferedWriter(new OutputStreamWriter(new CloseShieldOutputStream(count),
+                         encoding))) {
+                int line = 1;
+                boolean inserted = false;
+                int next = input.read();
+                while (next >= 0) {
+                    int value = next;
+                    if (value == '\r' || value == '\n') {
+                        boolean pair = false;
+                        next = input.read();
+                        if (value == '\r' && next == '\n') {
+                            pair = true;
+                            next = input.read();
+                        }
+                        if (!inserted && (line == position || next < 0)) {
+                            addText(output, line);
+                            inserted = true;
+                        }
+                        output.write(value);
+                        if (pair) {
+                            output.write('\n');
+                        }
+                        line++;
+                    } else {
+                        output.write(value);
+                        next = input.read();
+                    }
+                }
+                if (!inserted) {
+                    addText(output, line);
+                }
+            }
+            return count.getByteCount();
+        }
+
+        private void addText(BufferedWriter output, int line) throws IOException {
+            if (line < position) {
+                operationLog.warn("FileConnector:write - Append position is greater than the existing line count of file "
+                        + filename + ". Hence appending the content at EOF.");
+            }
+            output.write(content);
+            if (newline) {
+                output.append(Const.NEW_LINE);
+            }
         }
     }
 
-
-    /**
-     * Get the correct formatter for message.
-     *
-     * @param msgContext The message context associated
-     */
     private MessageFormatter getMessageFormatter(org.apache.axis2.context.MessageContext msgContext) {
         OMElement firstChild = msgContext.getEnvelope().getBody().getFirstElement();
         if (firstChild != null) {

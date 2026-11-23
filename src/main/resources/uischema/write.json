@@ -108,7 +108,7 @@
                                         "name": "appendPosition",
                                         "displayName": "Position",
                                         "inputType": "stringOrExpression",
-                                        "defaultValue": "0",
+                                        "defaultValue": "",
                                         "required": "false",
                                         "enableCondition": [
                                             {
@@ -191,9 +191,31 @@
                                         "name": "enableLock",
                                         "displayName": "Enable Locking",
                                         "inputType": "booleanOrExpression",
-                                        "defaultValue": "false",
+                                        "defaultValue": "true",
                                         "required": "true",
                                         "helpTip": "Whether to lock the file when writing"
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "atomicWrite",
+                                        "displayName": "Atomic Write",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "true",
+                                        "required": "false",
+                                        "helpTip": "Publish the completed file by rename"
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "lastModified",
+                                        "displayName": "Source Timestamp",
+                                        "inputType": "integerOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Source timestamp in epoch milliseconds"
                                     }
                                 },
                                 {
@@ -213,9 +235,9 @@
                                         "name": "maxRetries",
                                         "displayName": "Max Retries",
                                         "inputType": "integerOrExpression",
-                                        "defaultValue": "0",
+                                        "defaultValue": "1",
                                         "required": "false",
-                                        "helpTip": "The maximum number of retries to be done in case of a failure."
+                                        "helpTip": "Number of retries after a fast transport failure."
                                     }
                                 },
                                 {
@@ -226,7 +248,7 @@
                                         "inputType": "integerOrExpression",
                                         "defaultValue": "0",
                                         "required": "false",
-                                        "helpTip": "The time interval between retries in milliseconds."
+                                        "helpTip": "Deprecated. Retries use the operation frame."
                                     }
                                 },
                                 {
@@ -248,7 +270,7 @@
                                         "inputType": "stringOrExpression",
                                         "defaultValue": "",
                                         "required": "false",
-                                        "helpTip": "File permission to set after writing (e.g., '755', '644'). Only supported for local file systems."
+                                        "helpTip": "File permission to set after writing (e.g., '755', '644'). Supported for local and SFTP files."
                                     }
                                 },
                                 {

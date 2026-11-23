@@ -15,38 +15,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.wso2.carbon.connector.operations;
 
+import org.wso2.vfs.shared.log.NamedLog;
 import com.google.gson.JsonObject;
-import org.apache.commons.io.input.AutoCloseInputStream;
-import org.apache.commons.lang.StringUtils;
-import org.wso2.org.apache.commons.vfs2.FileObject;
-import org.wso2.org.apache.commons.vfs2.FileSystemException;
-import org.wso2.org.apache.commons.vfs2.FileSystemManager;
-import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.synapse.MessageContext;
-import org.apache.xerces.impl.Constants;
-import org.apache.xerces.util.SecurityManager;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.integration.connector.core.AbstractConnectorOperation;
-import org.wso2.integration.connector.core.ConnectException;
-import org.wso2.integration.connector.core.connection.ConnectionHandler;
-import org.wso2.integration.connector.core.util.ConnectorUtils;
-import org.wso2.carbon.connector.exception.FileOperationException;
-import org.wso2.carbon.connector.exception.IllegalPathException;
-import org.wso2.carbon.connector.exception.InvalidConfigurationException;
-import org.wso2.carbon.connector.pojo.FileOperationResult;
-import org.wso2.carbon.connector.pojo.FileSplitMode;
-import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.Const;
-import org.wso2.carbon.connector.utils.Utils;
-import org.xml.sax.SAXException;
-
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -57,472 +35,159 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import org.apache.xerces.impl.Constants;
+import org.apache.xerces.util.SecurityManager;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.wso2.carbon.connector.exception.InvalidConfigurationException;
+import org.wso2.carbon.connector.frame.Attempt;
+import org.wso2.carbon.connector.frame.OperationFrame;
+import org.wso2.carbon.connector.pojo.FileSplitMode;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
+import org.wso2.vfs.shared.write.AtomicWriter;
 
-import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
-
-/**
- * Implements Split file operation
- */
-public class SplitFile extends AbstractConnectorOperation {
-
+public class SplitFile extends FileOperation {
     private static final int ENTITY_EXPANSION_LIMIT = 0;
-    private static final String SOURCE_FILE_PATH_PARAM = "sourceFilePath";
-    private static final String TARGET_DIRECTORY_PARAM = "targetDirectory";
-    private static final String SPLIT_MODE_PARAM = "splitMode";
-    private static final String CHUNK_SIZE_PARAM = "chunkSize";
-    private static final String LINE_COUNT_PARAM = "lineCount";
-    private static final String XPATH_EXPRESSION_PARAM = "xpathExpression";
-    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
-    private static final String NUMBER_OF_SPLITS_ELE_NAME = "numberOfSplits";
-    private static final String LOG_IDENTIFIER = "File Connector:splitFile";
-    private static final String OPERATION_NAME = "splitFile";
-    private static final String ERROR_MESSAGE = "Error while performing file:split for file ";
 
-    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
-            throws ConnectException {
+    public SplitFile() {
+        super("splitFile", "sourceFilePath", "targetDirectory");
+    }
 
-        String sourceFilePath = null;
-        FileObject fileToSplit = null;
-        String targetDirectoryPath;
-        FileObject targetDir;
-        FileOperationResult result;
-
-        FileSplitMode splitMode;
-        FileSystemHandler fileSystemHandlerConnection = null;
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
-        String connectionName = Utils.getConnectionName(messageContext);
-        String connectorName = Const.CONNECTOR_NAME;
-
-        try {
-            String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
-                    (messageContext, Const.DISK_SHARE_ACCESS_MASK);
-            sourceFilePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, SOURCE_FILE_PATH_PARAM);
-            targetDirectoryPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, TARGET_DIRECTORY_PARAM);
-
-            String splitModeAsStr = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, SPLIT_MODE_PARAM);
-            String timeBetweenSizeCheck = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, TIME_BETWEEN_SIZE_CHECK);
-
-            if(StringUtils.isNotEmpty(splitModeAsStr)) {
-                splitMode = FileSplitMode.fromString(splitModeAsStr);
-                if(splitMode == null) {
-                    throw new InvalidConfigurationException("Unknown '" + SPLIT_MODE_PARAM + "' is provided");
-                }
-            } else {
-                throw new InvalidConfigurationException("Parameter '" + SPLIT_MODE_PARAM + "' is not provided");
+    @Override
+    void configure(Call call) throws InvalidConfigurationException {
+        call.prepareGuard(null);
+        FileSplitMode mode = FileSplitMode.fromString(call.option("splitMode", ""));
+        if (mode == null) {
+            throw new InvalidConfigurationException("Unknown splitMode");
+        }
+        if (mode == FileSplitMode.CHUNK_SIZE || mode == FileSplitMode.LINE_COUNT) {
+            String parameter = mode == FileSplitMode.CHUNK_SIZE ? "chunkSize" : "lineCount";
+            call.partSize = Long.parseLong(call.option(parameter, ""));
+            if (call.partSize <= 0) {
+                throw new InvalidConfigurationException(parameter + " must be positive");
             }
+        } else if (call.option("xpathExpression") == null) {
+            throw new InvalidConfigurationException("An XPath expression is required");
+        }
+        call.sourceUse = OperationFrame.Use.SOURCE;
+        call.retry = OperationFrame.Retry.SAFE;
+    }
 
-            fileSystemHandlerConnection = (FileSystemHandler) handler
-                    .getConnection(Const.CONNECTOR_NAME, connectionName);
-            sourceFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourceFilePath;
-            targetDirectoryPath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetDirectoryPath;
-
-            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
-            Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-            fileToSplit = fileSystemHandlerConnection.resolveFileWithSuspension(sourceFilePath);
-            targetDir = fileSystemHandlerConnection.resolveFileWithSuspension(targetDirectoryPath);
-
-            if (!fileToSplit.exists()) {
-                throw new IllegalPathException("File not found: " + sourceFilePath);
-            } else {
-                if (!fileToSplit.isFile()) {
-                    throw new IllegalPathException("Source Path does not point to a file: " + sourceFilePath);
-                }
+    @Override
+    void perform(Call call, Attempt attempt, FileObject source, JsonObject result) throws Exception {
+        call.requireSource(attempt, source, call.guard());
+        try (FileObject directory = attempt.handler().resolveFile(call.target)) {
+            if (!AtomicOps.existsNow(directory)) {
+                directory.createFolder();
             }
-
-            if (!targetDir.exists()) {
-                targetDir.createFolder();
-            }
-
-            // Check file stability if parameter is provided
-            if (!StringUtils.isEmpty(timeBetweenSizeCheck) && fileToSplit.isFile()) {
-                if (!isFileStable(fileToSplit, timeBetweenSizeCheck)) {
-                    handleError(messageContext, new IllegalPathException("File is not stable (still being written). Cannot split at this time."),
-                            Error.OPERATION_ERROR, "File is not stable (still being written). Cannot split at this time.",
-                            responseVariable, overwriteBody);
-                    return;
-                }
-            }
-
-            int splitFileCount = 0;
-
-            switch (splitMode) {
-
+        }
+        String name = source.getName().getBaseName();
+        int count;
+        try (InputStream input = partInput(attempt, source)) {
+            Parts parts = (part, content) -> call.write(attempt,
+                    FileTreeOperation.Walk.childPath(call.target, FileTreeOperation.Walk.escape(part)), false, content);
+            switch (FileSplitMode.fromString(call.option("splitMode"))) {
                 case CHUNK_SIZE:
-                    String chunkSizeAsStr = (String) ConnectorUtils.
-                            lookupTemplateParamater(messageContext, CHUNK_SIZE_PARAM);
-                    if (StringUtils.isNotEmpty(chunkSizeAsStr)) {
-                        splitFileCount = splitByChunkSize(fileToSplit,
-                                targetDirectoryPath,
-                                chunkSizeAsStr,
-                                fileSystemHandlerConnection);
-                    } else {
-                        throw new InvalidConfigurationException("Parameter '" + CHUNK_SIZE_PARAM + "' is not provided");
-                    }
+                    count = chunks(input, name, call.partSize, parts);
                     break;
                 case LINE_COUNT:
-                    String lineCountAsStr = (String) ConnectorUtils.
-                            lookupTemplateParamater(messageContext, LINE_COUNT_PARAM);
-                    if (StringUtils.isNotEmpty(lineCountAsStr)) {
-                        splitFileCount = splitByLines(fileToSplit,
-                                targetDirectoryPath,
-                                lineCountAsStr,
-                                fileSystemHandlerConnection);
-                    } else {
-                        throw new InvalidConfigurationException("Parameter '" + LINE_COUNT_PARAM + "' is not provided");
-                    }
-                    break;
-                case XPATH_EXPRESSION:
-                    String xpathExpression = (String) ConnectorUtils.
-                            lookupTemplateParamater(messageContext, XPATH_EXPRESSION_PARAM);
-                    if (StringUtils.isNotEmpty(xpathExpression)) {
-                        splitFileCount = splitByXPathExpression(fileToSplit,
-                                targetDirectoryPath,
-                                xpathExpression,
-                                fileSystemHandlerConnection);
-                    } else {
-                        throw new InvalidConfigurationException("Parameter '" + XPATH_EXPRESSION_PARAM + "' is not provided");
-                    }
+                    count = lines(input, name, call.partSize, parts);
                     break;
                 default:
-
+                    count = xml(input, call.option("xpathExpression"), parts, call.connectionLog);
                     break;
             }
+        }
+        result.addProperty("numberOfSplits", count);
+    }
 
-            JsonObject resultJSON = generateOperationResult(messageContext,
-                    new FileOperationResult(OPERATION_NAME, true));
-            resultJSON.addProperty(NUMBER_OF_SPLITS_ELE_NAME, splitFileCount);
-            handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
+    interface Parts {
+        void write(String name, AtomicWriter.Content content) throws Exception;
+    }
 
-        } catch (InvalidConfigurationException e) {
+    static String partName(String name, int part) {
+        int dot = name.lastIndexOf('.');
+        return dot < 0 ? name + part : name.substring(0, dot) + part + name.substring(dot);
+    }
 
-            String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
+    static int chunks(InputStream input, String name, long size, Parts parts) throws Exception {
+        int count = 0;
+        byte[] buffer = new byte[8192];
+        int first;
+        while ((first = input.read(buffer, 0, (int) Math.min(size, buffer.length))) != -1) {
+            final int initial = first;
+            parts.write(partName(name, count++), output -> {
+                output.write(buffer, 0, initial);
+                long remaining = size - initial;
+                while (remaining > 0) {
+                    int read = input.read(buffer, 0, (int) Math.min(remaining, buffer.length));
+                    if (read == -1) {
+                        break;
+                    }
+                    output.write(buffer, 0, read);
+                    remaining -= read;
+                }
+            });
+        }
+        return count;
+    }
 
-        } catch (IllegalPathException e) {
+    private int lines(InputStream input, String name, long size, Parts parts) throws Exception {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+        int full = 0;
+        String first;
+        while ((first = reader.readLine()) != null) {
+            final String start = first;
+            long[] written = {0};
+            parts.write(partName(name, full), output -> {
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output));
+                String line = start;
+                do {
+                    writer.write(line);
+                    writer.newLine();
+                    written[0]++;
+                } while (written[0] < size && (line = reader.readLine()) != null);
+                writer.flush();
+            });
+            if (written[0] == size) {
+                full++;
+            }
+        }
+        return full;
+    }
 
-            String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
-
-        } catch (FileOperationException | IOException e) {       //FileSystemException also handled here
-
-            String errorDetail = ERROR_MESSAGE + sourceFilePath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail, responseVariable, overwriteBody);
-
-        } finally {
-            if (fileToSplit != null) {
+    private int xml(InputStream input, String expression, Parts parts, NamedLog connectionLog) throws Exception {
+        DocumentBuilder builder = getSecuredDocumentBuilder(connectionLog).newDocumentBuilder();
+        Document document = builder.parse(input);
+        NodeList nodes = (NodeList) XPathFactory.newInstance().newXPath().compile(expression)
+                .evaluate(document, XPathConstants.NODESET);
+        for (int index = 0; index < nodes.getLength(); index++) {
+            Node node = nodes.item(index);
+            String parent = node.getParentNode().getNodeName();
+            Document part = builder.newDocument();
+            Element root = part.createElement(parent);
+            part.appendChild(root);
+            root.appendChild(part.importNode(node, true));
+            Transformer transformer = TransformerFactory.newInstance().newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT, Const.YES);
+            parts.write(parent + (index + 1) + ".xml", output -> {
                 try {
-                    fileToSplit.close();
-                } catch (FileSystemException e) {
-                    log.error(Const.CONNECTOR_NAME
-                            + ":Error while closing file object while creating directory "
-                            + fileToSplit);
+                    transformer.transform(new DOMSource(part), new StreamResult(output));
+                } catch (TransformerException failure) {
+                    throw new IOException(failure);
                 }
-            }
-
-            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
-                if (fileSystemHandlerConnection != null) {
-                    Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
-                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
-                }
-            }
+            });
         }
+        return nodes.getLength();
     }
 
-    /**
-     * Splits the file based on number of lines.
-     *
-     * @param fileToSplit      Source file object.
-     * @param targetFolderPath Path of destination folder to write the splitted files.
-     * @param splitLength      Number of lines per file.
-     * @param manager          File System manager.
-     * @param fso              File System Options
-     * @return Number of split parts
-     * @throws IOException In case of file operation error
-     */
-    private int splitByLines(FileObject fileToSplit, String targetFolderPath, String splitLength,
-                             FileSystemHandler fileSystemHandlerConnection) throws IOException {
-
-        BufferedReader bufferedReader = null;
-        BufferedWriter bufferedWriter;
-        try {
-
-            int partNum = 0;
-            int lineCount = 1;
-            String currentLine;
-
-            //open the source file
-            bufferedReader = new BufferedReader(
-                    new InputStreamReader(fileToSplit.getContent().getInputStream()));
-
-            //create first file part
-            String sourceFileName = fileToSplit.getName().getBaseName();
-            FileObject filePart = createFilePart(targetFolderPath, sourceFileName, partNum, fileSystemHandlerConnection);
-            bufferedWriter = new BufferedWriter(new OutputStreamWriter(
-                    filePart.getContent().getOutputStream()));
-
-            boolean startNextFile = false;
-            while ((currentLine = bufferedReader.readLine()) != null) {
-                if (startNextFile) {
-                    filePart = createFilePart(targetFolderPath, sourceFileName, partNum, fileSystemHandlerConnection);
-                    bufferedWriter = new BufferedWriter(new OutputStreamWriter(
-                            filePart.getContent().getOutputStream()));
-                    startNextFile = false;
-                }
-                bufferedWriter.write(currentLine);
-                bufferedWriter.newLine();
-                if (lineCount == Integer.parseInt(splitLength)) {
-                    lineCount = 0;
-                    partNum = partNum + 1;
-                    bufferedWriter.flush();
-                    bufferedWriter.close();
-                    filePart.close();
-                    startNextFile = true;
-                }
-                lineCount = lineCount + 1;
-            }
-            if (!startNextFile) {
-                bufferedWriter.flush();
-                bufferedWriter.close();
-                filePart.close();
-            }
-
-            return partNum;
-
-        } finally {
-            if (bufferedReader != null) {
-                try {
-                    bufferedReader.close();
-                } catch (IOException e) {
-                    log.error(LOG_IDENTIFIER + "Error " + "while closing the BufferedReader for file "
-                            + fileToSplit.getURL());
-                }
-            }
-        }
-    }
-
-
-    /**
-     * Create file part as necessary.
-     *
-     * @param targetFolderPath Path of destination folder to write the splitted files.
-     * @param sourceFileName   Name of the source file
-     * @param partNum          Part number
-     * @param manager          File System Manager
-     * @param fso              File System Options
-     * @return Created FileObject
-     * @throws FileSystemException in case of an issue creating file
-     */
-    private FileObject createFilePart(String targetFolderPath, String sourceFileName,
-                                      int partNum, FileSystemHandler fileSystemHandlerConnection) throws FileSystemException {
-
-        String[] sourceFileNameParts = sourceFileName.split("\\.");
-        String fileName = sourceFileNameParts[0];
-        String extension = sourceFileNameParts[1];
-        String pathToFilePart = targetFolderPath + Const.FILE_SEPARATOR
-                + fileName + partNum + "." + extension;
-        FileObject file = fileSystemHandlerConnection.resolveFileWithSuspension(pathToFilePart);
-        file.createFile();
-        if (log.isDebugEnabled()) {
-            log.debug(LOG_IDENTIFIER + "Created the file part "
-                    + partNum + " for source file " + sourceFileName);
-        }
-        return file;
-    }
-
-    /**
-     * Splits the file based on chunk size.
-     *
-     * @param sourceFileObj Source file object.
-     * @param destination   Destination to write the splitted files.
-     * @param chunkSize     Size of a file chunk in bytes.
-     * @param manager       FileSystemManager to resolve splitted file.
-     * @param options       FileSystemOptions to resolve splitted file.
-     * @return Number of parts split
-     * @throws IOException In case of error creating, writing to files
-     */
-    private int splitByChunkSize(FileObject sourceFileObj, String destination, String chunkSize,
-                                 FileSystemHandler fileSystemHandlerConnection) throws IOException {
-        byte[] bytesIn = new byte[Integer.parseInt(chunkSize)];
-        InputStream inputStream = null;
-        OutputStream outputStream = null;
-        BufferedOutputStream bufferedOutputStream = null;
-        FileObject outputFileObj = null;
-        int partNum = 0;
-        String sourceFileName = sourceFileObj.getName().getBaseName();
-        try {
-            inputStream = new AutoCloseInputStream(sourceFileObj.getContent().getInputStream());
-            while (inputStream.read(bytesIn) != -1) {
-                try {
-                    outputFileObj = createFilePart(destination, sourceFileName, partNum, fileSystemHandlerConnection);
-                    outputStream = outputFileObj.getContent().getOutputStream();
-                    bufferedOutputStream = new BufferedOutputStream(outputStream);
-                    bufferedOutputStream.write(bytesIn);
-                    bufferedOutputStream.flush();
-                    outputStream.flush();
-
-                } finally {
-                    if (bufferedOutputStream != null) {
-                        try {
-                            bufferedOutputStream.close();
-                        } catch (IOException e) {
-                            log.warn(LOG_IDENTIFIER + "Error while closing the BufferedOutputStream: " + e.getMessage(), e);
-                        }
-                    }
-                    if (outputStream != null) {
-                        try {
-                            outputStream.close();
-                        } catch (IOException e) {
-                            log.warn(LOG_IDENTIFIER + "Error while closing the OutputStream: " + e.getMessage(), e);
-                        }
-                    }
-                    if (outputFileObj != null) {
-                        outputFileObj.close();
-                    }
-                }
-                partNum++;
-                if (log.isDebugEnabled()) {
-                    log.debug(LOG_IDENTIFIER + "created the file part " + partNum);
-                }
-            }
-
-            return partNum;
-
-        } finally {
-            if (inputStream != null) {
-                try {
-                    inputStream.close();
-                } catch (IOException e) {
-                    log.error(LOG_IDENTIFIER + "error while" + " closing inputStream for file "
-                            + sourceFileObj.getURL());
-                }
-            }
-        }
-    }
-
-
-    /**
-     * Split xml document based on xpath expression.
-     *
-     * @param sourceFileObj   Source xml document file
-     * @param destination     Destination to write the splitted files.
-     * @param xpathExpression XPath expression to be used.
-     * @param manager         FileSystem Manager
-     * @param options         File options.
-     * @return Number of split files
-     * @throws FileOperationException In case of I/O error
-     */
-    private int splitByXPathExpression(FileObject sourceFileObj, String destination, String xpathExpression,
-                                       FileSystemHandler fileSystemHandlerConnection) throws FileOperationException {
-
-        DocumentBuilderFactory documentFactory = getSecuredDocumentBuilder();
-        DocumentBuilder documentBuilder;
-        Document sourceXmlDocument;
-        try {
-            documentBuilder = documentFactory.newDocumentBuilder();
-            sourceXmlDocument = documentBuilder.parse(sourceFileObj.getContent().getInputStream());
-        } catch (ParserConfigurationException | SAXException | IOException e) {
-            throw new FileOperationException("Failed to read source xml file "
-                    + sourceFileObj.getName().getBaseName(), e);
-        }
-
-        XPathFactory xPathFactory = XPathFactory.newInstance();
-        XPath xpath = xPathFactory.newXPath();
-        XPathExpression expression;
-        NodeList nodeList;
-        try {
-            expression = xpath.compile(xpathExpression);
-            nodeList = (NodeList) expression.evaluate(sourceXmlDocument, XPathConstants.NODESET);
-        } catch (XPathExpressionException e) {
-            throw new FileOperationException("Error while evaluating xpath expression "
-                    + xpathExpression, e);
-        }
-
-        OutputStream outputStream = null;
-        FileObject outputFileObj = null;
-        assert nodeList != null;
-        for (int i = 0; i < nodeList.getLength(); ++i) {
-            Document distinationXmlDocument = documentBuilder.newDocument();
-
-            String parentNode = nodeList.item(i).getParentNode().getNodeName();
-            Element root = distinationXmlDocument.createElement(parentNode);
-            distinationXmlDocument.appendChild(root);
-            Node currentNode = nodeList.item(i);
-
-            Node clonedNode = currentNode.cloneNode(true);
-            distinationXmlDocument.adoptNode(clonedNode);
-            root.appendChild(clonedNode);
-
-            //At the end, we save the file XML on disk
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer;
-            DOMSource source = null;
-            StreamResult result = null;
-            try {
-                transformer = transformerFactory.newTransformer();
-                transformer.setOutputProperty(OutputKeys.INDENT, Const.YES);
-                source = new DOMSource(distinationXmlDocument);
-
-                outputFileObj = fileSystemHandlerConnection.resolveFileWithSuspension(destination + Const.FILE_SEPARATOR
-                                + parentNode + (i + 1) + ".xml");
-                if (!outputFileObj.exists()) {
-                    outputFileObj.createFile();
-                }
-                outputStream = outputFileObj.getContent().getOutputStream();
-
-                result = new StreamResult(outputStream);
-                transformer.transform(source, result);
-                if (log.isDebugEnabled()) {
-                    log.debug("File connector:split - Created the xml file part " + (i + 1));
-                }
-            } catch (TransformerException e) {
-                throw new FileOperationException("Failed to transform " + source + " to " + result, e);
-            } catch (FileSystemException e) {
-                throw new FileOperationException("Error while processing the output xml file ", e);
-            } finally {
-                if (outputStream != null) {
-                    try {
-                        outputStream.close();
-                    } catch (IOException e) {
-                        log.warn("File Connector:splitFile - Error while "
-                                + "closing the OutputStream: " + e.getMessage(), e);
-                    }
-                }
-                if (outputFileObj != null) {
-                    try {
-                        outputFileObj.close();
-                    } catch (FileSystemException e) {
-                        log.warn("File Connector:splitFile - "
-                                + "Error while closing the output split file", e);
-                    }
-                }
-            }
-        }
-        return nodeList.getLength();
-    }
-
-    /**
-     * Get document builder factory instance.
-     *
-     * @return documentBuilderFactory
-     */
-    private DocumentBuilderFactory getSecuredDocumentBuilder() {
+    private DocumentBuilderFactory getSecuredDocumentBuilder(NamedLog connectionLog) {
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
         documentBuilderFactory.setNamespaceAware(true);
         documentBuilderFactory.setXIncludeAware(false);
@@ -536,7 +201,7 @@ public class SplitFile extends AbstractConnectorOperation {
                     Constants.LOAD_EXTERNAL_DTD_FEATURE, false);
             documentBuilderFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
         } catch (ParserConfigurationException e) {
-            log.error("Failed to load XML Processor Feature " + Constants.EXTERNAL_GENERAL_ENTITIES_FEATURE + " or " +
+            connectionLog.error("Failed to load XML Processor Feature " + Constants.EXTERNAL_GENERAL_ENTITIES_FEATURE + " or " +
                     Constants.EXTERNAL_PARAMETER_ENTITIES_FEATURE + " or " + Constants.LOAD_EXTERNAL_DTD_FEATURE);
         }
 
@@ -545,65 +210,5 @@ public class SplitFile extends AbstractConnectorOperation {
         documentBuilderFactory.setAttribute(Constants.XERCES_PROPERTY_PREFIX +
                 Constants.SECURITY_MANAGER_PROPERTY, securityManager);
         return documentBuilderFactory;
-    }
-
-    /**
-     * Check if file is stable (not being written to) by comparing file sizes
-     * over a specified interval.
-     * 
-     * @param file File to check for stability
-     * @param sizeCheckInterval Time in milliseconds to wait between size checks
-     * @return true if file is stable, false if still being written
-     */
-    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
-        try {
-            long interval = Long.parseLong(sizeCheckInterval);
-            if (interval <= 0) {
-                return true; // No stability check if interval is 0 or negative
-            }
-            
-            long initialSize = file.getContent().getSize();
-            
-            // Wait for the specified interval
-            Thread.sleep(interval);
-            
-            // Re-read file size and compare
-            long finalSize = file.getContent().getSize();
-            
-            // File is stable if size hasn't changed
-            return initialSize == finalSize;
-            
-        } catch (NumberFormatException e) {
-            // If we can't parse the interval, assume file is stable
-            log.warn("Invalid timeBetweenSizeCheck value: " + sizeCheckInterval + ". Skipping stability check.");
-            return true;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            // If interrupted, assume file is stable
-            return true;
-        } catch (Exception e) {
-            // If we can't check stability, assume file is stable
-            log.warn("Error checking file stability: " + e.getMessage() + ". Assuming file is stable.");
-            return true;
-        }
-    }
-
-    /**
-     * Sets error to context and handle.
-     *
-     * @param msgCtx      Message Context to set info
-     * @param e           Exception associated
-     * @param error       Error code
-     * @param errorDetail Error detail
-     * @param responseVariable Response variable name
-     * @param overwriteBody Overwrite body
-     */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
-                             String responseVariable, boolean overwriteBody) {
-        errorDetail = Utils.maskURLPassword(errorDetail);
-        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
-        JsonObject resultJSON = generateOperationResult(msgCtx, result);
-        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
-        handleException(errorDetail, e, msgCtx);
     }
 }

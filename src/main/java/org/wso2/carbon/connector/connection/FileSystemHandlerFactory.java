@@ -1,0 +1,98 @@
+/*
+ *  Copyright (c) 2023, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ *  WSO2 Inc. licenses this file to you under the Apache License,
+ *  Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.wso2.carbon.connector.connection;
+
+import org.wso2.vfs.shared.log.NamedLog;
+import org.wso2.carbon.connector.exception.FileServerConnectionException;
+import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
+import org.wso2.integration.connector.core.connection.PoolCloseListener;
+import org.wso2.integration.connector.core.connection.PoolCloseReason;
+import org.wso2.integration.connector.core.pool.ConnectionFactory;
+import org.wso2.org.apache.commons.vfs2.util.TestPoints;
+
+public class FileSystemHandlerFactory implements ConnectionFactory, PoolCloseListener {
+    private final ConnectionConfiguration configuration;
+    private final String deployedKey;
+    private final String name;
+    private ConnectionContext context;
+    private boolean retired;
+
+    public FileSystemHandlerFactory(ConnectionConfiguration configuration, String deployedKey, String name) {
+        this.configuration = configuration;
+        this.deployedKey = deployedKey;
+        this.name = name;
+    }
+
+    public synchronized NamedLog existingLog() {
+        return context == null ? null : context.getHealth().namedLog();
+    }
+
+    public synchronized ConnectionContext getContext() throws FileServerConnectionException {
+        if (context == null) {
+            if (retired) {
+                throw new FileServerConnectionException("The file connection was retired");
+            }
+            context = new ConnectionContext(configuration, deployedKey, name);
+            if (TestPoints.enabled()) {
+                context.registerPoolState(this);
+            }
+        }
+        return context;
+    }
+
+    @Override
+    public FileSystemHandler makeObject() throws FileServerConnectionException {
+        ConnectionContext owner = getContext();
+        FileSystemHandler handler = new FileSystemHandler(owner);
+        owner.add(handler);
+        return handler;
+    }
+
+    @Override
+    public void destroyObject(Object connection) {
+        FileSystemHandler handler = (FileSystemHandler) connection;
+        try {
+            handler.close();
+        } finally {
+            handler.getContext().remove(handler);
+        }
+    }
+
+    @Override
+    public boolean validateObject(Object connection) {
+        return ((FileSystemHandler) connection).isAliveLocally();
+    }
+
+    @Override
+    public synchronized void beforePoolClose(PoolCloseReason reason) {
+        if (reason == PoolCloseReason.RETIRE && !retired) {
+            retired = true;
+            if (context != null) {
+                context.retire();
+            }
+        }
+    }
+
+    @Override
+    public void activateObject(Object connection) {
+    }
+
+    @Override
+    public void passivateObject(Object connection) {
+    }
+}
