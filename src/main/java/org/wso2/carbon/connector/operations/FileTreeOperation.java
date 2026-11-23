@@ -125,8 +125,11 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             String exclude = option(message, "excludeFiles");
             String maxAge = option(message, "maxFileAge");
             String minAge = option(message, "minFileAge");
-            interval = Long.parseLong(Utils.lookUpStringParam(message, "timeBetweenSizeCheck", "0"));
-            pattern = legacy == null ? null : Pattern.compile(legacy);
+            String stability = option(message, "timeBetweenSizeCheck");
+            interval = stability == null ? 0 : Long.parseLong(stability);
+            boolean advanced = include != null || exclude != null || minAge != null || maxAge != null || stability != null;
+            boolean advancedCopyOrMove = advanced && ("copyFiles".equals(name) || "moveFiles".equals(name));
+            pattern = legacy == null || advancedCopyOrMove ? null : Pattern.compile(legacy);
             filter = new AdvancedFileFilter(option(message, "fileFilterType"), include, exclude, maxAge, minAge);
             retries = Integer.parseInt(Utils.lookUpStringParam(message, "maxRetries", "1"));
         }
@@ -211,7 +214,7 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             }
             attempt.progress().reset("resolve");
             FileObject source = attempt.handler().resolveFile(root);
-            if (!source.exists()) {
+            if (!AtomicOps.existsNow(source)) {
                 if (deleting()) {
                     return null;
                 }
@@ -231,7 +234,7 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                         || (folder && source.getName().isDescendent(target.getName()))) {
                     throw failure(Error.ILLEGAL_PATH, "The target overlaps the source", root);
                 }
-                if (folder && !canCreateParent() && !parent.exists()) {
+                if (folder && !canCreateParent() && !AtomicOps.existsNow(parent)) {
                     throw failure(Error.ILLEGAL_PATH, "The target directory does not exist", uri(parent));
                 }
             }
@@ -334,7 +337,7 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                 }
                 if (target != null && !folder) {
                     FileObject parent = target.getParent();
-                    if (!parent.exists()) {
+                    if (!AtomicOps.existsNow(parent)) {
                         if (!canCreateParent()) {
                             throw failure(Error.ILLEGAL_PATH, "The target directory does not exist", uri(parent));
                         }

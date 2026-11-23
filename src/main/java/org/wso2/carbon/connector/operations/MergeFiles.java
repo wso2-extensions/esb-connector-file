@@ -43,18 +43,14 @@ public class MergeFiles extends FileOperation {
     void configure(Call call) {
         call.prepareGuard("filePattern");
         call.knownOutput = true;
-        call.retry = OperationFrame.Retry.SAFE;
+        call.retry = Const.OVERWRITE.equals(call.option("writeMode"))
+                ? OperationFrame.Retry.SAFE : OperationFrame.Retry.APPEND;
     }
 
     @Override
     void perform(Call call, Attempt attempt, FileObject folder, JsonObject result) throws Exception {
         call.requireFolder(folder);
         try (FileObject target = attempt.handler().resolveFile(call.target)) {
-            if (call.appendDecision == null) {
-                call.appendDecision = !Const.OVERWRITE.equals(call.option("writeMode"))
-                        && AtomicOps.existsNow(target);
-            }
-            call.appendExisting = call.appendDecision;
             SourceGuard guard = call.guard();
             FileObject[] children = folder.getChildren();
             call.sorter().sort(children);
@@ -65,9 +61,19 @@ public class MergeFiles extends FileOperation {
                     selected.add(child);
                 }
             }
+            boolean appendMode = !Const.OVERWRITE.equals(call.option("writeMode"));
+            if (appendMode) {
+                attempt.lockTarget(call.target, OperationFrame.Lock.WHOLE);
+            }
+            boolean appendExisting = appendMode && AtomicOps.existsNow(target);
+            boolean writesDirectly = appendMode && (appendExisting || !call.flag("atomicWrite", true));
+            if (appendMode) {
+                // A retry after the first publication would now append the same source bytes.
+                call.retry = writesDirectly ? OperationFrame.Retry.APPEND : OperationFrame.Retry.CREATE_NEW;
+            }
             JsonObject detail = new JsonObject();
-            call.write(attempt, call.target, call.appendExisting, output -> {
-                MergeFileResult merged = merge(output, selected, attempt, call.appendExisting);
+            call.write(attempt, call.target, appendExisting, output -> {
+                MergeFileResult merged = merge(output, selected, attempt, writesDirectly);
                 detail.addProperty("numberOfMergedFiles", merged.getNumberOfMergedFiles());
                 detail.addProperty("totalWrittenBytes", merged.getNumberOfTotalWrittenBytes());
             });

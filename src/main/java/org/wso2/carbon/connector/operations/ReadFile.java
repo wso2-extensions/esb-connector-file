@@ -36,6 +36,7 @@ import org.apache.commons.lang.StringUtils;
 import org.wso2.vfs.shared.log.NamedLog;
 import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
 import org.wso2.org.apache.commons.vfs2.provider.local.LocalFile;
 import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 import org.wso2.vfs.shared.error.ErrorClassifier;
@@ -155,7 +156,7 @@ public class ReadFile extends OperationFrame.Mediator {
                 attempt.progress().reset("resolve");
                 FileObject source = attempt.handler().resolveFile(selected == null ? input : selected);
                 attempt.progress().reset("stat");
-                if (!source.exists()) {
+                if (!AtomicOps.existsNow(source)) {
                     throw new OperationFrame.Failure(Error.ILLEGAL_PATH, "File or folder not found: " + input);
                 }
                 if (selected == null && source.isFolder()) {

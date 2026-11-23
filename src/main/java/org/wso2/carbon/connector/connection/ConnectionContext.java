@@ -54,7 +54,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.LongSupplier;
 
-public final class ConnectionContext implements StreamLease.Owner {
+public final class ConnectionContext implements StreamLease.Owner, EndpointHealth.RuntimeMetrics {
     private final ConnectionConfiguration configuration;
     private final String name;
     private final FileSystemOptions options;
@@ -93,7 +93,7 @@ public final class ConnectionContext implements StreamLease.Owner {
         options = (FileSystemOptions) configuration.getProviderOptions().clone();
         baseUri = FileSystemHandler.setupOptions(options, configuration);
         maskedBaseUri = UriMask.mask(baseUri);
-        registration = HealthRegistry.registerConnection(deployedKey, name);
+        registration = HealthRegistry.registerConnection(deployedKey, name, this);
         try {
             shareLock = ShareLock.create(name, configuration.isAutoLockRelease(), configuration.getLockStaleAge(),
                     registration.health());
@@ -130,6 +130,13 @@ public final class ConnectionContext implements StreamLease.Owner {
         handlers.remove(handler);
     }
 
+    @Override
+    public EndpointHealth.Breaker getBreakerState() {
+        return EndpointHealth.Breaker.valueOf(
+                ConnectionHandler.getConnectionHandler().getBreakerState(Const.CONNECTOR_NAME, name).name());
+    }
+
+    @Override
     public int getOpenClientCount() {
         int total = 0;
         for (FileSystemHandler handler : handlers) {

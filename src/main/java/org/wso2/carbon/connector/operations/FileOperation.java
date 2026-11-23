@@ -109,8 +109,6 @@ abstract class FileOperation extends OperationFrame.Mediator {
         OperationFrame.Use sourceUse;
         boolean knownOutput;
         Runnable onSuccess;
-        boolean appendExisting;
-        Boolean appendDecision;
         long partSize;
         OperationFrame.Retry retry = OperationFrame.Retry.READ;
 
@@ -176,7 +174,7 @@ abstract class FileOperation extends OperationFrame.Mediator {
         }
 
         @Override public OperationFrame.Retry retry() {
-            return appendExisting ? OperationFrame.Retry.APPEND : retry;
+            return retry;
         }
 
         @Override public void options(FileSystemHandler handler) {

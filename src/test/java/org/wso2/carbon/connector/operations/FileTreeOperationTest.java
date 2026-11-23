@@ -28,10 +28,14 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.wso2.carbon.connector.frame.Attempt;
 import org.wso2.carbon.connector.frame.StreamLease;
 import org.wso2.carbon.connector.frame.StreamLeases;
 import org.wso2.integration.connector.core.AbstractConnectorOperation;
 import org.wso2.integration.connector.core.connection.ConnectionHandler;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.impl.DecoratedFileObject;
 import org.wso2.org.apache.commons.vfs2.provider.MoveOptions;
 import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileSystemConfigBuilder;
 import org.wso2.vfs.shared.write.AtomicWriter;
@@ -270,6 +274,167 @@ public class FileTreeOperationTest {
             Assert.assertEquals(Files.readString(nested.resolve("marker.fail")), "marker");
             Assert.assertEquals(Files.readString(temp), "private");
         }
+    }
+
+    @DataProvider
+    public Object[][] mixedSelectors() {
+        return new Object[][] {{false, ".*[.]csv"}, {true, ".*[.]csv"}, {false, "["}, {true, "["}};
+    }
+
+    @Test(dataProvider = "mixedSelectors")
+    public void advancedCopyAndMoveIgnoreInactiveLegacyPattern(boolean move, String legacy) throws Exception {
+        Path root = WriteFileTest.directory();
+        Path source = Files.createDirectory(root.resolve("src"));
+        Files.writeString(source.resolve("one.txt"), "selected");
+        Files.writeString(source.resolve("two.csv"), "survivor");
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", root.toString())) {
+            success(invoke(move ? new MoveFiles() : new CopyFiles(), WriteFileTest.message(files),
+                    "sourcePath", "/src", "targetPath", "/dest", "createParentDirectories", "true",
+                    move ? "filePattern" : "sourceFilePattern", legacy, "includeFiles", "one.*"));
+            Assert.assertEquals(Files.readString(root.resolve("dest/one.txt")), "selected");
+            Assert.assertFalse(Files.exists(root.resolve("dest/two.csv")));
+            Assert.assertEquals(Files.readString(source.resolve("two.csv")), "survivor");
+            if (move) {
+                Assert.assertFalse(Files.exists(source.resolve("one.txt")));
+            } else {
+                Assert.assertEquals(Files.readString(source.resolve("one.txt")), "selected");
+            }
+        }
+    }
+
+    @DataProvider
+    public Object[][] legacyAndStability() {
+        return new Object[][] {{false, false}, {true, false}, {false, true}, {true, true}};
+    }
+
+    @Test(dataProvider = "legacyAndStability")
+    public void explicitStabilitySelectsAdvancedCopyAndMove(boolean move, boolean stability) throws Exception {
+        Path root = WriteFileTest.directory();
+        Path source = Files.createDirectory(root.resolve("src"));
+        Files.writeString(source.resolve("one.txt"), "one");
+        Files.writeString(source.resolve("two.csv"), "two");
+        List<String> options = new ArrayList<>(java.util.Arrays.asList("sourcePath", "/src", "targetPath", "/dst",
+                "createParentDirectories", "true", move ? "filePattern" : "sourceFilePattern", ".*[.]txt"));
+        if (stability) {
+            options.add("timeBetweenSizeCheck");
+            options.add("0");
+        }
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", root.toString())) {
+            success(invoke(move ? new MoveFiles() : new CopyFiles(), WriteFileTest.message(files),
+                    options.toArray(new String[0])));
+            Assert.assertEquals(Files.readString(root.resolve("dst/one.txt")), "one");
+            Assert.assertEquals(Files.exists(root.resolve("dst/two.csv")), stability);
+            Assert.assertEquals(Files.exists(source.resolve("two.csv")), !move || !stability);
+        }
+    }
+
+    @DataProvider
+    public Object[][] mergeWriters() {
+        return new Object[][] {{"A", "B", ""}, {"B", "A", ""}, {"A", "B", "old"}, {"B", "A", "old"}};
+    }
+
+    @Test(dataProvider = "mergeWriters")
+    public void cooperatingAppendWritersKeepBothContributions(String slow, String fast, String initial)
+            throws Exception {
+        Path root = WriteFileTest.directory();
+        Path target = root.resolve("joined");
+        if (!initial.isEmpty()) {
+            Files.writeString(target, initial);
+        }
+        for (String writer : new String[]{slow, fast}) {
+            Files.writeString(Files.createDirectory(root.resolve(writer)).resolve("item"), writer);
+        }
+        MergeFiles delayed = new MergeFiles() {
+            @Override
+            void perform(Call call, Attempt attempt, FileObject folder, JsonObject result) throws Exception {
+                FileObject source = new DecoratedFileObject(folder) {
+                    @Override
+                    public FileObject[] getChildren() throws FileSystemException {
+                        runIndependentWriter(root, fast);
+                        return super.getChildren();
+                    }
+                };
+                super.perform(call, attempt, source, result);
+            }
+        };
+        append(root, slow, delayed);
+        Assert.assertEquals(Files.readString(target), initial + fast + slow);
+    }
+
+    // Each process has its own local lock registry. The writers share only the file system and its Cluster lock.
+    private static void runIndependentWriter(Path root, String writer) throws FileSystemException {
+        String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        String classpath = System.getProperty("java.class.path");
+        Path log = root.resolve("peer.log");
+        try {
+            Process peer = new ProcessBuilder(java, "-cp", classpath, PeerMerge.class.getName(), root.toString(), writer)
+                    .redirectErrorStream(true).redirectOutput(log.toFile()).start();
+            try {
+                Assert.assertTrue(peer.waitFor(30, TimeUnit.SECONDS), "Peer merge timed out");
+                Assert.assertEquals(peer.exitValue(), 0, Files.readString(log));
+            } finally {
+                if (peer.isAlive()) {
+                    peer.destroyForcibly();
+                }
+            }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new FileSystemException(interrupted);
+        } catch (java.io.IOException error) {
+            throw new FileSystemException(error);
+        }
+    }
+
+    public static final class PeerMerge {
+        public static void main(String[] args) throws Exception {
+            append(Path.of(args[0]), args[1], new MergeFiles());
+        }
+    }
+
+    private static void append(Path root, String writer, MergeFiles merge) throws Exception {
+        try (FilePoolFixture fixture = new FilePoolFixture("LOCAL", "workingDir", root.toString(),
+                "fileLockScheme", "Cluster")) {
+            JsonObject result = invoke(merge, WriteFileTest.message(fixture), "sourceDirectoryPath", "/" + writer,
+                    "targetFilePath", "/joined", "writeMode", "Append");
+            success(result);
+            Assert.assertEquals(result.getAsJsonObject("detail").get("totalWrittenBytes").getAsInt(), 1);
+        }
+    }
+
+    @Test
+    public void inaccessibleParentFailsReadAndDeleteAndPreservesChild() throws Exception {
+        Path root = WriteFileTest.directory();
+        Path parent = Files.createDirectory(root.resolve("blocked"));
+        Path child = Files.writeString(parent.resolve("item"), "preserved");
+        if (!Files.getFileStore(parent).supportsFileAttributeView("posix")) {
+            throw new org.testng.SkipException("Requires POSIX directory permissions");
+        }
+        Set<java.nio.file.attribute.PosixFilePermission> original = Files.getPosixFilePermissions(parent);
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", root.toString())) {
+            ReadFileTest reader = new ReadFileTest();
+            Axis2MessageContext ctx = reader.message(files, new BinaryBuilder());
+            try {
+                reader.read(ctx, "/absent/item", false, false);
+                Assert.fail("Missing read succeeded");
+            } catch (SynapseException missing) {
+                Assert.assertEquals(ctx.getProperty("ERROR_CODE"), "700102");
+            }
+            Files.setPosixFilePermissions(parent, Collections.emptySet());
+            if (Files.isReadable(child)) {
+                throw new org.testng.SkipException("Requires a user subject to directory permissions");
+            }
+            JsonObject delete = invoke(new DeleteFileOrFolder(), WriteFileTest.message(files), "path", "/blocked/item");
+            Assert.assertTrue(delete.has("error"), delete.toString());
+            try {
+                reader.read(ctx, "/blocked/item", false, false);
+                Assert.fail("Read from inaccessible parent succeeded");
+            } catch (SynapseException denied) {
+                Assert.assertNotEquals(ctx.getProperty("ERROR_CODE"), "700102");
+            }
+        } finally {
+            Files.setPosixFilePermissions(parent, original);
+        }
+        Assert.assertEquals(Files.readString(child), "preserved");
     }
 
     @Test

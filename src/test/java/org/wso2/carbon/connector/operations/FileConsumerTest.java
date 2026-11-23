@@ -30,12 +30,10 @@ import org.wso2.integration.connector.core.connection.ConnectionLease;
 import org.wso2.integration.connector.core.pool.ConnectionPool;
 import org.wso2.org.apache.commons.vfs2.provider.EffectiveBounds;
 import org.wso2.vfs.shared.health.EndpointHealth;
-import org.wso2.vfs.shared.health.HealthRegistry;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.net.SocketException;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -147,24 +145,27 @@ public class FileConsumerTest {
 
     @Test
     public void connectionHealthTracksTheBreakerWithoutAPollSchedule() throws Exception {
-        try (FilePoolFixture files = new FilePoolFixture("LOCAL")) {
-            ConnectionLease lease = files.borrow();
+        AtomicInteger clock = new AtomicInteger();
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", clock::get, "retriesBeforeSuspension", "0",
+                "suspendInitialDuration", "1000")) {
+            ConnectionLease first = files.borrow();
+            EndpointHealth health = FilePoolFixture.handler(first).getContext().getHealth();
+            Assert.assertEquals(health.snapshot().get("breakerState"), "CLOSED");
+            first.reportFailure();
+            first.invalidate();
+            Assert.assertEquals(files.core.getBreakerState("file", files.name).name(), "OPEN");
+            Assert.assertEquals(health.snapshot().get("state"), "BREAKER_OPEN");
+            Assert.assertEquals(health.snapshot().get("breakerState"), "OPEN");
+            clock.set(1000);
+            ConnectionLease trial = files.borrow();
             try {
-                EndpointHealth health = FilePoolFixture.handler(lease).getContext().getHealth();
-                Assert.assertEquals(health.kind(), HealthRegistry.Kind.CONNECTION);
-                Method tick = EndpointHealth.class.getDeclaredMethod("refresh", boolean.class);
-                tick.setAccessible(true);
-                tick.invoke(health, false);
-                Assert.assertEquals(health.state(), EndpointHealth.State.OK);
-                health.breakerState(EndpointHealth.Breaker.OPEN);
-                tick.invoke(health, false);
-                Assert.assertEquals(health.state(), EndpointHealth.State.BREAKER_OPEN);
-                health.breakerState(EndpointHealth.Breaker.CLOSED);
-                tick.invoke(health, false);
-                Assert.assertEquals(health.state(), EndpointHealth.State.OK);
+                Assert.assertEquals(health.snapshot().get("breakerState"), "HALF_OPEN");
+                trial.reportSuccess();
             } finally {
-                lease.returnToPool();
+                trial.returnToPool();
             }
+            Assert.assertEquals(health.snapshot().get("breakerState"), "CLOSED");
+            Assert.assertEquals(health.snapshot().get("state"), "OK");
         }
     }
 
