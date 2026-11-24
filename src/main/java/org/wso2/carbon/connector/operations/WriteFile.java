@@ -21,12 +21,16 @@ package org.wso2.carbon.connector.operations;
 import com.google.gson.JsonObject;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMOutputFormat;
+import org.apache.axiom.om.OMXMLParserWrapper;
+import org.apache.axiom.soap.SOAPBody;
+import org.apache.axiom.soap.SOAPFault;
 import org.apache.axis2.format.BinaryFormatter;
 import org.apache.axis2.format.PlainTextFormatter;
 import org.apache.axis2.transport.MessageFormatter;
 import org.apache.axis2.transport.base.BaseConstants;
 import org.apache.axis2.transport.base.BaseTransportException;
 import org.apache.axis2.transport.base.BaseUtils;
+import org.apache.axis2.transport.http.ApplicationXMLFormatter;
 import org.apache.axis2.util.MessageProcessorSelector;
 import org.apache.commons.io.output.CloseShieldOutputStream;
 import org.apache.commons.io.output.CountingOutputStream;
@@ -92,7 +96,7 @@ public class WriteFile extends OperationFrame.Mediator {
     public void execute(MessageContext message, String responseVariable, Boolean overwriteBody) throws ConnectException {
         Write write;
         try {
-            write = new Write(message);
+            write = new Write(message, Boolean.TRUE.equals(overwriteBody));
         } catch (InvalidConfigurationException | IllegalArgumentException | JaxenException invalid) {
             FileOperationResult result = new FileOperationResult("write", false, Error.INVALID_CONFIGURATION,
                     invalid.getMessage());
@@ -105,6 +109,11 @@ public class WriteFile extends OperationFrame.Mediator {
         try {
             long bytes = runFrame(message, Utils.getConnectionName(message), write.retries, write,
                     "write", responseVariable, overwriteBody);
+            if (write.consumedDocument != null) {
+                // The file commit succeeded. Release the consumed standalone input before
+                // the connector core removes it from the original SOAP body.
+                write.consumedDocument.close(false);
+            }
             JsonObject result = generateOperationResult(message, new FileOperationResult("write", true, (int) bytes));
             handleConnectorResponse(message, responseVariable, overwriteBody, result, null, null);
         } finally {
@@ -116,6 +125,8 @@ public class WriteFile extends OperationFrame.Mediator {
 
     private final class Write implements OperationFrame.Operation<Long> {
         private NamedLog operationLog;
+        private final boolean replaceBody;
+        private OMElement consumedDocument;
         final MessageContext message;
         final String relative;
         final String filename;
@@ -141,8 +152,9 @@ public class WriteFile extends OperationFrame.Mediator {
         boolean ready;
         long bytes;
 
-        Write(MessageContext message) throws InvalidConfigurationException, JaxenException {
+        Write(MessageContext message, boolean replaceBody) throws InvalidConfigurationException, JaxenException {
             this.message = message;
+            this.replaceBody = replaceBody;
             String operand = Utils.lookUpStringParam(message, "filePath");
             mode = FileWriteMode.fromString(Utils.lookUpStringParam(message, "writeMode", "Overwrite"));
             if (mode == null) {
@@ -537,13 +549,34 @@ public class WriteFile extends OperationFrame.Mediator {
                 }
                 MessageFormatter formatter = streaming ? new ExpandingMessageFormatter() : getMessageFormatter(axis);
                 OMOutputFormat format = BaseUtils.getOMOutputFormat(axis);
+                OMElement input = standaloneResponseInput(axis, formatter);
                 attempt.payloadStarted();
                 formatter.writeTo(axis, format, output, false);
+                if (input != null && !input.isComplete() && !input.getBuilder().isCache()) {
+                    consumedDocument = input;
+                }
             }
             if (newline && (hasContent() || !compress)) {
                 output.write(Const.NEW_LINE.toString().getBytes(encoding));
             }
             return output.getByteCount();
+        }
+
+        private OMElement standaloneResponseInput(org.apache.axis2.context.MessageContext axis,
+                                                  MessageFormatter formatter) {
+            if (!replaceBody || formatter.getClass() != ApplicationXMLFormatter.class) {
+                return null;
+            }
+            SOAPBody body = axis.getEnvelope().getBody();
+            OMElement first = body.getFirstElement();
+            if (first == null || first instanceof SOAPFault || first.isComplete()) {
+                return null;
+            }
+            OMXMLParserWrapper builder = first.getBuilder();
+            if (builder == null || builder == body.getBuilder() || builder == axis.getEnvelope().getBuilder()) {
+                return null;
+            }
+            return builder.getDocumentElement() == first ? first : null;
         }
 
         private long insert(FileObject target, OutputStream destination, Attempt attempt) throws IOException {
