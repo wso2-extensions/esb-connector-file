@@ -17,8 +17,10 @@
  */
 package org.wso2.carbon.connector.connection;
 
+import org.apache.commons.logging.LogFactory;
 import org.wso2.vfs.shared.log.NamedLog;
 import org.wso2.vfs.shared.log.RepeatLimiter;
+import org.wso2.vfs.shared.log.UriMask;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.integration.connector.core.connection.PoolCloseListener;
@@ -101,7 +103,19 @@ public class FileSystemHandlerFactory implements ConnectionFactory, PoolCloseLis
 
     @Override
     public boolean validateObject(Object connection) {
-        return ((FileSystemHandler) connection).isAliveLocally();
+        FileSystemHandler handler = (FileSystemHandler) connection;
+        if (handler.isAliveLocally()) {
+            return true;
+        }
+        // A server that closes idle connections makes this routine. One INFO line per connection, DEBUG after it.
+        String text = "A pooled connection is dead. The pool drops it and makes a new one when it needs one.";
+        if (initLimiter.once(text)) {
+            LogFactory.getLog(FileSystemHandlerFactory.class).info("[connection:" + UriMask.mask(displayName) + "] "
+                    + text);
+        } else {
+            handler.getContext().getHealth().namedLog().debug(text);
+        }
+        return false;
     }
 
     @Override

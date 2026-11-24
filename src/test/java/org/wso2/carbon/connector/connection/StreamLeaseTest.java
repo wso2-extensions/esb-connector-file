@@ -18,6 +18,10 @@
 
 package org.wso2.carbon.connector.connection;
 
+import org.apache.log4j.AppenderSkeleton;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.log4j.spi.LoggingEvent;
 import org.apache.synapse.MessageContext;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -59,6 +63,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -183,6 +188,99 @@ public class StreamLeaseTest {
             } finally {
                 failing.abandon();
             }
+        }
+    }
+
+    private static final class Warnings extends AppenderSkeleton implements AutoCloseable {
+        final List<String> lines = Collections.synchronizedList(new ArrayList<>());
+        private final Level level;
+        private final String text;
+
+        Warnings(String text) {
+            this(Level.WARN, text);
+        }
+
+        Warnings(Level level, String text) {
+            this.level = level;
+            this.text = text;
+            Logger.getRootLogger().addAppender(this);
+        }
+
+        @Override
+        protected void append(LoggingEvent event) {
+            if (event.getLevel().toInt() == level.toInt() && event.getRenderedMessage().contains(text)) {
+                lines.add(event.getRenderedMessage());
+            }
+        }
+
+        @Override
+        public void close() {
+            Logger.getRootLogger().removeAppender(this);
+        }
+
+        @Override
+        public boolean requiresLayout() {
+            return false;
+        }
+    }
+
+    @Test
+    public void deadPooledConnectionLogsOneInfoLine() throws Exception {
+        try (FilePoolFixture files = new FilePoolFixture("SFTP");
+             Warnings warned = new Warnings(Level.INFO, "A pooled connection is dead")) {
+            FileSystemHandler handler = files.factory.makeObject();
+            files.factory.destroyObject(handler);
+            Assert.assertFalse(files.factory.validateObject(handler));
+            Assert.assertFalse(files.factory.validateObject(handler));
+            Assert.assertEquals(warned.lines.size(), 1, warned.lines.toString());
+        }
+    }
+
+    @Test
+    public void reaperWarnsWhenItEndsAnIdleStream() throws Exception {
+        AtomicLong time = new AtomicLong();
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL");
+             Warnings warned = new Warnings("ended a stream that was not read")) {
+            ConnectionContext context = virtualContext(files, time::get, HeldLock::releaseChecked);
+            ConnectionLease core = context.borrowForStream();
+            String path = "file:///stream/" + files.name;
+            HeldLock lock = context.getShareLock().enterLocalOnly(path, 1, 0).handle;
+            StreamLease lease = StreamLease.active(context, path, "application/binary", 0, 0, core, null, lock);
+            context.register(lease);
+            Thread worker = reaper(context);
+            time.set(IDLE + 1);
+            context.wakeReaper();
+            worker.join(5000);
+            Assert.assertFalse(worker.isAlive());
+            Assert.assertEquals(lease.reason(), StreamLease.Reason.IDLE_LIMIT);
+            Assert.assertEquals(warned.lines.size(), 1, warned.lines.toString());
+        }
+    }
+
+    @Test
+    public void reaperWarnsWhenItGivesUpARelease() throws Exception {
+        AtomicLong time = new AtomicLong();
+        AtomicInteger releases = new AtomicInteger();
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "suspendInitialDuration", "600000",
+                "suspendMaximumDuration", "600000"); Warnings warned = new Warnings("gave up the release")) {
+            ConnectionContext context = virtualContext(files, time::get, (lock, io) -> {
+                releases.incrementAndGet();
+                return lock.releaseChecked(io);
+            });
+            ConnectionLease probe = context.borrowForStream();
+            CircuitBreaker breaker = pool(probe).getBreaker();
+            probe.returnToPool();
+            breaker.admit().reportFailure();
+            String path = "file:///stream/" + files.name;
+            HeldLock lock = context.getShareLock().enterLocalOnly(path, 1, 0).handle;
+            context.register(StreamLease.replay(context, path, 17, 5, lock));
+            Thread worker = reaper(context);
+            time.set(IDLE + 1);
+            context.wakeReaper();
+            worker.join(5000);
+            Assert.assertFalse(worker.isAlive());
+            Assert.assertEquals(releases.get(), 0);
+            Assert.assertEquals(warned.lines.size(), 1, warned.lines.toString());
         }
     }
 

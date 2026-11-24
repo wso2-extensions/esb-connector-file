@@ -352,7 +352,12 @@ public final class ConnectionContext implements StreamLease.Owner, EndpointHealt
             roundEvent("reaper.round.start");
             try {
                 for (StreamLease lease : due) {
+                    boolean active = lease.state() == StreamLease.State.ACTIVE;
                     lease.expire(now());
+                    if (active && lease.reason() == StreamLease.Reason.IDLE_LIMIT) {
+                        registration.health().namedLog().warn("The stream reaper ended a stream that was not read "
+                                + "for streamIdleTimeout.");
+                    }
                 }
                 releaseOne();
             } catch (RuntimeException failure) {
@@ -390,6 +395,9 @@ public final class ConnectionContext implements StreamLease.Owner, EndpointHealt
         for (HeldLock lock : expired) {
             lock.abandon();
         }
+        if (!closed) {
+            gaveUp(expired.size());
+        }
         if (oldest == null) {
             return;
         }
@@ -402,7 +410,7 @@ public final class ConnectionContext implements StreamLease.Owner, EndpointHealt
             }
             core = borrowForStream();
         } catch (IOException error) {
-            abandonQueue(oldest.lock);
+            gaveUp(abandonQueue(oldest.lock));
             return;
         }
         boolean lost = false;
@@ -415,7 +423,7 @@ public final class ConnectionContext implements StreamLease.Owner, EndpointHealt
                 try {
                     core.invalidate();
                 } finally {
-                    abandonQueue(oldest.lock);
+                    gaveUp(abandonQueue(oldest.lock));
                 }
             } else {
                 core.returnToPool();
@@ -423,7 +431,7 @@ public final class ConnectionContext implements StreamLease.Owner, EndpointHealt
         }
     }
 
-    private void abandonQueue(HeldLock first) {
+    private int abandonQueue(HeldLock first) {
         List<Release> pending;
         synchronized (leases) {
             pending = new ArrayList<>(releases);
@@ -432,6 +440,15 @@ public final class ConnectionContext implements StreamLease.Owner, EndpointHealt
         first.abandon();
         for (Release entry : pending) {
             entry.lock.abandon();
+        }
+        return 1 + pending.size();
+    }
+
+    // One WARN per lock. The repeat limiter logs the first and counts the others.
+    private void gaveUp(int locks) {
+        for (int lock = 0; lock < locks; lock++) {
+            registration.health().namedLog().warn("The stream reaper gave up the release of a lock. The lock stays "
+                    + "on the server until lockStaleAge.");
         }
     }
 
