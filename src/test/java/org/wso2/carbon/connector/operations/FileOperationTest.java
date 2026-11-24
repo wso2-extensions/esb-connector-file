@@ -329,6 +329,30 @@ public class FileOperationTest {
         }
     }
 
+    @Test
+    public void folderDeleteAndMoveRemoveAnEmptyTempFolder() throws Exception {
+        Path root = WriteFileTest.directory();
+        for (String folder : Arrays.asList("deleted", "moved")) {
+            Files.writeString(Files.createDirectory(root.resolve(folder)).resolve("a.txt"), "A");
+            Files.createDirectory(root.resolve(folder).resolve(".part"));
+        }
+        Path busy = Files.createDirectories(root.resolve("busy/.part"));
+        Files.writeString(busy.resolve("data"), "private");
+        try (FilePoolFixture fixture = new FilePoolFixture("LOCAL", "workingDir", root.toString())) {
+            Axis2MessageContext ctx = WriteFileTest.message(fixture);
+            JsonObject deleted = invoke(new DeleteFileOrFolder(), ctx, "path", "/deleted");
+            Assert.assertTrue(deleted.get("success").getAsBoolean(), deleted.toString());
+            Assert.assertFalse(Files.exists(root.resolve("deleted")));
+            JsonObject moved = invoke(new MoveFiles(), ctx, "sourcePath", "/moved", "targetPath", "/target",
+                    "createParentDirectories", "true");
+            Assert.assertTrue(moved.get("success").getAsBoolean(), moved.toString());
+            Assert.assertFalse(Files.exists(root.resolve("moved")));
+            Assert.assertEquals(Files.readString(root.resolve("target/a.txt")), "A");
+            invoke(new DeleteFileOrFolder(), ctx, "path", "/busy");
+            Assert.assertEquals(Files.readString(busy.resolve("data")), "private");
+        }
+    }
+
     private static void assertError(JsonObject result, String code) {
         Assert.assertFalse(result.get("success").getAsBoolean());
         Assert.assertEquals(result.getAsJsonObject("error").get("code").getAsString(), code, result.toString());

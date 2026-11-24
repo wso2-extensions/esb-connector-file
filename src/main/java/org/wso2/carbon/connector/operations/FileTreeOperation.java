@@ -290,6 +290,12 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                     continue;
                 }
                 if (child.isSymbolicLink() || child.isFolder() && guard.reservedDirectory(child)) {
+                    // An empty temp folder of ours goes with the folder that the walk removes.
+                    if (removesSource() && targetFailure == null && !child.isSymbolicLink()
+                            && name.equals(attempt.handler().getContext().getConfiguration().getTempFolderName())
+                            && child.getChildren().length == 0 && child.delete()) {
+                        continue;
+                    }
                     left.put(label, "RESERVED");
                     continue;
                 }
