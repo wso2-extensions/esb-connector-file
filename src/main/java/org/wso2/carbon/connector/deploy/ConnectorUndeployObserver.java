@@ -25,7 +25,7 @@ import org.apache.synapse.libraries.model.Library;
 import org.wso2.integration.connector.core.connection.ConnectionHandler;
 import org.wso2.carbon.connector.utils.Const;
 
-import java.io.File;
+import javax.xml.namespace.QName;
 
 /**
  * Listen for library un deploy events
@@ -42,18 +42,22 @@ public class ConnectorUndeployObserver extends AbstractSynapseObserver {
 
     @Override
     public void synapseLibraryRemoved(Library library) {
-        String libraryPath = library.getFileName();
-        // No need to use File.separator here since libraryPath we are getting from synapse is formatted with "/"
-        String libraryName = libraryPath.substring(libraryPath.lastIndexOf("/"));
-        if (libraryName.contains(Const.CONNECTOR_LIBRARY_NAME)
-                && library.getPackage().equals(Const.CONNECTOR_LIBRARY_PACKAGE_TYPE)) {
-            if (log.isDebugEnabled()) {
-                log.debug("File Connector is being un deployed. Closing all file connections created.");
-            }
-            ConnectionHandler.getConnectionHandler().
-                    shutdownConnections(Const.CONNECTOR_NAME);
-            synapseConfiguration.unregisterObserver(this);
+        if (!isFileConnector(library)) {
+            return;
         }
+        if (log.isDebugEnabled()) {
+            log.debug("File Connector is being un deployed. Closing all file connections created.");
+        }
+        ConnectionHandler.getConnectionHandler().
+                shutdownConnections(Const.CONNECTOR_NAME);
+        synapseConfiguration.unregisterObserver(this);
+    }
+
+    // The library by its package and name. The name of its zip file depends on the tool that built the application.
+    static boolean isFileConnector(Library library) {
+        QName name = library.getQName();
+        return name != null && Const.CONNECTOR_LIBRARY_PACKAGE_TYPE.equals(name.getNamespaceURI())
+                && Const.CONNECTOR_NAME.equals(name.getLocalPart());
     }
 
     public boolean equals(Object o) {
