@@ -111,7 +111,8 @@ public class FetchContentToList extends FileOperation {
             NamedLog connectionLog = factory instanceof FileSystemHandlerFactory
                     ? ((FileSystemHandlerFactory) factory).existingLog() : null;
             if (connectionLog == null) {
-                connectionLog = NamedLog.connection(log, connection, new RepeatLimiter());
+                connectionLog = NamedLog.connection(log, Utils.getDisplayConnectionName(name.toString(), message),
+                        new RepeatLimiter());
             }
             connectionLog.error(detail);
         }

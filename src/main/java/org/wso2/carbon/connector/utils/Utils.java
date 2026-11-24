@@ -105,6 +105,23 @@ public class Utils {
     }
 
     /**
+     * Gives the name that health, metrics and logs show for a connection. Under the super tenant it is the configured
+     * name. Under another tenant it is the tenant specific key, so two tenants never share one health entry. The pool
+     * of the connection keeps the tenant specific key in every case.
+     *
+     * @param connectionName the configured connection name
+     * @param messageContext the message context that holds the tenant domain
+     * @return the name to show
+     */
+    public static String getDisplayConnectionName(String connectionName, MessageContext messageContext) {
+        Object tenantDomain = messageContext.getProperty(Const.TENANT_INFO_DOMAIN);
+        if (tenantDomain == null || Const.SUPER_TENANT_DOMAIN.equals(tenantDomain)) {
+            return connectionName;
+        }
+        return getTenantSpecificConnectionName(connectionName, messageContext);
+    }
+
+    /**
      * Validate and get the disk share access mask.
      *
      * @param diskShareAccessMask Disk share access mask

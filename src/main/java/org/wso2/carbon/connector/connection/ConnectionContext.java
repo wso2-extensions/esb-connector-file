@@ -77,13 +77,25 @@ public final class ConnectionContext implements StreamLease.Owner, EndpointHealt
 
     ConnectionContext(ConnectionConfiguration configuration, String deployedKey, String name)
             throws FileServerConnectionException {
-        this(configuration, deployedKey, name, () -> TimeUnit.NANOSECONDS.toMillis(System.nanoTime()),
+        this(configuration, deployedKey, name, name);
+    }
+
+    ConnectionContext(ConnectionConfiguration configuration, String deployedKey, String name, String displayName)
+            throws FileServerConnectionException {
+        this(configuration, deployedKey, name, displayName, () -> TimeUnit.NANOSECONDS.toMillis(System.nanoTime()),
                 configuration.getStreamIdleTimeout(),
                 HeldLock::releaseChecked);
     }
 
     ConnectionContext(ConnectionConfiguration configuration, String deployedKey, String name, LongSupplier clock,
                       long idleMs, BiFunction<HeldLock, LockIo, LockOutcome> release)
+            throws FileServerConnectionException {
+        this(configuration, deployedKey, name, name, clock, idleMs, release);
+    }
+
+    // The name is the tenant specific key of the pool. Health, metrics and logs show the display name.
+    ConnectionContext(ConnectionConfiguration configuration, String deployedKey, String name, String displayName,
+                      LongSupplier clock, long idleMs, BiFunction<HeldLock, LockIo, LockOutcome> release)
             throws FileServerConnectionException {
         this.clock = clock;
         this.idleMs = idleMs;
@@ -93,7 +105,7 @@ public final class ConnectionContext implements StreamLease.Owner, EndpointHealt
         options = (FileSystemOptions) configuration.getProviderOptions().clone();
         baseUri = FileSystemHandler.setupOptions(options, configuration);
         maskedBaseUri = UriMask.mask(baseUri);
-        registration = HealthRegistry.registerConnection(deployedKey, name, this);
+        registration = HealthRegistry.registerConnection(deployedKey, displayName, this);
         try {
             shareLock = ShareLock.create(name, configuration.isAutoLockRelease(), configuration.getLockStaleAge(),
                     registration.health());
@@ -105,14 +117,14 @@ public final class ConnectionContext implements StreamLease.Owner, EndpointHealt
         }
         String scheme = configuration.getProtocol() == FileServerProtocol.LOCAL ? "file"
                 : configuration.getProtocol().getName().toLowerCase(Locale.ROOT);
-        LogFactory.getLog(ConnectionContext.class).info("Connection " + UriMask.mask(name) + " borrowWait="
+        LogFactory.getLog(ConnectionContext.class).info("Connection " + UriMask.mask(displayName) + " borrowWait="
                 + configuration.getMaxWaitTime() + " lockWait=10000 fastFailure=5000 "
                 + EffectiveBounds.of(scheme, options));
         if (configuration.getProtocol() == FileServerProtocol.SFTP) {
             SFTPConnectionConfig sftp = (SFTPConnectionConfig) configuration.getRemoteServerConfig();
             if (Integer.valueOf(150000).equals(sftp.getSessionTimeout())
                     && Integer.valueOf(100000).equals(sftp.getConnectionTimeout())) {
-                registration.health().namedLog().warn("Connection " + name
+                registration.health().namedLog().warn("Connection " + displayName
                         + " sets both legacy SFTP timeouts. Remove them to use the provider defaults.");
             }
         }

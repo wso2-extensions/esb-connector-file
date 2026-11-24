@@ -29,13 +29,24 @@ public class FileSystemHandlerFactory implements ConnectionFactory, PoolCloseLis
     private final ConnectionConfiguration configuration;
     private final String deployedKey;
     private final String name;
+    private final String displayName;
     private ConnectionContext context;
     private boolean retired;
 
     public FileSystemHandlerFactory(ConnectionConfiguration configuration, String deployedKey, String name) {
+        this(configuration, deployedKey, name, name);
+    }
+
+    /**
+     * @param name        the tenant specific key of the connection in the pool.
+     * @param displayName the name that health, metrics and logs show.
+     */
+    public FileSystemHandlerFactory(ConnectionConfiguration configuration, String deployedKey, String name,
+                                    String displayName) {
         this.configuration = configuration;
         this.deployedKey = deployedKey;
         this.name = name;
+        this.displayName = displayName;
     }
 
     public synchronized NamedLog existingLog() {
@@ -47,7 +58,7 @@ public class FileSystemHandlerFactory implements ConnectionFactory, PoolCloseLis
             if (retired) {
                 throw new FileServerConnectionException("The file connection was retired");
             }
-            context = new ConnectionContext(configuration, deployedKey, name);
+            context = new ConnectionContext(configuration, deployedKey, name, displayName);
             if (TestPoints.enabled()) {
                 context.registerPoolState(this);
             }
