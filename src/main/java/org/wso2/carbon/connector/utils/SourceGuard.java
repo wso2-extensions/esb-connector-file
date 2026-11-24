@@ -20,6 +20,7 @@ package org.wso2.carbon.connector.utils;
 import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.util.TestPoints;
+import org.wso2.vfs.shared.error.ErrorClassifier;
 import org.wso2.vfs.shared.lock.LockIo;
 import org.wso2.vfs.shared.lock.ReservedNames;
 
@@ -31,8 +32,12 @@ public final class SourceGuard {
     private final long interval;
     private final String tempFolder;
     private final String tempSuffix;
+    // Tells a transport error of a look from any other. Without one every failed look reads as not accepted.
+    private final ErrorClassifier classifier;
 
-    public SourceGuard(Pattern pattern, AdvancedFileFilter filter, long interval, String tempFolder, String tempSuffix) {
+    public SourceGuard(Pattern pattern, AdvancedFileFilter filter, long interval, String tempFolder, String tempSuffix,
+                       ErrorClassifier classifier) {
+        this.classifier = classifier;
         this.pattern = pattern;
         this.filter = filter;
         this.interval = interval;
@@ -51,10 +56,27 @@ public final class SourceGuard {
     public boolean accepts(FileObject file, boolean includeSystemFiles) throws FileSystemException {
         String name = file.getName().getBaseName();
         return file.isFile() && (includeSystemFiles || !ReservedNames.isReserved(name, false, tempFolder, tempSuffix))
-                && (pattern == null || pattern.matcher(name).matches()) && filter.accepts(file) && stable(file);
+                && (pattern == null || pattern.matcher(name).matches()) && passes(file) && stable(file);
     }
 
-    public boolean stable(FileObject file) {
+    private boolean passes(FileObject file) throws FileSystemException {
+        try {
+            return filter.accepts(file);
+        } catch (FileSystemException failure) {
+            if (transport(failure)) {
+                throw failure;
+            }
+            return false;
+        }
+    }
+
+    // A transport error ends the operation like any other call. Any other failed look means the file is not taken.
+    private boolean transport(FileSystemException failure) {
+        return classifier != null
+                && classifier.classify(failure, 0, ErrorClassifier.CallType.READ).getKind().isTransport();
+    }
+
+    public boolean stable(FileObject file) throws FileSystemException {
         if (interval <= 0) {
             return true;
         }
@@ -69,7 +91,12 @@ public final class SourceGuard {
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             return false;
-        } catch (FileSystemException | RuntimeException unavailable) {
+        } catch (FileSystemException unavailable) {
+            if (transport(unavailable)) {
+                throw unavailable;
+            }
+            return false;
+        } catch (RuntimeException unavailable) {
             return false;
         }
     }

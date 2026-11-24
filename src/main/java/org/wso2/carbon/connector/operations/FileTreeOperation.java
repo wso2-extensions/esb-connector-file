@@ -185,7 +185,8 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
         @Override public void options(FileSystemHandler handler) {
             Utils.addDiskShareAccessMaskToFSO(handler.getFsOptions(), access, handler.getContext().getHealth().namedLog());
             ConnectionConfiguration config = handler.getContext().getConfiguration();
-            guard = new SourceGuard(pattern, filter, interval, config.getTempFolderName(), config.getTempFileSuffix());
+            guard = new SourceGuard(pattern, filter, interval, config.getTempFolderName(), config.getTempFileSuffix(),
+                    new ErrorClassifier(handler.getContext().getHealth().namedLog()));
         }
 
         @Override public Void removed(String path) throws OperationFrame.Failure {

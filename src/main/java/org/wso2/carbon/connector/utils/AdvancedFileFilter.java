@@ -94,42 +94,37 @@ public class AdvancedFileFilter implements FileFilter {
     }
 
     @Override
-    public boolean accept(FileSelectInfo fileSelectInfo) {
+    public boolean accept(FileSelectInfo fileSelectInfo) throws FileSystemException {
         return accepts(fileSelectInfo.getFile());
     }
 
-    boolean accepts(FileObject file) {
-        try {
-            String fileName = file.getName().getBaseName();
-            
-            // Check include pattern first
-            if (includeRegex != null && !includeRegex.matcher(fileName).matches()) {
-                return false;
-            }
-            
-            // Check exclude pattern
-            if (excludeRegex != null && excludeRegex.matcher(fileName).matches()) {
-                return false;
-            }
-            
-            // Check file age if specified and file is a regular file
-            if ((maxFileAgeMillis > 0 || minFileAgeMillis > 0) && file.isFile()) {
-                long fileLastModified = file.getContent().getLastModifiedTime();
-                long currentTime = System.currentTimeMillis();
-                long fileAge = currentTime - fileLastModified;
-                
-                if (maxFileAgeMillis > 0 && fileAge > maxFileAgeMillis
-                        || minFileAgeMillis > 0 && fileAge <= minFileAgeMillis) {
-                    return false;
-                }
-            }
-            
-            return true;
-            
-        } catch (FileSystemException e) {
-            // If we can't read file properties, exclude it
+    // A failed read of the file is thrown, so that the caller can tell a transport error from a file that is gone.
+    boolean accepts(FileObject file) throws FileSystemException {
+        String fileName = file.getName().getBaseName();
+        
+        // Check include pattern first
+        if (includeRegex != null && !includeRegex.matcher(fileName).matches()) {
             return false;
         }
+        
+        // Check exclude pattern
+        if (excludeRegex != null && excludeRegex.matcher(fileName).matches()) {
+            return false;
+        }
+        
+        // Check file age if specified and file is a regular file
+        if ((maxFileAgeMillis > 0 || minFileAgeMillis > 0) && file.isFile()) {
+            long fileLastModified = file.getContent().getLastModifiedTime();
+            long currentTime = System.currentTimeMillis();
+            long fileAge = currentTime - fileLastModified;
+            
+            if (maxFileAgeMillis > 0 && fileAge > maxFileAgeMillis
+                    || minFileAgeMillis > 0 && fileAge <= minFileAgeMillis) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 
     /**

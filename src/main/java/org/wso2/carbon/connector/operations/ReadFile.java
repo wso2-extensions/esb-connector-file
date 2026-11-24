@@ -148,7 +148,8 @@ public class ReadFile extends OperationFrame.Mediator {
                 Utils.addDiskShareAccessMaskToFSO(handler.getFsOptions(), config.accessMask, handler.getContext().getHealth().namedLog());
                 ConnectionConfiguration connection = handler.getContext().getConfiguration();
                 guard = new SourceGuard(config.pattern, config.filter, config.interval,
-                        connection.getTempFolderName(), connection.getTempFileSuffix());
+                        connection.getTempFolderName(), connection.getTempFileSuffix(),
+                        new ErrorClassifier(handler.getContext().getHealth().namedLog()));
             }
 
             public Void steps(Attempt attempt) throws Exception {

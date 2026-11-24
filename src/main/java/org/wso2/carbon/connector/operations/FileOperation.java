@@ -17,6 +17,7 @@
  */
 package org.wso2.carbon.connector.operations;
 
+import org.wso2.vfs.shared.error.ErrorClassifier;
 import org.wso2.vfs.shared.log.NamedLog;
 import org.wso2.vfs.shared.log.UriMask;
 import com.google.gson.JsonObject;
@@ -151,7 +152,8 @@ abstract class FileOperation extends OperationFrame.Mediator {
         }
 
         SourceGuard guard() {
-            return new SourceGuard(pattern, filter, sizeCheckInterval, tempFolder, tempSuffix);
+            return new SourceGuard(pattern, filter, sizeCheckInterval, tempFolder, tempSuffix,
+                    connectionLog == null ? null : new ErrorClassifier(connectionLog));
         }
 
         @Override public void bind(String base) {

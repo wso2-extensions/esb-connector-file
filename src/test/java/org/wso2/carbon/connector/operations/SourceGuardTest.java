@@ -27,6 +27,12 @@ import org.wso2.org.apache.commons.vfs2.FileContent;
 import org.wso2.org.apache.commons.vfs2.FileName;
 import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.provider.Fault;
+import org.wso2.vfs.shared.error.ErrorClassifier;
+import org.wso2.vfs.shared.log.NamedLog;
+import org.wso2.vfs.shared.log.RepeatLimiter;
+
+import org.apache.commons.logging.LogFactory;
 
 import java.lang.reflect.Proxy;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -71,8 +77,50 @@ public class SourceGuardTest {
                     }
                 });
         SourceGuard guard = new SourceGuard(Pattern.compile("data"),
-                new AdvancedFileFilter(null, null, null, null), 1, ".part", ".part");
+                new AdvancedFileFilter(null, null, null, null), 1, ".part", ".part", null);
         Assert.assertEquals(guard.accepts(file), stable);
         Assert.assertEquals(calls.get(), 2);
+    }
+
+    // A file whose size and time can not be read, with the fault of the given kind.
+    private static FileObject unreadable(Fault fault) {
+        ClassLoader loader = SourceGuardTest.class.getClassLoader();
+        FileName name = (FileName) Proxy.newProxyInstance(loader, new Class<?>[]{FileName.class},
+                (o, method, args) -> method.getName().equals("getBaseName") ? "data" : "file:///test/data");
+        FileContent content = (FileContent) Proxy.newProxyInstance(loader, new Class<?>[]{FileContent.class},
+                (o, method, args) -> {
+                    FileSystemException failure = new FileSystemException("The look failed");
+                    failure.setFault(fault);
+                    throw failure;
+                });
+        return (FileObject) Proxy.newProxyInstance(loader, new Class<?>[]{FileObject.class},
+                (o, method, args) -> {
+                    switch (method.getName()) {
+                        case "getName": return name;
+                        case "isFile": return true;
+                        case "getContent": return content;
+                        case "refresh": return null;
+                        default: throw new AssertionError(method);
+                    }
+                });
+    }
+
+    @Test
+    public void transportErrorOfALookIsThrownAndAnyOtherFailedLookIsNotAccepted() throws Exception {
+        ErrorClassifier classifier = new ErrorClassifier(
+                NamedLog.connection(LogFactory.getLog(SourceGuardTest.class), "guard", new RepeatLimiter()));
+        SourceGuard sized = new SourceGuard(Pattern.compile("data"), new AdvancedFileFilter(null, null, null, null),
+                1, ".part", ".part", classifier);
+        SourceGuard aged = new SourceGuard(Pattern.compile("data"), new AdvancedFileFilter(null, null, null, "1d"),
+                0, ".part", ".part", classifier);
+        for (SourceGuard guard : new SourceGuard[] {sized, aged}) {
+            try {
+                guard.accepts(unreadable(Fault.TRANSPORT));
+                Assert.fail("A transport error of the look is thrown");
+            } catch (FileSystemException expected) {
+                // The attempt ends on it.
+            }
+            Assert.assertFalse(guard.accepts(unreadable(Fault.APPLICATION)));
+        }
     }
 }

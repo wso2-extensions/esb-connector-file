@@ -115,7 +115,7 @@ public class MergeFiles extends FileOperation {
     private MergeFileResult mergeSelected(FileObject target, Pattern pattern, AdvancedFileFilter filter, String interval,
                                           FileObject[] children, boolean append, FileSorter sorter) throws IOException {
         SourceGuard guard = new SourceGuard(pattern, filter, interval == null ? 0 : Long.parseLong(interval),
-                ".part", ".part");
+                ".part", ".part", null);
         FileObject[] sorted = children.clone();
         sorter.sort(sorted);
         List<FileObject> selected = new ArrayList<>();
