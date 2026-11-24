@@ -119,6 +119,36 @@ public class OperationFrameTest {
     }
 
     @Test
+    public void failureCarriesTheExceptionOfTheAttempt() throws Exception {
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "suspendOnConnectionFailure", "false")) {
+            Path path = Files.createTempFile("frame", ".txt");
+            try {
+                for (Exception thrown : new Exception[]{new AccessDeniedException("sftp://user:secret@host/in/a.txt"),
+                        disconnected()}) {
+                    Write op = new Write(path) {
+                        public Integer steps(Attempt attempt) throws Exception {
+                            throw thrown;
+                        }
+                    };
+                    try {
+                        OperationFrame.run(files.message, files.name, 0, op);
+                        Assert.fail("The steps failed");
+                    } catch (OperationFrame.Failure failure) {
+                        Throwable cause = failure.getCause();
+                        Assert.assertNotNull(cause);
+                        Assert.assertTrue(cause.getMessage().startsWith(thrown.getClass().getName()),
+                                cause.getMessage());
+                        Assert.assertFalse(cause.getMessage().contains("secret"), cause.getMessage());
+                        Assert.assertEquals(cause.getStackTrace(), thrown.getStackTrace());
+                    }
+                }
+            } finally {
+                Files.delete(path);
+            }
+        }
+    }
+
+    @Test
     public void openBeforeDeadlineDoesNotEnterOrBorrow() throws Exception {
         AtomicLong time = new AtomicLong();
         try (FilePoolFixture files = new FilePoolFixture("LOCAL", time::get, "suspendInitialDuration", "1000")) {

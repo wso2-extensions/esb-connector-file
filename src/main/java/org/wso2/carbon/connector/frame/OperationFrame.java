@@ -223,6 +223,25 @@ public final class OperationFrame {
         return new Failure(error, detail, true, null);
     }
 
+    private static Failure caused(Failure failure, Exception error) {
+        if (failure != error && failure.getCause() == null) {
+            failure.initCause(masked(error, Collections.newSetFromMap(new IdentityHashMap<>())));
+        }
+        return failure;
+    }
+
+    // A copy of the chain for the log. Each text passes the mask, and each link keeps its class name and its stack.
+    private static Throwable masked(Throwable error, Set<Throwable> seen) {
+        if (error == null || !seen.add(error)) {
+            return null;
+        }
+        String text = error.getMessage() == null ? error.getClass().getName()
+                : error.getClass().getName() + ": " + UriMask.mask(error.getMessage());
+        Throwable copy = new Exception(text, masked(error.getCause(), seen));
+        copy.setStackTrace(error.getStackTrace());
+        return copy;
+    }
+
     private <T> T execute(Operation<T> op, int retries) throws Failure {
         op.bind(context.getBaseUri());
         Map<String, Lock> paths = new LinkedHashMap<>();
@@ -283,12 +302,12 @@ public final class OperationFrame {
                     IllegalStateException closed = cause(error, IllegalStateException.class);
                     String detail = closed != null && "Pool not open".equals(closed.getMessage())
                             ? "The pool closed during rotation" : error.toString();
-                    throw local(code, detail);
+                    throw caused(local(code, detail), error);
                 }
                 failure = classifyAttempt(attempt, op, error, declared);
                 count = true;
                 if (failure == null || !failure.getKind().isTransport()) {
-                    throw applicationFailure(attempt, error, declared, failure);
+                    throw caused(applicationFailure(attempt, error, declared, failure), error);
                 }
                 attempt.invalid = true;
                 record(attempt, failure);
@@ -298,7 +317,7 @@ public final class OperationFrame {
                         && safe(op.retry(), attempt) && pool.getBreakerState(Const.CONNECTOR_NAME, connection) == CircuitBreaker.Mode.CLOSED;
                 keep = fast && !attempt.acquisitionFailed && (!retry || note.looksOnly());
                 if (!retry) {
-                    throw transport(op.retry(), note, failure);
+                    throw caused(transport(op.retry(), note, failure), error);
                 }
                 prior = failure;
                 priorLoan = admission;
