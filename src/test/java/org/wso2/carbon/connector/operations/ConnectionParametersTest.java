@@ -39,6 +39,7 @@ import org.testng.annotations.Test;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.provider.UriParser;
 import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder;
 import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileType;
 import org.wso2.org.apache.commons.vfs2.provider.ftps.FtpsFileSystemConfigBuilder;
@@ -240,6 +241,14 @@ public class ConnectionParametersTest {
         } finally {
             Logger.getRootLogger().removeAppender(appender);
         }
+    }
+
+    @Test
+    public void encodedPasswordDecodesToItselfAndMayBeEmpty() throws Exception {
+        Assert.assertNull(FileConfig.encodePassword(null));
+        Assert.assertEquals(FileConfig.encodePassword(""), "");
+        String password = "a b+c#d/e@f&g%h:i";
+        Assert.assertEquals(UriParser.decode(FileConfig.encodePassword(password)), password);
     }
 
     @Test

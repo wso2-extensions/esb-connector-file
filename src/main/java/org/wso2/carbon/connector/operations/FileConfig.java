@@ -481,10 +481,10 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
     }
 
     public static String encodePassword(String password) throws UnsupportedEncodingException {
-        String encodedPassword = null;
-        if (StringUtils.isNotEmpty(password)) {
-            encodedPassword = URLEncoder.encode(password, "UTF-8");
+        if (StringUtils.isEmpty(password)) {
+            return password;
         }
-        return URLEncoder.encode(password, "UTF-8");
+        // The provider decodes the user info with percent decoding only, so a space must not become a plus sign.
+        return URLEncoder.encode(password, "UTF-8").replace("+", "%20");
     }
 }
