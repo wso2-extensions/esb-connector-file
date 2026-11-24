@@ -149,7 +149,8 @@ public class FileTreeOperationTest {
                         "targetPath", "/out", "createParentDirectories", "true", filter[0], filter[1]));
                 Assert.assertEquals(Files.readString(dir.resolve("out/a.csv")), "A", filter[0]);
                 Assert.assertEquals(Files.readString(dir.resolve("out/sub/b.csv")), "B", filter[0]);
-                // Every file matched, and the source folder and its emptied sub folder stay, as with 6.x.
+                // Every file matched, and the source folder and its emptied sub folder stay. 6.x kept them for a
+                // pattern and removed the whole source tree for a file filter.
                 Assert.assertTrue(Files.isDirectory(dir.resolve("in")), filter[0]);
                 Assert.assertTrue(Files.isDirectory(folder), filter[0]);
             }
@@ -435,7 +436,7 @@ public class FileTreeOperationTest {
             Assert.assertEquals(move.getAsJsonArray("filesMoved").size(), 2, move.toString());
             Assert.assertEquals(Files.readString(dir.resolve("dest/sub/a.csv")), "A");
             Assert.assertEquals(Files.readString(dir.resolve("dest/emptyAfterMove/b.csv")), "B");
-            // A move with a filter keeps its folders, as 6.x did.
+            // A move with a filter keeps its folders, where the 6.x move removed the whole source tree.
             Assert.assertTrue(Files.isDirectory(empty));
             Assert.assertEquals(Files.readString(nested.resolve("keep.txt")), "left");
             JsonObject delete = invoke(new DeleteFileOrFolder(), ctx, "path", "/src");

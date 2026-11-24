@@ -94,7 +94,7 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
         private final AdvancedFileFilter filter;
         private final long interval;
         // A pattern or a filter is set. A delete with one stays at the first level, and a delete or a move with one
-        // keeps its folders, as 6.x did.
+        // keeps its folders. 6.x did so for a pattern. With a file filter its move removed the whole source tree.
         private final boolean filtered;
         // The target folders that a filtered copy or move has made.
         private final Set<String> madeFolders = new HashSet<>();
