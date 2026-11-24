@@ -18,6 +18,7 @@
 package org.wso2.carbon.connector.connection;
 
 import org.wso2.vfs.shared.log.NamedLog;
+import org.wso2.vfs.shared.log.RepeatLimiter;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.integration.connector.core.connection.PoolCloseListener;
@@ -30,6 +31,7 @@ public class FileSystemHandlerFactory implements ConnectionFactory, PoolCloseLis
     private final String deployedKey;
     private final String name;
     private final String displayName;
+    private final RepeatLimiter initLimiter;
     private ConnectionContext context;
     private boolean retired;
 
@@ -43,10 +45,23 @@ public class FileSystemHandlerFactory implements ConnectionFactory, PoolCloseLis
      */
     public FileSystemHandlerFactory(ConnectionConfiguration configuration, String deployedKey, String name,
                                     String displayName) {
+        this(configuration, deployedKey, name, displayName, new RepeatLimiter());
+    }
+
+    /**
+     * @param initLimiter the repeat limiter of the warnings that each init of this connection logs.
+     */
+    public FileSystemHandlerFactory(ConnectionConfiguration configuration, String deployedKey, String name,
+                                    String displayName, RepeatLimiter initLimiter) {
         this.configuration = configuration;
         this.deployedKey = deployedKey;
         this.name = name;
         this.displayName = displayName;
+        this.initLimiter = initLimiter;
+    }
+
+    public RepeatLimiter getInitLimiter() {
+        return initLimiter;
     }
 
     public synchronized NamedLog existingLog() {

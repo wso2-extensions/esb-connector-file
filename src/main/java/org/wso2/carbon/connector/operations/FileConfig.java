@@ -105,15 +105,18 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
                 lookupTemplateParamater(messageContext, Const.CONNECTION_NAME);
         String tenantSpecificConnectionName = Utils.getTenantSpecificConnectionName(connectionName, messageContext);
         String displayName = Utils.getDisplayConnectionName(connectionName, messageContext);
-        NamedLog connectionLog = displayName == null ? null :
-                NamedLog.connection(log, displayName, new RepeatLimiter());
+        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
+        // The init runs before each operation, so its warnings use the limiter of the connection.
+        Object existing = handler.getConnectionFactory(connectorName, tenantSpecificConnectionName);
+        RepeatLimiter limiter = existing instanceof FileSystemHandlerFactory
+                ? ((FileSystemHandlerFactory) existing).getInitLimiter() : new RepeatLimiter();
+        NamedLog connectionLog = displayName == null ? null : NamedLog.connection(log, displayName, limiter);
         try {
             ConnectionConfiguration configuration = getConnectionConfigFromContext(messageContext, connectionLog);
 
-            ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
             handler.createConnection(connectorName, tenantSpecificConnectionName,
                     new FileSystemHandlerFactory(configuration, deployedKey(messageContext), tenantSpecificConnectionName,
-                            displayName), configuration.getConfiguration(), messageContext);
+                            displayName, limiter), configuration.getConfiguration(), messageContext);
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = "[" + connectionName + "]Failed to initiate file connector configuration.";

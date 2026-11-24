@@ -19,6 +19,9 @@
 package org.wso2.carbon.connector.operations;
 
 import org.apache.commons.logging.Log;
+import org.apache.log4j.AppenderSkeleton;
+import org.apache.log4j.Logger;
+import org.apache.log4j.spi.LoggingEvent;
 import org.apache.synapse.SynapseException;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.mediators.template.TemplateContext;
@@ -211,6 +214,32 @@ public class ConnectionParametersTest {
         Assert.assertNull(refusal("tempFileSuffix", ".tmp", "tempFolderName", "work", "suspendInitialDuration", "0",
                 "suspendProgressionFactor", "1", "suspendMaximumDuration", "1000", "streamIdleTimeout", "1"));
         Assert.assertNull(refusal("suspendOnConnectionFailure", "false", "suspendProgressionFactor", "0"));
+    }
+
+    @Test
+    public void initWarningsComeOncePerConnection() throws Exception {
+        List<String> warnings = Collections.synchronizedList(new ArrayList<>());
+        AppenderSkeleton appender = new AppenderSkeleton() {
+            protected void append(LoggingEvent event) {
+                String line = event.getRenderedMessage();
+                if (line.contains("maxFailureRetryCount") || line.contains("maxWaitTime")) {
+                    warnings.add(line);
+                }
+            }
+
+            public void close() { }
+
+            public boolean requiresLayout() { return false; }
+        };
+        Logger.getRootLogger().addAppender(appender);
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "maxFailureRetryCount", "3", "maxWaitTime", "0")) {
+            for (int message = 0; message < 3; message++) {
+                new FileConfig().connect(files.message);
+            }
+            Assert.assertEquals(warnings.size(), 2, warnings.toString());
+        } finally {
+            Logger.getRootLogger().removeAppender(appender);
+        }
     }
 
     @Test
