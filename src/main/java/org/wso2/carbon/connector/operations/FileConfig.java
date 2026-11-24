@@ -169,6 +169,11 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         String fileCacheEnabled = (String) ConnectorUtils.lookupTemplateParamater(msgContext, "fileCacheEnabled");
 
         ConnectionConfiguration connectionConfig = new ConnectionConfiguration(msgContext);
+        if (connectionConfig.getMaxWaitTime() <= 0) {
+            warn(connectionLog, "maxWaitTime " + connectionConfig.getMaxWaitTime()
+                    + " gives a borrow wait with no end. Using 10000 ms.");
+            connectionConfig.setMaxWaitTime(10000L);
+        }
         if (sftpPoolConnectionAgedTimeout != null) {
             try {
                 connectionConfig.setPoolConnectionAgedTimeout(

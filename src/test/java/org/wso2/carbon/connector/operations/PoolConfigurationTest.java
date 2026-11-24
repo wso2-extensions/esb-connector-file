@@ -98,6 +98,20 @@ public class PoolConfigurationTest {
     }
 
     @Test
+    public void borrowWaitOfZeroOrLessTakesTheDefault() throws Exception {
+        for (String wait : new String[]{"0", "-1"}) {
+            try (FilePoolFixture files = new FilePoolFixture("LOCAL", "maxWaitTime", wait)) {
+                ConnectionLease lease = files.borrow();
+                try {
+                    Assert.assertEquals(FilePoolFixture.pool(lease).getMaxWait(), 10000L, "maxWaitTime=" + wait);
+                } finally {
+                    lease.returnToPool();
+                }
+            }
+        }
+    }
+
+    @Test
     public void activeLeasesSurviveRotationsWithConnectorDefaults() throws Exception {
         try (FilePoolFixture files = new FilePoolFixture("LOCAL", "sftpPoolConnectionAgedTimeout", "200");
              Rotation rotations = new Rotation(files)) {
