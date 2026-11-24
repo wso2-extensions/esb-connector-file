@@ -160,6 +160,13 @@ public class ConnectionParametersTest {
     }
 
     @Test
+    public void smbConnectionStartsThoughNoBoundIsKnown() throws Exception {
+        try (FilePoolFixture files = new FilePoolFixture("SMB")) {
+            Assert.assertFalse(files.factory.getContext().isClosed());
+        }
+    }
+
+    @Test
     public void poolAgeUsesSecondsAndStreamIdleUsesMilliseconds() throws Exception {
         try (FilePoolFixture files = new FilePoolFixture("LOCAL", "sftpPoolConnectionAgedTimeout", "3600",
                 "streamIdleTimeout", "17", "lockReleaseSameNode", "false")) {

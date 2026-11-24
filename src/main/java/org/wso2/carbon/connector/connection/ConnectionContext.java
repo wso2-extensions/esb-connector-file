@@ -111,15 +111,20 @@ public final class ConnectionContext implements StreamLease.Owner, EndpointHealt
                     registration.health());
             writer = new AtomicWriter(name, registration.health(), shareLock, configuration.isUseTempFolder(),
                     configuration.getTempFolderName(), configuration.getTempFileSuffix());
+            String scheme = configuration.getProtocol() == FileServerProtocol.LOCAL ? "file"
+                    : configuration.getProtocol().getName().toLowerCase(Locale.ROOT);
+            String bounds;
+            try {
+                bounds = EffectiveBounds.of(scheme, options).toString();
+            } catch (IllegalArgumentException unknown) {
+                bounds = scheme + ": no bound is known for this scheme";
+            }
+            LogFactory.getLog(ConnectionContext.class).info("Connection " + UriMask.mask(displayName)
+                    + " borrowWait=" + configuration.getMaxWaitTime() + " lockWait=10000 fastFailure=5000 " + bounds);
         } catch (RuntimeException | Error failure) {
             registration.close();
             throw failure;
         }
-        String scheme = configuration.getProtocol() == FileServerProtocol.LOCAL ? "file"
-                : configuration.getProtocol().getName().toLowerCase(Locale.ROOT);
-        LogFactory.getLog(ConnectionContext.class).info("Connection " + UriMask.mask(displayName) + " borrowWait="
-                + configuration.getMaxWaitTime() + " lockWait=10000 fastFailure=5000 "
-                + EffectiveBounds.of(scheme, options));
         if (configuration.getProtocol() == FileServerProtocol.SFTP) {
             SFTPConnectionConfig sftp = (SFTPConnectionConfig) configuration.getRemoteServerConfig();
             if (Integer.valueOf(150000).equals(sftp.getSessionTimeout())
