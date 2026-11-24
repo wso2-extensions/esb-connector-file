@@ -229,15 +229,24 @@ public final class OperationFrame {
         return failure;
     }
 
-    // A copy of the chain for the log. Each text passes the mask, and each link keeps its class name and its stack.
+    // A copy of the chain for the log. Each text passes the mask, and each link keeps its class name, its stack and
+    // its suppressed exceptions. The text is that of toString, which some exceptions extend, for example with a status.
     private static Throwable masked(Throwable error, Set<Throwable> seen) {
         if (error == null || !seen.add(error)) {
             return null;
         }
-        String text = error.getMessage() == null ? error.getClass().getName()
-                : error.getClass().getName() + ": " + UriMask.mask(error.getMessage());
-        Throwable copy = new Exception(text, masked(error.getCause(), seen));
+        String text = error.toString();
+        if (!text.startsWith(error.getClass().getName())) {
+            text = error.getClass().getName() + ": " + text;
+        }
+        Throwable copy = new Exception(UriMask.mask(text), masked(error.getCause(), seen));
         copy.setStackTrace(error.getStackTrace());
+        for (Throwable suppressed : error.getSuppressed()) {
+            Throwable link = masked(suppressed, seen);
+            if (link != null) {
+                copy.addSuppressed(link);
+            }
+        }
         return copy;
     }
 

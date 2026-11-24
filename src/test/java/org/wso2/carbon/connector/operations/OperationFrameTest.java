@@ -50,6 +50,7 @@ import org.wso2.org.apache.commons.vfs2.provider.UnclearResultException;
 import org.wso2.org.apache.commons.vfs2.provider.local.DefaultLocalFileProvider;
 import org.wso2.vfs.shared.lock.HeldLock;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
@@ -139,6 +140,29 @@ public class OperationFrameTest {
                         Assert.assertFalse(cause.getMessage().contains("secret"), cause.getMessage());
                         Assert.assertEquals(cause.getStackTrace(), thrown.getStackTrace());
                     }
+                }
+                // A second link keeps the text of its toString, here the status of SFTP, and a suppressed close is
+                // copied through the same mask.
+                IOException read = new IOException("Could not read sftp://user:secret@host/in/a.txt",
+                        new SftpException(ChannelSftp.SSH_FX_FAILURE, "Failure"));
+                read.addSuppressed(new IOException("Could not close sftp://user:secret@host/in/a.txt"));
+                Write op = new Write(path) {
+                    public Integer steps(Attempt attempt) throws Exception {
+                        throw read;
+                    }
+                };
+                try {
+                    OperationFrame.run(files.message, files.name, 0, op);
+                    Assert.fail("The steps failed");
+                } catch (OperationFrame.Failure failure) {
+                    Throwable cause = failure.getCause();
+                    Assert.assertFalse(cause.getMessage().contains("secret"), cause.getMessage());
+                    Assert.assertEquals(cause.getCause().getMessage(), SftpException.class.getName() + ": 4: Failure");
+                    Assert.assertEquals(cause.getSuppressed().length, 1);
+                    Assert.assertTrue(cause.getSuppressed()[0].getMessage().startsWith(IOException.class.getName()),
+                            cause.getSuppressed()[0].getMessage());
+                    Assert.assertFalse(cause.getSuppressed()[0].getMessage().contains("secret"),
+                            cause.getSuppressed()[0].getMessage());
                 }
             } finally {
                 Files.delete(path);
