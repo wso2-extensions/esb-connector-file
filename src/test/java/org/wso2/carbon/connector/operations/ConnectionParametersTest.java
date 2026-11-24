@@ -19,6 +19,9 @@
 package org.wso2.carbon.connector.operations;
 
 import org.apache.commons.logging.Log;
+import org.apache.synapse.SynapseException;
+import org.apache.synapse.core.axis2.Axis2MessageContext;
+import org.apache.synapse.mediators.template.TemplateContext;
 import org.wso2.carbon.connector.pojo.FileSorter;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.vfs.shared.log.NamedLog;
@@ -40,6 +43,10 @@ import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilde
 import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileSystemConfigBuilder;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Stack;
 
 public class ConnectionParametersTest {
     @Test
@@ -157,6 +164,53 @@ public class ConnectionParametersTest {
             Assert.assertNull(builder.configuredWriteStallTimeout(unset));
             Assert.assertEquals(builder.getWriteStallTimeout(unset), Duration.ofSeconds(60));
         }
+    }
+
+    private static String refusal(String... settings) throws Exception {
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL")) {
+            Map<String, String> values = new HashMap<>();
+            values.put("connectionType", "LOCAL");
+            values.put("name", files.name);
+            values.put("fileLockScheme", "Local");
+            for (int i = 0; i < settings.length; i += 2) {
+                values.put(settings[i], settings[i + 1]);
+            }
+            TemplateContext template = new TemplateContext("file.init", Collections.emptyList());
+            template.setMappedValues(values);
+            Stack<TemplateContext> stack = new Stack<>();
+            stack.push(template);
+            Axis2MessageContext message = WriteFileTest.message(files);
+            message.setProperty("_SYNAPSE_FUNCTION_STACK", stack);
+            try {
+                new FileConfig().connect(message);
+                return null;
+            } catch (SynapseException refused) {
+                return refused.getCause().getMessage();
+            }
+        }
+    }
+
+    @DataProvider(name = "wrongValues")
+    public Object[][] wrongValues() {
+        return new Object[][]{{"tempFileSuffix", "part"}, {"tempFileSuffix", "."}, {"tempFileSuffix", ".a/b"},
+                {"tempFolderName", "a/b"}, {"tempFolderName", "a\\b"}, {"tempFolderName", ".."},
+                {"suspendInitialDuration", "-1"}, {"suspendProgressionFactor", "0"},
+                {"suspendProgressionFactor", "0.5"}, {"suspendProgressionFactor", "NaN"},
+                {"suspendMaximumDuration", "999"}, {"streamIdleTimeout", "0"}};
+    }
+
+    @Test(dataProvider = "wrongValues")
+    public void wrongValueIsRefusedWithItsName(String parameter, String value) throws Exception {
+        String refused = refusal(parameter, value);
+        Assert.assertNotNull(refused, parameter + "=" + value + " was accepted");
+        Assert.assertTrue(refused.contains("'" + parameter + "'"), refused);
+    }
+
+    @Test
+    public void rightValuesAreAccepted() throws Exception {
+        Assert.assertNull(refusal("tempFileSuffix", ".tmp", "tempFolderName", "work", "suspendInitialDuration", "0",
+                "suspendProgressionFactor", "1", "suspendMaximumDuration", "1000", "streamIdleTimeout", "1"));
+        Assert.assertNull(refusal("suspendOnConnectionFailure", "false", "suspendProgressionFactor", "0"));
     }
 
     @Test

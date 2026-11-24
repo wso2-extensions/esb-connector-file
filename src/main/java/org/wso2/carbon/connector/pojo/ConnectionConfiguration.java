@@ -85,13 +85,23 @@ public class ConnectionConfiguration {
         } catch (NumberFormatException e) {
             throw new InvalidConfigurationException("Parameter 'streamIdleTimeout' must be a number.");
         }
-        if (streamIdleTimeout < 0) {
-            throw new InvalidConfigurationException("Parameter 'streamIdleTimeout' cannot be negative.");
+        if (streamIdleTimeout <= 0) {
+            throw new InvalidConfigurationException("Parameter 'streamIdleTimeout' must be more than 0.");
         }
         autoLockRelease = Utils.lookUpBooleanParam(messageContext, "autoLockRelease", true);
         useTempFolder = Utils.lookUpBooleanParam(messageContext, "useTempFolder", true);
         tempFolderName = Utils.lookUpStringParam(messageContext, "tempFolderName", ".part");
         tempFileSuffix = Utils.lookUpStringParam(messageContext, "tempFileSuffix", ".part");
+        if (tempFolderName.equals(".") || tempFolderName.equals("..") || tempFolderName.contains("/")
+                || tempFolderName.contains("\\")) {
+            throw new InvalidConfigurationException("Parameter 'tempFolderName' must be a folder name with no path "
+                    + "separator.");
+        }
+        if (tempFileSuffix.length() < 2 || !tempFileSuffix.startsWith(".") || tempFileSuffix.contains("/")
+                || tempFileSuffix.contains("\\")) {
+            throw new InvalidConfigurationException("Parameter 'tempFileSuffix' must start with a dot, have at least "
+                    + "one character after it and hold no path separator.");
+        }
         try {
             lockStaleAge = Long.parseLong(Utils.lookUpStringParam(messageContext, "lockStaleAge", "900000"));
         } catch (NumberFormatException e) {

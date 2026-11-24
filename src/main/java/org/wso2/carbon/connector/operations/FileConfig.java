@@ -210,6 +210,18 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         
         // Configure circuit breaker if suspension is enabled
         if (connectionConfig.isSuspendOnConnectionFailure()) {
+            if (connectionConfig.getSuspendInitialDuration() < 0) {
+                throw new InvalidConfigurationException("Parameter 'suspendInitialDuration' cannot be negative.");
+            }
+            if (!(connectionConfig.getSuspendProgressionFactor() >= 1)
+                    || Double.isInfinite(connectionConfig.getSuspendProgressionFactor())) {
+                throw new InvalidConfigurationException("Parameter 'suspendProgressionFactor' must be a number of at "
+                        + "least 1.");
+            }
+            if (connectionConfig.getSuspendMaximumDuration() < connectionConfig.getSuspendInitialDuration()) {
+                throw new InvalidConfigurationException("Parameter 'suspendMaximumDuration' cannot be less than "
+                        + "suspendInitialDuration.");
+            }
             Configuration config = connectionConfig.getConfiguration();
             config.setCircuitBreakerEnabled(true);
             config.setFailureThreshold(connectionConfig.getRetriesBeforeSuspension());
