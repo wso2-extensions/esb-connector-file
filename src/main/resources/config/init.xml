@@ -74,7 +74,6 @@
 	<parameter name="suspendProgressionFactor" description="Progression factor for suspension duration"/>
 	<parameter name="suspendMaximumDuration" description="Maximum duration in milliseconds to suspend the connection"/>
 	<parameter name="streamIdleTimeout" description="Idle time for a stream or its retained lock in milliseconds."/>
-	<parameter name="lockReleaseSameNode" description="Lock release preference for a migrated interval. An explicit stale age takes precedence."/>
 	<parameter name="ftpDataTimeout" description="FTP data timeout in milliseconds."/>
 	<parameter name="ftpTransferType" description="FTP transfer type. Use BINARY or ASCII."/>
 	<parameter name="writeStallTimeout" description="Socket write stall timeout in milliseconds. Set to zero to disable it."/>

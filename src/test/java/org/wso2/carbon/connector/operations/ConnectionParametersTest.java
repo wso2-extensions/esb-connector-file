@@ -258,17 +258,15 @@ public class ConnectionParametersTest {
     @Test
     public void poolAgeUsesSecondsAndStreamIdleUsesMilliseconds() throws Exception {
         try (FilePoolFixture files = new FilePoolFixture("LOCAL", "sftpPoolConnectionAgedTimeout", "3600",
-                "streamIdleTimeout", "17", "lockReleaseSameNode", "false")) {
+                "streamIdleTimeout", "17")) {
             ConnectionConfiguration config = files.factory.getContext().getConfiguration();
             Assert.assertEquals(config.getConfiguration().getPoolConnectionAgedTimeout(), 3600000L);
             Assert.assertEquals(files.factory.getContext().idleMs(), 17L);
-            Assert.assertFalse(config.isLockReleaseSameNode());
         }
         try (FilePoolFixture files = new FilePoolFixture("LOCAL")) {
             ConnectionConfiguration config = files.factory.getContext().getConfiguration();
             Assert.assertEquals(config.getConfiguration().getPoolConnectionAgedTimeout(), 0L);
             Assert.assertEquals(files.factory.getContext().idleMs(), 60000L);
-            Assert.assertTrue(config.isLockReleaseSameNode());
             Assert.assertTrue(config.isAutoLockRelease());
             Assert.assertEquals(files.factory.getContext().getShareLock().staleAgeMillis(), 900000L);
             Assert.assertTrue(config.isUseTempFolder());

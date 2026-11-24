@@ -44,7 +44,7 @@ public class SchemaDefaultsTest {
                 + "suspendOnConnectionFailure=true retriesBeforeSuspension=0 suspendInitialDuration=1000 "
                 + "suspendProgressionFactor=1.0 suspendMaximumDuration=300000 streamIdleTimeout=60000 "
                 + "fileCacheEnabled=false fileLockScheme=Local autoLockRelease=true lockStaleAge=900000 "
-                + "lockReleaseSameNode=true tempFolderName=.part useTempFolder=true tempFileSuffix=.part maxFailureRetryCount=");
+                + "tempFolderName=.part useTempFolder=true tempFileSuffix=.part maxFailureRetryCount=");
         add(cases, "sftp", "sftpConnectionTimeout= sftpSessionTimeout= sftpKeepAliveCount= "
                 + "sftpPoolConnectionAgedTimeout= sftpKeyExchangeAlgorithms= sftpHostKeyAlgorithms= "
                 + "sftpCiphers= sftpMacs= sftpPubkeyAcceptedAlgorithms= setAvoidPermission=true "

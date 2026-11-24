@@ -36,7 +36,6 @@ public class ConnectionConfiguration {
 
     private final FileSystemOptions providerOptions = new FileSystemOptions();
     private final long streamIdleTimeout;
-    private final boolean lockReleaseSameNode;
     private final boolean autoLockRelease;
     private final long lockStaleAge;
     private final boolean useTempFolder;
@@ -79,7 +78,6 @@ public class ConnectionConfiguration {
 
     public ConnectionConfiguration(MessageContext messageContext) throws InvalidConfigurationException {
 
-        lockReleaseSameNode = Utils.lookUpBooleanParam(messageContext, "lockReleaseSameNode", true);
         try {
             streamIdleTimeout = Long.parseLong(Utils.lookUpStringParam(messageContext, "streamIdleTimeout", "60000"));
         } catch (NumberFormatException e) {
@@ -132,10 +130,6 @@ public class ConnectionConfiguration {
 
     public long getStreamIdleTimeout() {
         return streamIdleTimeout;
-    }
-
-    public boolean isLockReleaseSameNode() {
-        return lockReleaseSameNode;
     }
 
     public boolean isAutoLockRelease() {

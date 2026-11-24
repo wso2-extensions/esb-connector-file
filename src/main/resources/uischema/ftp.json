@@ -260,17 +260,6 @@
           {
             "type": "attribute",
             "value": {
-              "name": "lockReleaseSameNode",
-              "displayName": "Lock Release Same Node",
-              "inputType": "booleanOrExpression",
-              "defaultValue": "true",
-              "required": "false",
-              "helpTip": "Lock release preference for a migrated interval. An explicit stale age takes precedence."
-            }
-          },
-          {
-            "type": "attribute",
-            "value": {
               "name": "useTempFolder",
               "displayName": "Use Temp Folder",
               "inputType": "booleanOrExpression",
