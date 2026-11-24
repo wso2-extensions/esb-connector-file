@@ -55,8 +55,10 @@ import org.wso2.carbon.relay.ExpandingMessageFormatter;
 import org.wso2.integration.connector.core.ConnectException;
 import org.wso2.org.apache.commons.vfs2.Capability;
 import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
 import org.wso2.org.apache.commons.vfs2.provider.CommitStep;
+import org.wso2.org.apache.commons.vfs2.provider.Fault;
 import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileObject;
 import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 import org.wso2.org.apache.commons.vfs2.util.TestPoints;
@@ -151,6 +153,7 @@ public class WriteFile extends OperationFrame.Mediator {
         AtomicWriter.Temp previous;
         boolean ready;
         long bytes;
+        boolean targetFailed;
 
         Write(MessageContext message, boolean replaceBody) throws InvalidConfigurationException, JaxenException {
             this.message = message;
@@ -504,13 +507,38 @@ public class WriteFile extends OperationFrame.Mediator {
                         int size = Math.min(length, BUFFER_BYTES);
                         attempt.progress().reset(cause);
                         attempt.bytesSent();
-                        out.write(buffer, offset, size);
+                        try {
+                            out.write(buffer, offset, size);
+                        } catch (IOException | RuntimeException failure) {
+                            targetFailed = true;
+                            throw failure;
+                        }
                         if (append && first) {
                             first = false;
                             appendPoint("append.in-transfer");
                         }
                         offset += size;
                         length -= size;
+                    }
+                }
+
+                @Override
+                public void flush() throws IOException {
+                    try {
+                        out.flush();
+                    } catch (IOException | RuntimeException failure) {
+                        targetFailed = true;
+                        throw failure;
+                    }
+                }
+
+                @Override
+                public void close() throws IOException {
+                    try {
+                        super.close();
+                    } catch (IOException | RuntimeException failure) {
+                        targetFailed = true;
+                        throw failure;
                     }
                 }
             };
@@ -551,7 +579,18 @@ public class WriteFile extends OperationFrame.Mediator {
                 OMOutputFormat format = BaseUtils.getOMOutputFormat(axis);
                 OMElement input = standaloneResponseInput(axis, formatter);
                 attempt.payloadStarted();
-                formatter.writeTo(axis, format, output, false);
+                targetFailed = false;
+                try {
+                    formatter.writeTo(axis, format, output, false);
+                } catch (IOException | RuntimeException failure) {
+                    if (targetFailed) {
+                        throw failure;
+                    }
+                    // The source of the body failed and not the target, so this is no transport error of the target.
+                    FileSystemException body = new FileSystemException("The message body could not be read", failure);
+                    body.setFault(Fault.APPLICATION);
+                    throw body;
+                }
                 if (input != null && !input.isComplete() && !input.getBuilder().isCache()) {
                     consumedDocument = input;
                 }

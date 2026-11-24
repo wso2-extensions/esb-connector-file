@@ -18,16 +18,43 @@
 
 package org.wso2.carbon.connector.operations;
 
+import com.google.gson.JsonElement;
 import org.apache.axiom.om.OMAbstractFactory;
+import org.apache.axiom.om.OMElement;
+import org.apache.axiom.om.OMOutputFormat;
+import org.apache.axiom.soap.SOAPEnvelope;
+import org.apache.axis2.AxisFault;
 import org.apache.axis2.context.ConfigurationContext;
+import org.apache.axis2.context.MessageContext;
 import org.apache.axis2.engine.AxisConfiguration;
+import org.apache.axis2.transport.base.BaseConstants;
+import org.apache.axis2.transport.http.ApplicationXMLFormatter;
 import org.apache.synapse.SynapseException;
 import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.mediators.template.TemplateContext;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import org.wso2.carbon.connector.connection.FileSystemHandler;
+import org.wso2.integration.connector.core.connection.ConnectionLease;
+import org.wso2.integration.connector.core.pool.CircuitBreaker;
+import org.wso2.org.apache.commons.vfs2.FileContent;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.impl.DecoratedFileObject;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.provider.local.DefaultLocalFileProvider;
 
+import javax.activation.DataHandler;
+import javax.activation.DataSource;
+import javax.xml.namespace.QName;
+import java.io.FilterOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -228,6 +255,153 @@ public class WriteFileTest {
             running.set(false);
             workers.shutdownNow();
             workers.awaitTermination(10, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
+    public void brokenBodySourceLeavesTheTargetConnectionHealthy() throws Exception {
+        Path dir = directory();
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+            FileFrameLeaseTest.CountingPool pool = FileFrameLeaseTest.install(files);
+            Axis2MessageContext message = message(files);
+            DataSource source = new DataSource() {
+                public InputStream getInputStream() {
+                    return new InputStream() {
+                        int sent;
+
+                        public int read() throws IOException {
+                            if (sent++ < 4) {
+                                return 'a';
+                            }
+                            throw new IOException("The connection of the body source was lost");
+                        }
+                    };
+                }
+
+                public OutputStream getOutputStream() {
+                    throw new UnsupportedOperationException();
+                }
+
+                public String getContentType() {
+                    return "application/octet-stream";
+                }
+
+                public String getName() {
+                    return "body";
+                }
+            };
+            SOAPEnvelope envelope = message.getAxis2MessageContext().getEnvelope();
+            OMElement wrapper = envelope.getOMFactory().createOMElement(BaseConstants.DEFAULT_BINARY_WRAPPER);
+            wrapper.addChild(envelope.getOMFactory().createOMText(new DataHandler(source), true));
+            envelope.getBody().addChild(wrapper);
+            TemplateContext template = new TemplateContext("file.write", Collections.emptyList());
+            template.setMappedValues(Collections.singletonMap("filePath", "/body"));
+            Stack<TemplateContext> stack = new Stack<>();
+            stack.push(template);
+            message.setProperty("_SYNAPSE_FUNCTION_STACK", stack);
+            try {
+                new WriteFile().execute(message, "result", false);
+                Assert.fail("The body source failed");
+            } catch (SynapseException expected) {
+                Assert.assertEquals(pool.getBreaker().getMode(), CircuitBreaker.Mode.CLOSED);
+            }
+            for (JsonElement loan : pool.attempts) {
+                Assert.assertEquals(loan.getAsJsonObject().get("invalidates").getAsInt(), 0, loan.toString());
+            }
+            Assert.assertFalse(Files.exists(dir.resolve("body")));
+        }
+    }
+
+    @Test
+    public void failedCloseOfTheTargetIsATransportError() throws Exception {
+        Path dir = directory();
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString(),
+                "maxActiveConnections", "1")) {
+            FileFrameLeaseTest.CountingPool pool = FileFrameLeaseTest.install(files);
+            ConnectionLease lease = files.borrow();
+            DefaultFileSystemManager manager =
+                    (DefaultFileSystemManager) ((FileSystemHandler) lease.getConnection()).getFsManager();
+            manager.removeProvider("file");
+            manager.addProvider("file", new DefaultLocalFileProvider() {
+                @Override
+                public FileObject findFile(FileObject base, String uri, FileSystemOptions options)
+                        throws FileSystemException {
+                    FileObject real = super.findFile(base, uri, options);
+                    if (!uri.contains("/.part/closed.")) {
+                        return real;
+                    }
+                    FileContent content = real.getContent();
+                    FileContent closing = (FileContent) Proxy.newProxyInstance(getClass().getClassLoader(),
+                            new Class<?>[]{FileContent.class}, (proxy, method, args) -> {
+                                Object value;
+                                try {
+                                    value = method.invoke(content, args);
+                                } catch (InvocationTargetException failure) {
+                                    throw failure.getCause();
+                                }
+                                if (!"getOutputStream".equals(method.getName())) {
+                                    return value;
+                                }
+                                // Only the first close fails. A second close of a closed stream does nothing.
+                                return new FilterOutputStream((OutputStream) value) {
+                                    private boolean failed;
+
+                                    @Override
+                                    public void close() throws IOException {
+                                        super.close();
+                                        if (!failed) {
+                                            failed = true;
+                                            throw new IOException("The connection was lost at the close");
+                                        }
+                                    }
+                                };
+                            });
+                    return new DecoratedFileObject(real) {
+                        @Override
+                        public FileContent getContent() {
+                            return closing;
+                        }
+                    };
+                }
+            });
+            lease.returnToPool();
+            Axis2MessageContext message = message(files);
+            message.getAxis2MessageContext().getConfigurationContext().getAxisConfiguration().addMessageFormatter(
+                    "application/x-closing", new ApplicationXMLFormatter() {
+                        @Override
+                        public void writeTo(MessageContext context, OMOutputFormat format, OutputStream out,
+                                            boolean preserve) throws AxisFault {
+                            super.writeTo(context, format, out, preserve);
+                            try {
+                                out.close();
+                            } catch (IOException failure) {
+                                throw AxisFault.makeFault(failure);
+                            }
+                        }
+                    });
+            SOAPEnvelope envelope = message.getAxis2MessageContext().getEnvelope();
+            OMElement data = envelope.getOMFactory().createOMElement(new QName("data"));
+            data.setText("body");
+            envelope.getBody().addChild(data);
+            Map<String, String> values = new HashMap<>();
+            values.put("filePath", "/closed");
+            values.put("mimeType", "application/x-closing");
+            TemplateContext template = new TemplateContext("file.write", Collections.emptyList());
+            template.setMappedValues(values);
+            Stack<TemplateContext> stack = new Stack<>();
+            stack.push(template);
+            message.setProperty("_SYNAPSE_FUNCTION_STACK", stack);
+            try {
+                new WriteFile().execute(message, "result", false);
+                Assert.fail("The close of the target failed");
+            } catch (SynapseException expected) {
+                Assert.assertEquals(pool.getBreaker().getMode(), CircuitBreaker.Mode.OPEN);
+            }
+            int invalidated = 0;
+            for (JsonElement loan : pool.attempts) {
+                invalidated += loan.getAsJsonObject().get("invalidates").getAsInt();
+            }
+            Assert.assertEquals(invalidated, 1);
         }
     }
 
