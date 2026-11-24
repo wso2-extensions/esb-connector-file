@@ -177,6 +177,32 @@ public class FileTreeOperationTest {
     }
 
     @Test
+    public void singleFileSourceIsMovedWhateverThePatternAndNotCopiedWhenItDoesNotMatch() throws Exception {
+        for (String[] filter : new String[][] {{"filePattern", "sourceFilePattern"}, {"includeFiles", "includeFiles"}}) {
+            Path dir = WriteFileTest.directory();
+            Files.createDirectories(dir.resolve("in"));
+            Files.createDirectories(dir.resolve("out"));
+            Files.writeString(dir.resolve("in/a.txt"), "A");
+            Files.writeString(dir.resolve("in/b.txt"), "B");
+            try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+                // The copy copies nothing, answers success and names the file as left out, as 6.x did.
+                JsonObject copy = invoke(new CopyFiles(), WriteFileTest.message(files), "sourcePath", "/in/b.txt",
+                        "targetPath", "/out", filter[1], ".*\\.csv");
+                success(copy);
+                Assert.assertFalse(Files.exists(dir.resolve("out/b.txt")), filter[1]);
+                JsonObject left = copy.getAsJsonArray("filesLeft").get(0).getAsJsonObject();
+                Assert.assertEquals(left.get("name").getAsString(), "b.txt", copy.toString());
+                Assert.assertEquals(left.get("reason").getAsString(), "FILTERED", copy.toString());
+                // The move takes the file whatever the pattern or the filter, as 6.x did.
+                success(invoke(new MoveFiles(), WriteFileTest.message(files), "sourcePath", "/in/a.txt",
+                        "targetPath", "/out", filter[0], ".*\\.csv"));
+                Assert.assertEquals(Files.readString(dir.resolve("out/a.txt")), "A", filter[0]);
+                Assert.assertFalse(Files.exists(dir.resolve("in/a.txt")), filter[0]);
+            }
+        }
+    }
+
+    @Test
     public void deleteWithAPatternKeepsTheFolderWhenNothingIsLeftInIt() throws Exception {
         Path dir = WriteFileTest.directory();
         Files.createDirectories(dir.resolve("in"));
@@ -480,16 +506,9 @@ public class FileTreeOperationTest {
         Path source = Files.writeString(root.resolve("one.txt"), "only");
         Path target = Files.createDirectory(root.resolve("out")).resolve("one.txt");
         try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", root.toString())) {
-            error(invoke(new MoveFiles(), WriteFileTest.message(files), "sourcePath", "/one.txt", "targetPath", "/out",
-                    "filePattern", ".*[.]csv", "includeFiles", ".*[.]txt"), "700108");
-            Assert.assertEquals(Files.readString(source), "only");
-            Assert.assertFalse(Files.exists(target));
-            error(invoke(new MoveFiles(), WriteFileTest.message(files), "sourcePath", "/one.txt", "targetPath", "/out",
-                    "filePattern", "[", "includeFiles", ".*[.]txt"), "700107");
-            Assert.assertEquals(Files.readString(source), "only");
-            Assert.assertFalse(Files.exists(target));
+            // A single file source is moved whatever the pattern or the filter, as 6.x did.
             success(invoke(new MoveFiles(), WriteFileTest.message(files), "sourcePath", "/one.txt", "targetPath", "/out",
-                    "filePattern", "one[.]txt", "includeFiles", ".*[.]txt"));
+                    "filePattern", ".*[.]csv", "includeFiles", ".*[.]txt"));
             Assert.assertFalse(Files.exists(source));
             Assert.assertEquals(Files.readString(target), "only");
         }

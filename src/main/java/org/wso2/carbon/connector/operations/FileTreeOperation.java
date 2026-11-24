@@ -49,7 +49,6 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 abstract class FileTreeOperation extends OperationFrame.Mediator {
     abstract Walk operation(MessageContext message) throws InvalidConfigurationException;
@@ -94,7 +93,6 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
         private final boolean own;
         private final boolean includeParent;
         private final Pattern pattern;
-        private final String namedMovePattern;
         private final AdvancedFileFilter filter;
         private final long interval;
         // A pattern or a filter is set. A delete with one stays at the first level, and a delete or a move with one
@@ -139,7 +137,6 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             filtered = legacy != null || advanced;
             boolean advancedCopyOrMove = advanced && ("copyFiles".equals(name) || "moveFiles".equals(name));
             pattern = legacy == null || advancedCopyOrMove ? null : Pattern.compile(legacy);
-            namedMovePattern = advanced && "moveFiles".equals(name) ? legacy : null;
             filter = new AdvancedFileFilter(option(message, "fileFilterType"), include, exclude, maxAge, minAge);
             retries = Integer.parseInt(Utils.lookUpStringParam(message, "maxRetries", "1"));
         }
@@ -241,15 +238,6 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             folder = source.isFolder() && walksFolder();
             if (source.isSymbolicLink() || source.isFolder() && guard.reservedDirectory(source)) {
                 throw failure(Error.OPERATION_ERROR, "The source did not pass the file guards", root);
-            }
-            if (!folder && namedMovePattern != null) {
-                try {
-                    if (!source.getName().getBaseName().matches(namedMovePattern)) {
-                        throw failure(Error.OPERATION_ERROR, "The source did not pass the file guards", root);
-                    }
-                } catch (PatternSyntaxException invalid) {
-                    throw failure(Error.INVALID_CONFIGURATION, invalid.getMessage(), root);
-                }
             }
             String baseName = newName == null ? escape(source.getName().getBaseName()) : newName;
             FileObject target = null;
@@ -359,7 +347,14 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                 hold("delete.before-lock", path);
             }
             try {
-                if (!source.isFolder() && !guard.accepts(source)) {
+                // 6.x moved a single file source whatever the pattern or the filter, and copied nothing with success.
+                boolean single = !folder && ("moveFiles".equals(name) || "copyFiles".equals(name));
+                if (single && !removesSource() && !source.isFolder() && !guard.matches(source)) {
+                    left.put(label, "FILTERED");
+                    finished.add(path);
+                    return;
+                }
+                if (!source.isFolder() && !(single ? guard.admits(source) : guard.accepts(source))) {
                     if (folder) {
                         left.put(label, "FILTERED");
                         finished.add(path);
@@ -466,8 +461,8 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             if (deleting() && (!ordinarySingleDelete || result.has("error"))) {
                 result.addProperty("numOfDeletedFiles", deleted);
             }
-            if (folder) {
-                if (removesSource() && !deleting()) {
+            if (folder || !left.isEmpty()) {
+                if (folder && removesSource() && !deleting()) {
                     JsonArray names = new JsonArray();
                     moved.forEach(names::add);
                     result.add("filesMoved", names);

@@ -59,6 +59,17 @@ public final class SourceGuard {
                 && (pattern == null || pattern.matcher(name).matches()) && passes(file) && stable(file);
     }
 
+    // The pattern and the filter alone.
+    public boolean matches(FileObject file) throws FileSystemException {
+        return (pattern == null || pattern.matcher(file.getName().getBaseName()).matches()) && passes(file);
+    }
+
+    // Every guard but the pattern and the filter.
+    public boolean admits(FileObject file) throws FileSystemException {
+        return file.isFile() && !ReservedNames.isReserved(file.getName().getBaseName(), false, tempFolder, tempSuffix)
+                && stable(file);
+    }
+
     private boolean passes(FileObject file) throws FileSystemException {
         try {
             return filter.accepts(file);
