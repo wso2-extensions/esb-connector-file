@@ -95,6 +95,9 @@ public class ReleaseTrialTest {
                 public Void steps(Attempt attempt) throws Exception {
                     held.set(attempt.lock(name));
                     row.addProperty("heldLock", held.get() != null && Files.exists(marker));
+                    // Another operation opens the breaker before this attempt fails, so the release try
+                    // gets the trial.
+                    breaker.get().admit().reportFailure();
                     FileSystemException lost = new FileSystemException("Connection lost");
                     lost.setFault(Fault.TRANSPORT);
                     throw lost;
@@ -153,6 +156,39 @@ public class ReleaseTrialTest {
                 output.add("A9.10", row);
                 Files.write(Paths.get(trace), output.toString().getBytes(StandardCharsets.UTF_8));
             }
+        } finally {
+            Files.deleteIfExists(marker);
+            Files.delete(file);
+        }
+    }
+
+    @Test
+    public void releaseTryRunsBeforeTheFailureOpensTheBreaker() throws Exception {
+        Path file = Files.createTempFile("release-first", ".bin");
+        Path marker = file.resolveSibling(file.getFileName() + ".lock");
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL")) {
+            FileFrameLeaseTest.CountingPool pool = FileFrameLeaseTest.install(files);
+            String name = file.toUri().toString();
+            AtomicBoolean locked = new AtomicBoolean();
+            OperationFrameStreamTest.Steps<Void> write = new OperationFrameStreamTest.Steps<Void>() {
+                public Void steps(Attempt attempt) throws Exception {
+                    locked.set(attempt.lock(name) != null && Files.exists(marker));
+                    FileSystemException lost = new FileSystemException("Connection lost");
+                    lost.setFault(Fault.TRANSPORT);
+                    throw lost;
+                }
+            };
+            write.paths.put(name, OperationFrame.Lock.OWN);
+            try {
+                OperationFrame.run(OperationFrameStreamTest.message(), files.name, 0, write);
+                Assert.fail("The write lost its connection");
+            } catch (OperationFrame.Failure failure) {
+                Assert.assertEquals(failure.error, Error.CONNECTION_ERROR);
+            }
+            Assert.assertTrue(locked.get());
+            Assert.assertEquals(pool.getBreaker().getMode(), CircuitBreaker.Mode.OPEN);
+            Assert.assertFalse(Files.exists(marker), "The release try left the lock of the failed attempt");
+            Assert.assertEquals(pool.returns(), 1);
         } finally {
             Files.deleteIfExists(marker);
             Files.delete(file);

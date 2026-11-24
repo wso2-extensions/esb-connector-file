@@ -382,7 +382,9 @@ public class OperationFrameStreamTest {
                     } catch (OperationFrame.Failure failure) {
                         Assert.assertEquals(failure.error, Error.CONNECTION_ERROR);
                     }
-                    boolean fresh = !slow && !breaker;
+                    // The release try runs before the failure reaches the breaker, so a breaker that the failure
+                    // opens does not stop it.
+                    boolean fresh = !slow;
                     JsonObject facts = new JsonObject();
                     pool.inventory(facts);
                     Assert.assertEquals(facts.getAsJsonArray("borrowedLoans").size(), fresh ? 2 : 1);

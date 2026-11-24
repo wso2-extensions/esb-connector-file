@@ -322,15 +322,20 @@ public final class OperationFrame {
                     try {
                         attempt.endBorrow();
                     } finally {
-                        if (admission != null && !retry) {
-                            if (!count) {
-                                admission.cancelTrial();
-                            } else {
-                                reportOutcome(attempt, admission, failure, success);
+                        try {
+                            // The release try borrows before the failure reaches the breaker, so a breaker
+                            // that this failure opens can not refuse it.
+                            if (!retry && !kept.isEmpty()) {
+                                releaseTry(kept);
                             }
-                        }
-                        if (!retry && !kept.isEmpty()) {
-                            releaseTry(kept);
+                        } finally {
+                            if (admission != null && !retry) {
+                                if (!count) {
+                                    admission.cancelTrial();
+                                } else {
+                                    reportOutcome(attempt, admission, failure, success);
+                                }
+                            }
                         }
                     }
                 }
