@@ -222,7 +222,7 @@ public class FileFrameLeaseTest {
                 }
             }
         } finally {
-            FrameUnitEvidence.write("C6.1", cases);
+            FrameUnitEvidence.write("failedBorrowPreservesThePriorFailureAndEndsOnlyAcquiredHandlers", cases);
         }
         verify.assertAll();
     }

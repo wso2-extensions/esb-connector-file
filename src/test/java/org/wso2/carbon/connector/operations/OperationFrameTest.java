@@ -300,7 +300,7 @@ public class OperationFrameTest {
             }
             verify.assertAll();
         } finally {
-            FrameUnitEvidence.write("E16.11", phases);
+            FrameUnitEvidence.write("retryPreservesEveryMovePhaseAndTempName", phases);
             Files.delete(path);
         }
     }
@@ -364,7 +364,7 @@ public class OperationFrameTest {
             trace.addProperty("deletes", deletes.get());
             trace.addProperty("expected", Base64.getEncoder().encodeToString(foreign));
             trace.addProperty("actual", Base64.getEncoder().encodeToString(actual));
-            FrameUnitEvidence.write("D12.1", trace);
+            FrameUnitEvidence.write("retryLeavesTheNewOwnersMarkerIntact", trace);
             Assert.assertEquals(outcome, Error.FILE_LOCKING_ERROR);
             Assert.assertEquals(attempts.get(), 2);
             Assert.assertEquals(actual, foreign);

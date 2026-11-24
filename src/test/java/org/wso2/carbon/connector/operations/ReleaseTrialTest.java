@@ -153,7 +153,7 @@ public class ReleaseTrialTest {
             String trace = System.getenv("BREAKER_OBSERVATIONS");
             if (trace != null) {
                 JsonObject output = new JsonObject();
-                output.add("A9.10", row);
+                output.add("releaseReturnsTheTrialUnused", row);
                 Files.write(Paths.get(trace), output.toString().getBytes(StandardCharsets.UTF_8));
             }
         } finally {

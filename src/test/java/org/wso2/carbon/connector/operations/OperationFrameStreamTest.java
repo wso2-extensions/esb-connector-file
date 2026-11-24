@@ -313,7 +313,7 @@ public class OperationFrameStreamTest {
             } finally {
                 pool.inventory(facts);
                 facts.add("rounds", new Gson().toJsonTree(rounds));
-                FrameUnitEvidence.write("C6.10", facts);
+                FrameUnitEvidence.write("concurrentOpenGivesExactlyOneStreamInEveryRound", facts);
             }
             for (Map.Entry<String, JsonElement> fate : facts.getAsJsonObject("loanFates").entrySet()) {
                 Assert.assertEquals(fate.getValue().getAsJsonArray().size(), 1, fate.getKey());
