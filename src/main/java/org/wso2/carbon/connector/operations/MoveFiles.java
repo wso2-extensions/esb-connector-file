@@ -134,6 +134,8 @@ public class MoveFiles extends FileTreeOperation {
         @Override void settle(Attempt attempt) throws Exception {
             String path = attempt.previous.path();
             observe("retry.before-decision", path);
+            // A test can stop the retry here, before its looks decide the outcome.
+            hold("retry.before-decision", path);
             if (AtomicOps.existsNow(attempt.handler().resolveFile(path))) {
                 throw failure(Error.OUTCOME_UNCLEAR, "A file remains at the source", path);
             }

@@ -277,6 +277,8 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             attempt.progress().reset("list");
             FileObject[] children = dir.getChildren();
             observe("walk.after-listing", path);
+            // A test can stop the walk here, after the listing and before any child moves or goes.
+            hold("walk.after-listing", path);
             if (targetFailure != null && children.length == 0) {
                 recordFailure(path, relative.isEmpty() ? path : relative, targetFailure);
             }
@@ -319,6 +321,7 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             }
             if (deleting()) {
                 observe("delete.before-lock", path);
+                hold("delete.before-lock", path);
             }
             if (!source.isFolder() && !guard.accepts(source)) {
                 if (folder) {
@@ -451,6 +454,12 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
         static void observe(String point, String path) {
             if (TestPoints.enabled()) {
                 TestPoints.event(point, LockIo.pointKey(path));
+            }
+        }
+
+        static void hold(String point, String path) {
+            if (TestPoints.enabled()) {
+                TestPoints.hold(point, LockIo.pointKey(path));
             }
         }
 

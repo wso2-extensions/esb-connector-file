@@ -43,6 +43,8 @@ public class DeleteFileOrFolder extends FileTreeOperation {
         @Override void change(Attempt attempt, FileObject source, FileObject target, String path, String unused)
                 throws Exception {
             attempt.destructive(Attempt.Request.DELETE, path);
+            // A test can stop the delete here, right before its request. The progress clock starts after it.
+            hold("delete.before-request", path);
             attempt.progress().reset("delete");
             if (!source.delete()) {
                 throw failure(Error.OPERATION_ERROR, "The file could not be deleted", path);
@@ -53,6 +55,8 @@ public class DeleteFileOrFolder extends FileTreeOperation {
         @Override void settle(Attempt attempt) throws Exception {
             String path = attempt.previous.path();
             observe("retry.before-decision", path);
+            // A test can stop the retry here, before its looks decide the outcome.
+            hold("retry.before-decision", path);
             if (AtomicOps.existsNow(attempt.handler().resolveFile(path))) {
                 throw failure(Error.OUTCOME_UNCLEAR, "A file remains at the source", path);
             }
