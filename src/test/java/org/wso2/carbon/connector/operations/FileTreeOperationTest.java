@@ -94,6 +94,40 @@ public class FileTreeOperationTest {
     }
 
     @Test
+    public void deleteWithAPatternOrAFilterStaysAtTheFirstLevelAndKeepsTheFolder() throws Exception {
+        for (String[] filter : new String[][] {{"matchingPattern", ".*\\.csv"}, {"includeFiles", ".*\\.csv"}}) {
+            Path dir = WriteFileTest.directory();
+            Path folder = Files.createDirectories(dir.resolve("in/sub"));
+            Files.writeString(dir.resolve("in/a.csv"), "A");
+            Files.writeString(dir.resolve("in/keep.txt"), "K");
+            Files.writeString(folder.resolve("b.csv"), "B");
+            try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+                JsonObject delete = invoke(new DeleteFileOrFolder(), WriteFileTest.message(files), "path", "/in",
+                        filter[0], filter[1]);
+                success(delete);
+                Assert.assertFalse(Files.exists(dir.resolve("in/a.csv")), filter[0]);
+                Assert.assertEquals(Files.readString(dir.resolve("in/keep.txt")), "K", filter[0]);
+                // A matching file in a sub folder stays, as with 6.x.
+                Assert.assertEquals(Files.readString(folder.resolve("b.csv")), "B", filter[0]);
+                Assert.assertTrue(Files.isDirectory(dir.resolve("in")), filter[0]);
+            }
+        }
+    }
+
+    @Test
+    public void deleteWithAPatternKeepsTheFolderWhenNothingIsLeftInIt() throws Exception {
+        Path dir = WriteFileTest.directory();
+        Files.createDirectories(dir.resolve("in"));
+        Files.writeString(dir.resolve("in/a.csv"), "A");
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+            success(invoke(new DeleteFileOrFolder(), WriteFileTest.message(files), "path", "/in",
+                    "matchingPattern", ".*\\.csv"));
+            Assert.assertFalse(Files.exists(dir.resolve("in/a.csv")));
+            Assert.assertTrue(Files.isDirectory(dir.resolve("in")));
+        }
+    }
+
+    @Test
     public void sourceFolderInFilesLeftShowsItsAddressWithTheMaskedPassword() {
         // The connector tests have no server with a password, so the label rule is checked on its own.
         Assert.assertEquals(FileTreeOperation.Walk.label("sftp://user:secret-word@host/in", ""),

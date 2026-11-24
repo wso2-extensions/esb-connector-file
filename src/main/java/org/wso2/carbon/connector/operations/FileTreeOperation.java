@@ -96,6 +96,8 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
         private final String namedMovePattern;
         private final AdvancedFileFilter filter;
         private final long interval;
+        // A pattern or a filter is set. A delete with one stays at the first level and keeps the folder, as 6.x did.
+        private final boolean filtered;
         private String root;
         private String targetDir;
         private SourceGuard guard;
@@ -130,6 +132,7 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             String stability = option(message, "timeBetweenSizeCheck");
             interval = stability == null ? 0 : Long.parseLong(stability);
             boolean advanced = include != null || exclude != null || minAge != null || maxAge != null || stability != null;
+            filtered = legacy != null || advanced;
             boolean advancedCopyOrMove = advanced && ("copyFiles".equals(name) || "moveFiles".equals(name));
             pattern = legacy == null || advancedCopyOrMove ? null : Pattern.compile(legacy);
             namedMovePattern = advanced && "moveFiles".equals(name) ? legacy : null;
@@ -298,7 +301,8 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                 }
                 if (child.isSymbolicLink() || child.isFolder() && guard.reservedDirectory(child)) {
                     // An empty temp folder of ours goes with the folder that the walk removes.
-                    if (removesSource() && targetFailure == null && !child.isSymbolicLink()
+                    if (removesSource() && targetFailure == null && !(deleting() && filtered)
+                            && !child.isSymbolicLink()
                             && name.equals(attempt.handler().getContext().getConfiguration().getTempFolderName())
                             && child.getChildren().length == 0 && child.delete()) {
                         continue;
@@ -308,12 +312,14 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                 }
                 FileObject to = target == null ? null : target.resolveFile(escape(name), NameScope.CHILD);
                 if (child.isFolder()) {
-                    walk(attempt, child, to, childPath, label, targetFailure);
+                    if (!(deleting() && filtered)) {
+                        walk(attempt, child, to, childPath, label, targetFailure);
+                    }
                 } else {
                     visit(attempt, child, to, childPath, label, targetFailure);
                 }
             }
-            if (removesSource() && targetFailure == null) {
+            if (removesSource() && targetFailure == null && !(deleting() && filtered)) {
                 dir.refresh();
                 if (dir.getChildren().length == 0 && !dir.delete() && AtomicOps.existsNow(dir)) {
                     dir.refresh();
