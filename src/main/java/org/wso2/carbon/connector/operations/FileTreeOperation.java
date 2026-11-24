@@ -43,6 +43,7 @@ import org.wso2.vfs.shared.lock.LockIo;
 import org.wso2.vfs.shared.log.UriMask;
 import org.wso2.vfs.shared.write.AtomicWriter;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -99,6 +100,8 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
         // A pattern or a filter is set. A delete with one stays at the first level, and a delete or a move with one
         // keeps its folders, as 6.x did.
         private final boolean filtered;
+        // The target folders that a filtered copy or move has made.
+        private final Set<String> madeFolders = new HashSet<>();
         private String root;
         private String targetDir;
         private SourceGuard guard;
@@ -275,7 +278,8 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
 
         private void walk(Attempt attempt, FileObject dir, FileObject target, String path, String relative,
                 OperationFrame.Failure targetFailure) throws Exception {
-            if (target != null && targetFailure == null) {
+            // With a pattern or a filter a target folder is made only when a file goes into it, as 6.x did.
+            if (target != null && targetFailure == null && !filtered) {
                 try {
                     target.createFolder();
                 } catch (Exception error) {
@@ -381,7 +385,14 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                 if (own || !folder) {
                     attempt.lockPath(path, own ? OperationFrame.Lock.OWN : OperationFrame.Lock.GUARD);
                 }
-                if (target != null && !folder) {
+                if (target != null && folder && filtered) {
+                    FileObject parent = target.getParent();
+                    String made = uri(parent);
+                    if (!madeFolders.contains(made)) {
+                        parent.createFolder();
+                        madeFolders.add(made);
+                    }
+                } else if (target != null && !folder) {
                     FileObject parent = target.getParent();
                     if (!AtomicOps.existsNow(parent)) {
                         if (!canCreateParent()) {

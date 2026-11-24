@@ -159,6 +159,24 @@ public class FileTreeOperationTest {
     }
 
     @Test
+    public void copyWithAPatternOrAFilterMakesATargetFolderOnlyWhereAFileGoes() throws Exception {
+        for (String[] filter : new String[][] {{"sourceFilePattern", ".*\\.csv"}, {"includeFiles", ".*\\.csv"}}) {
+            Path dir = WriteFileTest.directory();
+            Files.createDirectories(dir.resolve("in/sub"));
+            Files.createDirectories(dir.resolve("in/none"));
+            Files.writeString(dir.resolve("in/sub/b.csv"), "B");
+            Files.writeString(dir.resolve("in/none/x.txt"), "X");
+            try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+                success(invoke(new CopyFiles(), WriteFileTest.message(files), "sourcePath", "/in",
+                        "targetPath", "/out", "createParentDirectories", "true", filter[0], filter[1]));
+                Assert.assertEquals(Files.readString(dir.resolve("out/sub/b.csv")), "B", filter[0]);
+                // No file of this sub folder matched, so its target folder is not made, as with 6.x.
+                Assert.assertFalse(Files.exists(dir.resolve("out/none")), filter[0]);
+            }
+        }
+    }
+
+    @Test
     public void deleteWithAPatternKeepsTheFolderWhenNothingIsLeftInIt() throws Exception {
         Path dir = WriteFileTest.directory();
         Files.createDirectories(dir.resolve("in"));
