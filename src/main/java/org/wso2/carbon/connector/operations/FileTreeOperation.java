@@ -153,6 +153,12 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             return name.replace("?", "%3F").replace("#", "%23");
         }
 
+        // The name of a folder in filesLeft. The source folder itself has no relative name, so it shows its address,
+        // with the password masked, because the response can reach a client.
+        static String label(String path, String relative) {
+            return relative.isEmpty() ? UriMask.mask(path) : relative;
+        }
+
         static String childPath(String parent, String child) {
             int query = parent.indexOf('?');
             String path = query < 0 ? parent : parent.substring(0, query);
@@ -280,7 +286,7 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             // A test can stop the walk here, after the listing and before any child moves or goes.
             hold("walk.after-listing", path);
             if (targetFailure != null && children.length == 0) {
-                recordFailure(path, relative.isEmpty() ? path : relative, targetFailure);
+                recordFailure(path, label(path, relative), targetFailure);
             }
             for (FileObject child : children) {
                 String name = child.getName().getBaseName();

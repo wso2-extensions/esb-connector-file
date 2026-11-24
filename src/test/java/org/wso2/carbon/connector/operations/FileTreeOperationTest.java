@@ -93,6 +93,14 @@ public class FileTreeOperationTest {
         return (JsonObject) ((ConnectorResponse) message.getVariable(response)).getPayload();
     }
 
+    @Test
+    public void sourceFolderInFilesLeftShowsItsAddressWithTheMaskedPassword() {
+        // The connector tests have no server with a password, so the label rule is checked on its own.
+        Assert.assertEquals(FileTreeOperation.Walk.label("sftp://user:secret-word@host/in", ""),
+                "sftp://user:***@host/in");
+        Assert.assertEquals(FileTreeOperation.Walk.label("sftp://user:secret-word@host/in/sub", "sub"), "sub");
+    }
+
     private static void success(JsonObject result) {
         Assert.assertFalse(result.has("error"), result.toString());
     }
