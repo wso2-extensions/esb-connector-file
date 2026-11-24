@@ -62,6 +62,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 public final class OperationFrame {
     public enum Lock { LOCAL, WHOLE, OWN, GUARD, NONE, READ_INPUT }
@@ -187,7 +188,8 @@ public final class OperationFrame {
     private final MessageContext message;
     private final ConnectionContext context;
     private final String operation;
-    private final long started;
+    // The lock wait budget counts only the time spent in the lock calls that wait and in the pauses between tries.
+    private long waited;
     private final Set<String> warned = new HashSet<>();
     private final Map<String, StreamLease.Lending> lent = new LinkedHashMap<>();
     private final Set<String> removed = new HashSet<>();
@@ -198,7 +200,6 @@ public final class OperationFrame {
         this.connection = connection;
         pool = ConnectionHandler.getConnectionHandler();
         operation = Long.toString(IDS.incrementAndGet());
-        started = context.now();
     }
 
     public static <T> T run(MessageContext message, String connection, Integer maxRetries, Operation<T> op)
@@ -604,7 +605,16 @@ public final class OperationFrame {
     }
 
     private long remaining() {
-        return Math.max(0, 10000 - (context.now() - started));
+        return Math.max(0, 10000 - waited);
+    }
+
+    private LockOutcome waiting(Supplier<LockOutcome> call) {
+        long begin = context.now();
+        try {
+            return call.get();
+        } finally {
+            waited += context.now() - begin;
+        }
     }
 
     private long gap() {
@@ -612,6 +622,7 @@ public final class OperationFrame {
     }
 
     private void pause() throws Failure {
+        long begin = context.now();
         long wait = Math.min(5000, remaining());
         long end = context.now() + wait;
         try {
@@ -622,6 +633,8 @@ public final class OperationFrame {
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             throw local(Error.FILE_LOCKING_ERROR, "Interrupted while waiting for a file lock");
+        } finally {
+            waited += context.now() - begin;
         }
     }
 
@@ -690,7 +703,7 @@ public final class OperationFrame {
     }
 
     private void enter(Attempt attempt, String path) throws Failure {
-        LockOutcome outcome = context.getShareLock().enterLocalOnly(path, 3, gap());
+        LockOutcome outcome = waiting(() -> context.getShareLock().enterLocalOnly(path, 3, gap()));
         checked(attempt, outcome);
         attempt.own(path, outcome.handle, false);
     }
@@ -747,11 +760,11 @@ public final class OperationFrame {
         }
         if (mode == Lock.WHOLE || idle && mode == Lock.LOCAL) {
             HeldLock handle = attempt.lock(path);
-            acquired(attempt, handle.lockShare(attempt.io, 3, 5000, remaining()));
+            acquired(attempt, waiting(() -> handle.lockShare(attempt.io, 3, 5000, remaining())));
             attempt.own(path, handle, true);
         } else if (mode == Lock.OWN || idle) {
-            LockOutcome result = context.getShareLock().acquireWithWait(attempt.io, lockPath, ShareLock.Mode.WRITER,
-                    3, gap());
+            LockOutcome result = waiting(() -> context.getShareLock().acquireWithWait(attempt.io, lockPath,
+                    ShareLock.Mode.WRITER, 3, gap()));
             acquired(attempt, result);
             attempt.own(path, result.handle, true);
         } else if (mode == Lock.GUARD) {
@@ -767,7 +780,7 @@ public final class OperationFrame {
     }
 
     void acquireCommitLock(Attempt attempt, String path) throws Failure {
-        acquired(attempt, attempt.lock(path).lockShare(attempt.io, 3, 5000, remaining()));
+        acquired(attempt, waiting(() -> attempt.lock(path).lockShare(attempt.io, 3, 5000, remaining())));
     }
 
     private void acquired(Attempt attempt, LockOutcome result) throws Failure {
