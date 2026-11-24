@@ -148,6 +148,45 @@ public class StreamLeaseTest {
     }
 
     @Test
+    public void reaperGoesOnAfterAFailedRound() throws Exception {
+        AtomicLong time = new AtomicLong();
+        AtomicInteger calls = new AtomicInteger();
+        CountDownLatch first = new CountDownLatch(1);
+        CountDownLatch second = new CountDownLatch(1);
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL")) {
+            ConnectionContext context = virtualContext(files, time::get, (lock, io) -> {
+                if (calls.incrementAndGet() == 1) {
+                    first.countDown();
+                    throw new IllegalStateException("The release failed");
+                }
+                second.countDown();
+                return lock.releaseChecked(io);
+            });
+            HeldLock failing = context.getShareLock().enterLocalOnly("file:///stream/" + files.name + "/1", 1, 0)
+                    .handle;
+            context.register(StreamLease.replay(context, "file:///stream/" + files.name + "/1", 17, 5, failing));
+            Thread worker = reaper(context);
+            time.set(10000);
+            HeldLock next = context.getShareLock().enterLocalOnly("file:///stream/" + files.name + "/2", 1, 0).handle;
+            StreamLease later = StreamLease.replay(context, "file:///stream/" + files.name + "/2", 17, 5, next);
+            context.register(later);
+            try {
+                time.set(IDLE + 1000);
+                context.wakeReaper();
+                Assert.assertTrue(first.await(5, TimeUnit.SECONDS));
+                time.set(IDLE + 11000);
+                context.wakeReaper();
+                Assert.assertTrue(second.await(5, TimeUnit.SECONDS), "The reaper stopped after a failed round");
+                worker.join(5000);
+                Assert.assertFalse(worker.isAlive());
+                Assert.assertEquals(later.reason(), StreamLease.Reason.IDLE_LIMIT);
+            } finally {
+                failing.abandon();
+            }
+        }
+    }
+
+    @Test
     public void twoLendersHaveOneWinnerAndRetirementLeavesItToTheOwner() throws Exception {
         try (FilePoolFixture files = new FilePoolFixture("LOCAL")) {
             ConnectionContext context = files.factory.getContext();

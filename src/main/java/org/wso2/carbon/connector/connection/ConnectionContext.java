@@ -355,6 +355,11 @@ public final class ConnectionContext implements StreamLease.Owner, EndpointHealt
                     lease.expire(now());
                 }
                 releaseOne();
+            } catch (RuntimeException failure) {
+                // A lease or a lock that failed here is already out of the set or the queue, so the next round
+                // does not meet it again.
+                registration.health().namedLog().warn("A round of the stream reaper failed. The reaper goes on. "
+                        + failure);
             } finally {
                 roundEvent("reaper.round.end");
             }
