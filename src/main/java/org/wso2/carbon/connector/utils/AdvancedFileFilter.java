@@ -48,11 +48,16 @@ public class AdvancedFileFilter implements FileFilter {
     public AdvancedFileFilter(String filterType, String includePattern, String excludePattern,
                               String maxFileAge, String minFileAge) {
         this.filterType = StringUtils.isEmpty(filterType) ? "regex" : filterType.toLowerCase();
+        // An unknown type would compile no pattern, so every file would pass.
+        if (!"regex".equals(this.filterType) && !"ant".equals(this.filterType)) {
+            throw new IllegalArgumentException("The parameter fileFilterType has the value '" + filterType
+                    + "'. Use regex or ant.");
+        }
         this.includePattern = includePattern;
         this.excludePattern = excludePattern;
         
-        this.maxFileAgeMillis = duration(maxFileAge);
-        this.minFileAgeMillis = duration(minFileAge);
+        this.maxFileAgeMillis = duration("maxFileAge", maxFileAge);
+        this.minFileAgeMillis = duration("minFileAge", minFileAge);
 
         // Compile patterns based on filter type
         if ("regex".equals(this.filterType)) {
@@ -73,7 +78,8 @@ public class AdvancedFileFilter implements FileFilter {
         }
     }
 
-    private static long duration(String age) {
+    // An age that does not parse is refused, because an age filter that is off lets every file pass.
+    private static long duration(String parameter, String age) {
         if (StringUtils.isEmpty(age)) {
             return -1;
         }
@@ -88,8 +94,9 @@ public class AdvancedFileFilter implements FileFilter {
         String value = unit == TimeUnit.MILLISECONDS ? age : age.substring(0, age.length() - 1);
         try {
             return unit.toMillis(Long.parseLong(value));
-        } catch (NumberFormatException ignored) {
-            return -1;
+        } catch (NumberFormatException invalid) {
+            throw new IllegalArgumentException("The parameter " + parameter + " has the value '" + age
+                    + "', which is not a number with an optional unit d, h, m or s.");
         }
     }
 

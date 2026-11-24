@@ -94,6 +94,27 @@ public class FileTreeOperationTest {
     }
 
     @Test
+    public void unknownFilterTypeOrAnAgeThatDoesNotParseIsRefusedBeforeAnyFileIsTouched() throws Exception {
+        Path dir = WriteFileTest.directory();
+        Files.createDirectories(dir.resolve("in"));
+        Files.writeString(dir.resolve("in/a.csv"), "A");
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+            JsonObject delete = invoke(new DeleteFileOrFolder(), WriteFileTest.message(files), "path", "/in",
+                    "fileFilterType", "glob", "includeFiles", "*.csv");
+            error(delete, "700107");
+            Assert.assertTrue(delete.toString().contains("fileFilterType") && delete.toString().contains("glob"),
+                    delete.toString());
+            JsonObject move = invoke(new MoveFiles(), WriteFileTest.message(files), "sourcePath", "/in",
+                    "targetPath", "/out", "createParentDirectories", "true", "maxFileAge", "one day");
+            error(move, "700107");
+            Assert.assertTrue(move.toString().contains("maxFileAge") && move.toString().contains("one day"),
+                    move.toString());
+        }
+        Assert.assertEquals(Files.readString(dir.resolve("in/a.csv")), "A");
+        Assert.assertFalse(Files.exists(dir.resolve("out")));
+    }
+
+    @Test
     public void deleteWithAPatternOrAFilterStaysAtTheFirstLevelAndKeepsTheFolder() throws Exception {
         for (String[] filter : new String[][] {{"matchingPattern", ".*\\.csv"}, {"includeFiles", ".*\\.csv"}}) {
             Path dir = WriteFileTest.directory();
