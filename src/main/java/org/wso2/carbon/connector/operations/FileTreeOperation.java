@@ -299,19 +299,30 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                 if (finished.contains(childPath)) {
                     continue;
                 }
-                if (child.isSymbolicLink() || child.isFolder() && guard.reservedDirectory(child)) {
-                    // An empty temp folder of ours goes with the folder that the walk removes.
-                    if (removesSource() && targetFailure == null && !(deleting() && filtered)
-                            && !child.isSymbolicLink()
-                            && name.equals(attempt.handler().getContext().getConfiguration().getTempFolderName())
-                            && child.getChildren().length == 0 && child.delete()) {
+                boolean childFolder;
+                try {
+                    if (child.isSymbolicLink() || child.isFolder() && guard.reservedDirectory(child)) {
+                        // An empty temp folder of ours goes with the folder that the walk removes.
+                        if (removesSource() && targetFailure == null && !(deleting() && filtered)
+                                && !child.isSymbolicLink()
+                                && name.equals(attempt.handler().getContext().getConfiguration().getTempFolderName())
+                                && child.getChildren().length == 0 && child.delete()) {
+                            continue;
+                        }
+                        left.put(label, "RESERVED");
                         continue;
                     }
-                    left.put(label, "RESERVED");
+                    childFolder = child.isFolder();
+                } catch (Exception error) {
+                    if (transport(attempt, error) || attempt.handlerDiscarded()) {
+                        throw error;
+                    }
+                    // A member whose type can not be read stays where it is, and the walk goes on.
+                    recordFailure(childPath, label, failure(Error.OPERATION_ERROR, error.getMessage(), childPath));
                     continue;
                 }
                 FileObject to = target == null ? null : target.resolveFile(escape(name), NameScope.CHILD);
-                if (child.isFolder()) {
+                if (childFolder) {
                     if (!(deleting() && filtered)) {
                         walk(attempt, child, to, childPath, label, targetFailure);
                     }
@@ -342,15 +353,15 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                 observe("delete.before-lock", path);
                 hold("delete.before-lock", path);
             }
-            if (!source.isFolder() && !guard.accepts(source)) {
-                if (folder) {
-                    left.put(label, "FILTERED");
-                    finished.add(path);
-                    return;
-                }
-                throw failure(Error.OPERATION_ERROR, "The source did not pass the file guards", path);
-            }
             try {
+                if (!source.isFolder() && !guard.accepts(source)) {
+                    if (folder) {
+                        left.put(label, "FILTERED");
+                        finished.add(path);
+                        return;
+                    }
+                    throw failure(Error.OPERATION_ERROR, "The source did not pass the file guards", path);
+                }
                 if (folder) {
                     attempt.member(path);
                 }

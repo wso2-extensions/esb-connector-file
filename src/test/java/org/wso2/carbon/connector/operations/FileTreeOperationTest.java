@@ -25,6 +25,7 @@ import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.data.connector.ConnectorResponse;
 import org.apache.synapse.mediators.template.TemplateContext;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -42,7 +43,10 @@ import org.wso2.vfs.shared.write.AtomicWriter;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -145,6 +149,47 @@ public class FileTreeOperationTest {
                     "matchingPattern", ".*\\.csv"));
             Assert.assertFalse(Files.exists(dir.resolve("in/a.csv")));
             Assert.assertTrue(Files.isDirectory(dir.resolve("in")));
+        }
+    }
+
+    @Test
+    public void memberWhoseTypeCanNotBeReadIsLeftAndTheWalkGoesOn() throws Exception {
+        for (String operation : new String[] {"move", "copy", "delete"}) {
+            Path dir = WriteFileTest.directory();
+            Path sub = Files.createDirectories(dir.resolve("in/sub"));
+            Files.writeString(dir.resolve("in/a.csv"), "A");
+            Files.writeString(sub.resolve("x.csv"), "X");
+            // With no search right on the folder its listing works and the type look of a member fails, as an SMB2
+            // file with no rights refuses the open for its attributes.
+            Files.setPosixFilePermissions(sub, PosixFilePermissions.fromString("r--r--r--"));
+            try {
+                try {
+                    Files.readAttributes(sub.resolve("x.csv"), BasicFileAttributes.class);
+                    throw new SkipException("This user reads a file with no rights on its folder");
+                } catch (AccessDeniedException expected) {
+                    // The fixture works.
+                }
+                try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+                    JsonObject result = operation.equals("delete")
+                            ? invoke(new DeleteFileOrFolder(), WriteFileTest.message(files), "path", "/in")
+                            : invoke(operation.equals("move") ? new MoveFiles() : new CopyFiles(),
+                                    WriteFileTest.message(files), "sourcePath", "/in", "targetPath", "/out",
+                                    "createParentDirectories", "true");
+                    error(result, "700108");
+                    Set<String> left = new HashSet<>();
+                    for (JsonElement item : result.getAsJsonArray("filesLeft")) {
+                        left.add(item.getAsJsonObject().get("name").getAsString());
+                    }
+                    Assert.assertEquals(left, Set.of("sub/x.csv"), operation);
+                }
+            } finally {
+                Files.setPosixFilePermissions(sub, PosixFilePermissions.fromString("rwxr-xr-x"));
+            }
+            Assert.assertEquals(Files.readString(sub.resolve("x.csv")), "X", operation);
+            Assert.assertEquals(Files.exists(dir.resolve("in/a.csv")), operation.equals("copy"), operation);
+            if (!operation.equals("delete")) {
+                Assert.assertEquals(Files.readString(dir.resolve("out/a.csv")), "A", operation);
+            }
         }
     }
 
