@@ -47,6 +47,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 abstract class FileTreeOperation extends OperationFrame.Mediator {
     abstract Walk operation(MessageContext message) throws InvalidConfigurationException;
@@ -91,6 +92,8 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
         private final boolean own;
         private final boolean includeParent;
         private final Pattern pattern;
+        // A pattern that does not compile. Only the move of a single file, which 6.x never matched, goes on with it.
+        private final PatternSyntaxException invalidPattern;
         private final AdvancedFileFilter filter;
         private final long interval;
         // A pattern or a filter is set. A delete with one stays at the first level, and a delete or a move with one
@@ -134,7 +137,17 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
             boolean advanced = include != null || exclude != null || minAge != null || maxAge != null || stability != null;
             filtered = legacy != null || advanced;
             boolean advancedCopyOrMove = advanced && ("copyFiles".equals(name) || "moveFiles".equals(name));
-            pattern = legacy == null || advancedCopyOrMove ? null : Pattern.compile(legacy);
+            Pattern compiled = null;
+            PatternSyntaxException invalid = null;
+            if (legacy != null && !advancedCopyOrMove) {
+                try {
+                    compiled = Pattern.compile(legacy);
+                } catch (PatternSyntaxException error) {
+                    invalid = error;
+                }
+            }
+            pattern = compiled;
+            invalidPattern = invalid;
             filter = new AdvancedFileFilter(option(message, "fileFilterType"), include, exclude, maxAge, minAge);
             retries = Integer.parseInt(Utils.lookUpStringParam(message, "maxRetries", "1"));
         }
@@ -234,6 +247,9 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                         "The source does not exist", root);
             }
             folder = source.isFolder() && walksFolder();
+            if (invalidPattern != null && (folder || !"moveFiles".equals(name))) {
+                throw failure(Error.INVALID_CONFIGURATION, invalidPattern.getMessage(), root);
+            }
             if (source.isSymbolicLink() || source.isFolder() && guard.reservedDirectory(source)) {
                 throw failure(Error.OPERATION_ERROR, "The source did not pass the file guards", root);
             }

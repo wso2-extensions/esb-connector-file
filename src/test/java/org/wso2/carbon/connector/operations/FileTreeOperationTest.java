@@ -202,6 +202,28 @@ public class FileTreeOperationTest {
     }
 
     @Test
+    public void onlyTheMoveOfASingleFileGoesOnWithAPatternThatDoesNotCompile() throws Exception {
+        Path dir = WriteFileTest.directory();
+        Files.createDirectories(dir.resolve("in"));
+        Files.createDirectories(dir.resolve("out"));
+        Files.writeString(dir.resolve("in/a.csv"), "A");
+        Files.writeString(dir.resolve("in/b.csv"), "B");
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+            // 6.x never read the pattern for the move of a single file.
+            success(invoke(new MoveFiles(), WriteFileTest.message(files), "sourcePath", "/in/a.csv",
+                    "targetPath", "/out", "filePattern", "*.csv"));
+            Assert.assertEquals(Files.readString(dir.resolve("out/a.csv")), "A");
+            error(invoke(new CopyFiles(), WriteFileTest.message(files), "sourcePath", "/in/b.csv",
+                    "targetPath", "/out", "sourceFilePattern", "*.csv"), "700107");
+            error(invoke(new MoveFiles(), WriteFileTest.message(files), "sourcePath", "/in",
+                    "targetPath", "/out", "filePattern", "*.csv"), "700107");
+            error(invoke(new DeleteFileOrFolder(), WriteFileTest.message(files), "path", "/in",
+                    "matchingPattern", "*.csv"), "700107");
+            Assert.assertEquals(Files.readString(dir.resolve("in/b.csv")), "B");
+        }
+    }
+
+    @Test
     public void deleteWithAPatternKeepsTheFolderWhenNothingIsLeftInIt() throws Exception {
         Path dir = WriteFileTest.directory();
         Files.createDirectories(dir.resolve("in"));
