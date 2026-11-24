@@ -24,6 +24,7 @@ import org.wso2.carbon.connector.frame.OperationFrame;
 import org.wso2.carbon.connector.frame.StreamLease;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
 import org.wso2.org.apache.commons.vfs2.provider.CommitStep;
 import org.wso2.vfs.shared.lock.LockIo;
@@ -39,7 +40,7 @@ public class CopyFiles extends FileTreeOperation {
         return new Copy(message);
     }
 
-    static final class Copy extends Walk {
+    static class Copy extends Walk {
         private final boolean atomic;
         private AtomicWriter.Temp staged;
         private boolean transferred;
@@ -123,9 +124,18 @@ public class CopyFiles extends FileTreeOperation {
             byte[] buffer = new byte[8192];
             try (InputStream input = source.getContent().getInputStream()) {
                 int read;
-                while ((read = input.read(buffer)) != -1) {
-                    output.write(buffer, 0, read);
-                    attempt.progress().reset("transfer");
+                try {
+                    while ((read = input.read(buffer)) != -1) {
+                        output.write(buffer, 0, read);
+                        attempt.progress().reset("transfer");
+                    }
+                } catch (IOException error) {
+                    // The source and the temp file are on two clients of this connection. The abort makes both
+                    // closes fail at once, so a cut is detected once and not again in each close.
+                    if (transport(attempt, error)) {
+                        ((DefaultFileSystemManager) attempt.handler().getFsManager()).abortAll();
+                    }
+                    throw error;
                 }
             }
         }
