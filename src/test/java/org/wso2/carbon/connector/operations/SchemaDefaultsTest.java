@@ -104,6 +104,25 @@ public class SchemaDefaultsTest {
         }
     }
 
+    @DataProvider(name = "resultFields")
+    public Object[][] resultFields() {
+        return new Object[][]{{"move", "success inferred targetComplete filesMoved filesLeft error"},
+                {"rename", "success inferred targetComplete error"}, {"copy", "success targetComplete filesLeft error"},
+                {"delete", "success numOfDeletedFiles filesLeft error"}};
+    }
+
+    @Test(dataProvider = "resultFields")
+    public void outputSchemaKnowsTheResultFields(String schema, String fields) throws Exception {
+        try (InputStream json = resource("outputschema/" + schema + ".json")) {
+            JsonObject payload = new JsonParser().parse(new InputStreamReader(json, StandardCharsets.UTF_8))
+                    .getAsJsonObject().getAsJsonObject("properties").getAsJsonObject("payload");
+            Assert.assertTrue(payload.has("properties"), schema);
+            for (String field : fields.split(" ")) {
+                Assert.assertTrue(payload.getAsJsonObject("properties").has(field), schema + "." + field);
+            }
+        }
+    }
+
     private InputStream resource(String name) {
         InputStream input = getClass().getClassLoader().getResourceAsStream(name);
         Assert.assertNotNull(input, name);

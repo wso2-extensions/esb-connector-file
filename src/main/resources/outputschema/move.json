@@ -12,6 +12,39 @@
                     "type": "boolean",
                     "description": "Indicates whether the operation was successful."
                 },
+                "inferred": {
+                    "type": "boolean",
+                    "description": "True when a retry after a lost reply found the source gone and the target matching, so the operation is reported as done by inference."
+                },
+                "targetComplete": {
+                    "type": "boolean",
+                    "description": "True when the operation failed but the target is complete, for example when the source could not be deleted after the copy."
+                },
+                "filesMoved": {
+                    "type": "array",
+                    "description": "The members of the source folder that were moved, relative to the source folder.",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "filesLeft": {
+                    "type": "array",
+                    "description": "The members of the folder that the operation left in place.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "The member, relative to the folder."
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "Why the member was left: FILTERED, RESERVED, LOCKED, REMOVED, APPLICATION_ERROR, UNCLEAR, or the name of the error of the member."
+                            }
+                        },
+                        "required": ["name", "reason"]
+                    }
+                },
                 "error": {
                     "type": "object",
                     "description": "Error information if the operation was unsuccessful.",
