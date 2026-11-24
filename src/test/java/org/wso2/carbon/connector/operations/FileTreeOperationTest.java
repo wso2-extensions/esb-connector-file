@@ -140,6 +140,25 @@ public class FileTreeOperationTest {
     }
 
     @Test
+    public void moveWithAPatternOrAFilterKeepsItsFoldersAndWalksEverySubFolder() throws Exception {
+        for (String[] filter : new String[][] {{"filePattern", ".*\\.csv"}, {"includeFiles", ".*\\.csv"}}) {
+            Path dir = WriteFileTest.directory();
+            Path folder = Files.createDirectories(dir.resolve("in/sub"));
+            Files.writeString(dir.resolve("in/a.csv"), "A");
+            Files.writeString(folder.resolve("b.csv"), "B");
+            try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+                success(invoke(new MoveFiles(), WriteFileTest.message(files), "sourcePath", "/in",
+                        "targetPath", "/out", "createParentDirectories", "true", filter[0], filter[1]));
+                Assert.assertEquals(Files.readString(dir.resolve("out/a.csv")), "A", filter[0]);
+                Assert.assertEquals(Files.readString(dir.resolve("out/sub/b.csv")), "B", filter[0]);
+                // Every file matched, and the source folder and its emptied sub folder stay, as with 6.x.
+                Assert.assertTrue(Files.isDirectory(dir.resolve("in")), filter[0]);
+                Assert.assertTrue(Files.isDirectory(folder), filter[0]);
+            }
+        }
+    }
+
+    @Test
     public void deleteWithAPatternKeepsTheFolderWhenNothingIsLeftInIt() throws Exception {
         Path dir = WriteFileTest.directory();
         Files.createDirectories(dir.resolve("in"));
@@ -374,7 +393,8 @@ public class FileTreeOperationTest {
             Assert.assertEquals(move.getAsJsonArray("filesMoved").size(), 2, move.toString());
             Assert.assertEquals(Files.readString(dir.resolve("dest/sub/a.csv")), "A");
             Assert.assertEquals(Files.readString(dir.resolve("dest/emptyAfterMove/b.csv")), "B");
-            Assert.assertFalse(Files.exists(empty));
+            // A move with a filter keeps its folders, as 6.x did.
+            Assert.assertTrue(Files.isDirectory(empty));
             Assert.assertEquals(Files.readString(nested.resolve("keep.txt")), "left");
             JsonObject delete = invoke(new DeleteFileOrFolder(), ctx, "path", "/src");
             success(delete);

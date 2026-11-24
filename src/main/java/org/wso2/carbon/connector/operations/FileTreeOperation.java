@@ -96,7 +96,8 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
         private final String namedMovePattern;
         private final AdvancedFileFilter filter;
         private final long interval;
-        // A pattern or a filter is set. A delete with one stays at the first level and keeps the folder, as 6.x did.
+        // A pattern or a filter is set. A delete with one stays at the first level, and a delete or a move with one
+        // keeps its folders, as 6.x did.
         private final boolean filtered;
         private String root;
         private String targetDir;
@@ -303,7 +304,7 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                 try {
                     if (child.isSymbolicLink() || child.isFolder() && guard.reservedDirectory(child)) {
                         // An empty temp folder of ours goes with the folder that the walk removes.
-                        if (removesSource() && targetFailure == null && !(deleting() && filtered)
+                        if (removesSource() && targetFailure == null && !filtered
                                 && !child.isSymbolicLink()
                                 && name.equals(attempt.handler().getContext().getConfiguration().getTempFolderName())
                                 && child.getChildren().length == 0 && child.delete()) {
@@ -330,7 +331,7 @@ abstract class FileTreeOperation extends OperationFrame.Mediator {
                     visit(attempt, child, to, childPath, label, targetFailure);
                 }
             }
-            if (removesSource() && targetFailure == null && !(deleting() && filtered)) {
+            if (removesSource() && targetFailure == null && !filtered) {
                 dir.refresh();
                 if (dir.getChildren().length == 0 && !dir.delete() && AtomicOps.existsNow(dir)) {
                     dir.refresh();
