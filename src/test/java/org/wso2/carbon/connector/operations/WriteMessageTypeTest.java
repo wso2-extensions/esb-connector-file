@@ -38,6 +38,7 @@ import org.apache.synapse.commons.json.JsonStreamFormatter;
 import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.mediators.template.TemplateContext;
+import org.apache.synapse.transport.passthru.PassThroughConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -49,9 +50,11 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.Stack;
 import javax.activation.DataHandler;
 
@@ -63,6 +66,9 @@ public class WriteMessageTypeTest {
 
     private static final String PAYLOAD = "http://ws.apache.org/commons/ns/payload";
     private static final byte[] CONTENT = new byte[4096];
+    // A PNG image of one pixel.
+    private static final byte[] PNG = Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+            + "AAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
 
     static {
         for (int i = 0; i < CONTENT.length; i++) {
@@ -188,6 +194,45 @@ public class WriteMessageTypeTest {
         }
     }
 
+    @DataProvider(name = "reply")
+    public Object[][] reply() {
+        return new Object[][]{{"png", null, "application/octet-stream"}, {"random", null, "application/octet-stream"},
+                {"png", "image/png", "application/octet-stream"}, {"random", "application/pdf", "application/pdf"}};
+    }
+
+    // A reply of type BYTES as the Solace connector 2.0.1 puts it on the body. With no content type on the reply it
+    // is application/octet-stream: the relay builder of that type holds the bytes, the message type and ContentType
+    // name it, setCharacterEncoding is false and the charset is removed. A declared type with no builder of its own,
+    // as image/png, keeps the message type application/octet-stream and ContentType names the declared type. A
+    // declared type with the relay pair of the pack, as application/pdf, is the message type itself. A write with
+    // mime Automatic, the body kept and Overwrite gives the bytes, and a second write of the kept body as well.
+    @Test(dataProvider = "reply")
+    public void bytesReplyIsWrittenAsItsBytes(String content, String declared, String messageType) throws Exception {
+        byte[] bytes = PNG;
+        if ("random".equals(content)) {
+            bytes = new byte[100 * 1024];
+            new Random(7).nextBytes(bytes);
+        }
+        String type = declared == null ? "application/octet-stream" : declared;
+        Path directory = WriteFileTest.directory();
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            Axis2MessageContext message = message(files);
+            MessageContext axis = message.getAxis2MessageContext();
+            // The flow came with JSON before the reply replaced the body.
+            axis.setProperty(Constants.Configuration.MESSAGE_TYPE, "application/json");
+            axis.setEnvelope(TransportUtils.createSOAPEnvelope(new BinaryRelayBuilder().processDocument(
+                    new ByteArrayInputStream(bytes), type, axis)));
+            axis.setProperty(Constants.Configuration.MESSAGE_TYPE, messageType);
+            axis.setProperty(Constants.Configuration.CONTENT_TYPE, type);
+            axis.setProperty(Constants.Configuration.SET_CONTENT_TYPE_CHARACTER_ENCODING, "false");
+            axis.setProperty(PassThroughConstants.MESSAGE_BUILDER_INVOKED, Boolean.TRUE);
+            write(message, "target", "Automatic", false, false);
+            Assert.assertEquals(Files.readAllBytes(directory.resolve("target")), bytes);
+            write(message, "second", "Automatic", false, false);
+            Assert.assertEquals(Files.readAllBytes(directory.resolve("second")), bytes);
+        }
+    }
+
     // The message type of the flow when the write sets none, else the type of the write.
     private static String type(MessageContext axis, String type, boolean mimeSet) {
         if (mimeSet) {
@@ -226,6 +271,7 @@ public class WriteMessageTypeTest {
         configuration.addMessageFormatter("application/json", new JsonStreamFormatter());
         configuration.addMessageFormatter("application/octet-stream", new ExpandingMessageFormatter());
         configuration.addMessageFormatter("application/binary", new BinaryFormatter());
+        configuration.addMessageFormatter("application/pdf", new ExpandingMessageFormatter());
         axis.setOperationContext(new OperationContext());
         return message;
     }
