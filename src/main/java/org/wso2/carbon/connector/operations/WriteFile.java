@@ -19,22 +19,24 @@
 package org.wso2.carbon.connector.operations;
 
 import com.google.gson.JsonObject;
+import org.apache.axiom.om.OMContainer;
 import org.apache.axiom.om.OMElement;
+import org.apache.axiom.om.OMNode;
 import org.apache.axiom.om.OMOutputFormat;
-import org.apache.axiom.om.OMXMLParserWrapper;
-import org.apache.axiom.soap.SOAPBody;
-import org.apache.axiom.soap.SOAPFault;
+import org.apache.axiom.om.OMSourcedElement;
+import org.apache.axiom.om.impl.OMContainerEx;
+import org.apache.axiom.om.impl.OMNodeEx;
 import org.apache.axis2.format.BinaryFormatter;
 import org.apache.axis2.format.PlainTextFormatter;
 import org.apache.axis2.transport.MessageFormatter;
 import org.apache.axis2.transport.base.BaseConstants;
 import org.apache.axis2.transport.base.BaseTransportException;
 import org.apache.axis2.transport.base.BaseUtils;
-import org.apache.axis2.transport.http.ApplicationXMLFormatter;
 import org.apache.axis2.util.MessageProcessorSelector;
 import org.apache.commons.io.output.CloseShieldOutputStream;
 import org.apache.commons.io.output.CountingOutputStream;
 import org.apache.synapse.MessageContext;
+import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.commons.vfs.VFSUtils;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.util.InlineExpressionUtil;
@@ -111,10 +113,10 @@ public class WriteFile extends OperationFrame.Mediator {
         try {
             long bytes = runFrame(message, Utils.getConnectionName(message), write.retries, write,
                     "write", responseVariable, overwriteBody);
-            if (write.consumedDocument != null) {
-                // The file commit succeeded. Release the consumed standalone input before
-                // the connector core removes it from the original SOAP body.
-                write.consumedDocument.close(false);
+            if (write.replaceBody && !write.hasContent()) {
+                // The file commit succeeded. Close what the write left of the body before the connector core
+                // removes the body, so that the removal does not read a parser that the write has spent.
+                closeSpent(((Axis2MessageContext) message).getAxis2MessageContext().getEnvelope());
             }
             JsonObject result = generateOperationResult(message, new FileOperationResult("write", true, (int) bytes));
             handleConnectorResponse(message, responseVariable, overwriteBody, result, null, null);
@@ -128,7 +130,6 @@ public class WriteFile extends OperationFrame.Mediator {
     private final class Write implements OperationFrame.Operation<Long> {
         private NamedLog operationLog;
         private final boolean replaceBody;
-        private OMElement consumedDocument;
         final MessageContext message;
         final String relative;
         final String filename;
@@ -577,11 +578,13 @@ public class WriteFile extends OperationFrame.Mediator {
                 }
                 MessageFormatter formatter = streaming ? new ExpandingMessageFormatter() : getMessageFormatter(axis);
                 OMOutputFormat format = BaseUtils.getOMOutputFormat(axis);
-                OMElement input = standaloneResponseInput(axis, formatter);
+                // A body that is not built yet is pulled from its parser and lost unless the formatter keeps it.
+                // A JSON stream body is written again from its buffered stream, so it needs no tree.
+                boolean keep = !replaceBody && !streaming && !unexpandedJson(axis);
                 attempt.payloadStarted();
                 targetFailed = false;
                 try {
-                    formatter.writeTo(axis, format, output, false);
+                    formatter.writeTo(axis, format, output, keep);
                 } catch (IOException | RuntimeException failure) {
                     if (targetFailed) {
                         throw failure;
@@ -591,9 +594,6 @@ public class WriteFile extends OperationFrame.Mediator {
                     body.setFault(Fault.APPLICATION);
                     throw body;
                 }
-                if (input != null && !input.isComplete() && !input.getBuilder().isCache()) {
-                    consumedDocument = input;
-                }
             }
             if (newline && (hasContent() || !compress)) {
                 output.write(Const.NEW_LINE.toString().getBytes(encoding));
@@ -601,21 +601,10 @@ public class WriteFile extends OperationFrame.Mediator {
             return output.getByteCount();
         }
 
-        private OMElement standaloneResponseInput(org.apache.axis2.context.MessageContext axis,
-                                                  MessageFormatter formatter) {
-            if (!replaceBody || formatter.getClass() != ApplicationXMLFormatter.class) {
-                return null;
-            }
-            SOAPBody body = axis.getEnvelope().getBody();
-            OMElement first = body.getFirstElement();
-            if (first == null || first instanceof SOAPFault || first.isComplete()) {
-                return null;
-            }
-            OMXMLParserWrapper builder = first.getBuilder();
-            if (builder == null || builder == body.getBuilder() || builder == axis.getEnvelope().getBuilder()) {
-                return null;
-            }
-            return builder.getDocumentElement() == first ? first : null;
+        private boolean unexpandedJson(org.apache.axis2.context.MessageContext axis) {
+            OMElement first = axis.getEnvelope().getBody().getFirstElement();
+            return JsonUtil.hasAJsonPayload(axis) && first instanceof OMSourcedElement
+                    && !((OMSourcedElement) first).isExpanded();
         }
 
         private long insert(FileObject target, OutputStream destination, Attempt attempt) throws IOException {
@@ -673,6 +662,24 @@ public class WriteFile extends OperationFrame.Mediator {
             if (newline) {
                 output.append(Const.NEW_LINE);
             }
+        }
+    }
+
+    // Marks each element the write pulled from its parser as complete and closes that parser. Only nodes that
+    // are built are visited, so no parser is read.
+    private static void closeSpent(OMContainer container) {
+        if (container instanceof OMElement) {
+            OMElement element = (OMElement) container;
+            if (!element.isComplete() && element.getBuilder() != null && !element.getBuilder().isCache()) {
+                element.close(false);
+            }
+        }
+        OMNode child = ((OMContainerEx) container).getFirstOMChildIfAvailable();
+        while (child != null) {
+            if (child instanceof OMContainer) {
+                closeSpent((OMContainer) child);
+            }
+            child = ((OMNodeEx) child).getNextOMSiblingIfAvailable();
         }
     }
 
