@@ -15,6 +15,8 @@
  */
 package org.wso2.carbon.connector.operations;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.apache.axiom.om.OMAbstractFactory;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMSourcedElement;
@@ -54,7 +56,8 @@ import java.util.Stack;
 /**
  * A JSON file is read into memory to its end and then turned into XML as before, so every file that was read before
  * gives the same result. Only when that conversion runs out of stack, as a long JSON array does on the runtime, does
- * the body keep the JSON form, checked by a reader that walks with its own stack.
+ * a read into a variable keep the JSON form, checked by a reader that walks with its own stack. A read into the body
+ * then fails with 700108.
  */
 public class ReadJsonArrayTest {
 
@@ -196,17 +199,16 @@ public class ReadJsonArrayTest {
         }
     }
 
-    // A conversion that runs out of stack once, before the element is expanded or after it is expanded in part. The
-    // read passes, the body keeps the JSON form with the bytes of the file, and a second read works.
+    // A conversion that runs out of stack once, before the element is expanded or after it is expanded in part. A read
+    // into a variable passes with the JSON of the file, the body and its properties stay, and a second read works.
     @DataProvider(name = "overflows")
     public Object[][] overflows() {
-        return new Object[][]{{false, true, "application/json"}, {false, false, "application/json"},
-                {true, true, "application/json"}, {true, false, "application/json"},
-                {false, false, "application/json; charset=UTF-8"}, {true, false, "application/json; charset=UTF-8"}};
+        return new Object[][]{{false, "application/json"}, {true, "application/json"},
+                {false, "application/json; charset=UTF-8"}, {true, "application/json; charset=UTF-8"}};
     }
 
     @Test(dataProvider = "overflows")
-    public void conversionThatRunsOutOfStack(boolean expanded, boolean replace, String type) throws Exception {
+    public void conversionThatRunsOutOfStack(boolean expanded, String type) throws Exception {
         String json = array(5000);
         Path directory = WriteFileTest.directory();
         Files.write(directory.resolve("in.json"), json.getBytes(StandardCharsets.UTF_8));
@@ -214,20 +216,71 @@ public class ReadJsonArrayTest {
             Axis2MessageContext message = message(files, "xml");
             message.getAxis2MessageContext().getConfigurationContext().getAxisConfiguration()
                     .addMessageBuilder("application/json", new DeepJsonBuilder(expanded));
-            read(message, type, replace, 1);
-            org.apache.axis2.context.MessageContext axis = message.getAxis2MessageContext();
-            if (replace) {
-                OMElement body = axis.getEnvelope().getBody().getFirstElement();
-                Assert.assertFalse(((OMSourcedElement) body).isExpanded());
-                Assert.assertEquals(JsonUtil.jsonPayloadToString(axis), json);
-            } else {
-                Assert.assertEquals(String.valueOf(((ConnectorResponse) message.getVariable("content")).getPayload()),
-                        json);
-            }
+            String before = state(message);
+            read(message, type, false, 1);
+            Assert.assertEquals(String.valueOf(((ConnectorResponse) message.getVariable("content")).getPayload()),
+                    json);
+            Assert.assertEquals(state(message), before);
             Axis2MessageContext next = message(files, "none");
             read(next, "application/json", true, 1);
             Assert.assertEquals(JsonUtil.jsonPayloadToString(next.getAxis2MessageContext()), json);
         }
+    }
+
+    // The same conversion in a read into the body fails that read with 700108, with a reply. The message is left as
+    // the read of a cut JSON file leaves it, and a second read works.
+    @Test(dataProvider = "overflows")
+    public void conversionThatRunsOutOfStackFailsTheReadIntoTheBody(boolean expanded, String type) throws Exception {
+        String json = array(5000);
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve("in.json"), json.getBytes(StandardCharsets.UTF_8));
+        Files.write(directory.resolve("cut.json"), "{\"a\":[1,2,".getBytes(StandardCharsets.UTF_8));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            Axis2MessageContext cut = message(files, "xml");
+            try {
+                read(cut, "/cut.json", type, true, 1);
+                Assert.fail("The cut file was read");
+            } catch (SynapseException expected) {
+                // The state it leaves is compared below.
+            }
+            Axis2MessageContext message = message(files, "xml");
+            message.getAxis2MessageContext().getConfigurationContext().getAxisConfiguration()
+                    .addMessageBuilder("application/json", new DeepJsonBuilder(expanded));
+            try {
+                read(message, type, true, 1);
+                Assert.fail("The read into the body passed");
+            } catch (SynapseException expected) {
+                Assert.assertTrue(expected.getMessage().startsWith("The file content could not be read as " + type),
+                        expected.getMessage());
+            }
+            Assert.assertEquals(String.valueOf(message.getProperty("ERROR_CODE")), "700108");
+            JsonObject error = JsonParser.parseString(JsonUtil.jsonPayloadToString(message.getAxis2MessageContext()))
+                    .getAsJsonObject().getAsJsonObject("error");
+            Assert.assertEquals(error.get("detail").getAsString(), "The file content could not be read as " + type
+                    + " caused by Error while building message from Stream");
+            Assert.assertEquals(state(message), state(cut));
+            Axis2MessageContext next = message(files, "none");
+            read(next, "application/json", true, 1);
+            Assert.assertEquals(JsonUtil.jsonPayloadToString(next.getAxis2MessageContext()), json);
+        }
+    }
+
+    // The body, the JSON stream with its kind and the properties that a read and its builder set. The cause in the
+    // detail of a failure is left out.
+    private static String state(Axis2MessageContext message) throws Exception {
+        org.apache.axis2.context.MessageContext axis = message.getAxis2MessageContext();
+        StringBuilder state = new StringBuilder(String.valueOf(message.getProperty("ERROR_CODE")));
+        OMElement body = axis.getEnvelope().getBody().getFirstElement();
+        state.append('|').append(body instanceof OMSourcedElement && ((OMSourcedElement) body).isExpanded());
+        InputStream json = (InputStream) axis.getProperty(
+                org.apache.synapse.commons.json.Constants.ORG_APACHE_SYNAPSE_COMMONS_JSON_JSON_INPUT_STREAM);
+        state.append('|').append(json != null).append('|').append(JsonUtil.hasAJsonPayload(axis)
+                ? JsonUtil.jsonPayloadToString(axis).replaceAll(" caused by [^\"]*", "") : body.toString());
+        for (String name : new String[]{"org.apache.synapse.commons.json.JsonInputStream.IsJsonObject",
+                "messageType", "ContentType", "CHARACTER_SET_ENCODING", "setCharacterEncoding", "NO_ENTITY_BODY"}) {
+            state.append('|').append(name).append('=').append(axis.getProperty(name));
+        }
+        return state.toString();
     }
 
     // The stream of the file fails while the JSON file is read into memory. That is a fault of the connection, as

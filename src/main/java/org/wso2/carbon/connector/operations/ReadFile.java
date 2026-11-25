@@ -445,7 +445,7 @@ public class ReadFile extends OperationFrame.Mediator {
         try {
             try {
                 documentElement = buildSynapseMessage(readFile(raw, config, type), msgCtx, type,
-                        config.givenEncoding, readLog);
+                        config.givenEncoding, keep, readLog);
             } catch (StackOverflowError deep) {
                 // A builder ran out of stack on the content. It fails this read alone, so the flow gets a reply.
                 throw new FileOperationException("Error while building message from Stream", deep);
@@ -891,7 +891,7 @@ public class ReadFile extends OperationFrame.Mediator {
      * @throws FileOperationException In case of building the message
      */
     private OMElement buildSynapseMessage(InputStream inputStream, MessageContext msgCtx,
-                                     String contentType, String encoding, NamedLog readLog)
+                                     String contentType, String encoding, boolean keep, NamedLog readLog)
             throws FileOperationException {
 
         try {
@@ -913,10 +913,12 @@ public class ReadFile extends OperationFrame.Mediator {
             try {
                 documentElement.toString();
             } catch (StackOverflowError deep) {
-                // A long JSON array can run the JSON to XML reader out of stack. The body then keeps the JSON form,
-                // and a reader that walks with its own stack checks the content. An element that was expanded in
-                // part is not used, a new one is built from the content in memory.
-                if (json == null) {
+                // A long JSON array can run the JSON to XML reader out of stack. A read into a variable then keeps the
+                // JSON form, and a reader that walks with its own stack checks the content. An element that was
+                // expanded in part is not used, a new one is built from the content in memory. A read into the body
+                // fails, because the runtime expands the old body when a later step replaces a JSON body, and the
+                // flow then ends with no reply.
+                if (json == null || !keep) {
                     throw deep;
                 }
                 json.reset();
