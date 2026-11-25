@@ -578,12 +578,14 @@ public class WriteFile extends OperationFrame.Mediator {
                 boolean keep = !replaceBody && !streaming && !unexpandedJson(axis);
                 attempt.payloadStarted();
                 targetFailed = false;
+                boolean broken = false;
                 try {
                     formatter.writeTo(axis, format, output, keep);
                 } catch (IOException | RuntimeException failure) {
                     if (targetFailed) {
                         throw failure;
                     }
+                    broken = true;
                     // The source of the body failed and not the target, so this is no transport error of the target.
                     FileSystemException body = new FileSystemException("The message body could not be read", failure);
                     body.setFault(Fault.APPLICATION);
@@ -592,8 +594,9 @@ public class WriteFile extends OperationFrame.Mediator {
                     if (replaceBody) {
                         // No attempt writes the body again once its payload started. Close what the write left of
                         // the body now, also when the write fails, so that the connector core does not read a
-                        // parser the write has spent when it puts the result in place of the body.
-                        closeSpent(axis.getEnvelope());
+                        // parser the write has spent when it puts the result in place of the body. A body that
+                        // broke is closed whole, also where a formatter read it with the cache on.
+                        closeSpent(axis.getEnvelope(), broken);
                     }
                 }
             }
@@ -667,19 +670,20 @@ public class WriteFile extends OperationFrame.Mediator {
         }
     }
 
-    // Marks each element the write pulled from its parser as complete and closes that parser. Only nodes that
-    // are built are visited, so no parser is read.
-    private static void closeSpent(OMContainer container) {
+    // Marks each element the write pulled from its parser as complete and closes that parser, or each element
+    // that is not complete when the body broke. Only nodes that are built are visited, so no parser is read.
+    private static void closeSpent(OMContainer container, boolean broken) {
         if (container instanceof OMElement) {
             OMElement element = (OMElement) container;
-            if (!element.isComplete() && element.getBuilder() != null && !element.getBuilder().isCache()) {
+            if (!element.isComplete() && element.getBuilder() != null
+                    && (broken || !element.getBuilder().isCache())) {
                 element.close(false);
             }
         }
         OMNode child = ((OMContainerEx) container).getFirstOMChildIfAvailable();
         while (child != null) {
             if (child instanceof OMContainer) {
-                closeSpent((OMContainer) child);
+                closeSpent((OMContainer) child, broken);
             }
             child = ((OMNodeEx) child).getNextOMSiblingIfAvailable();
         }

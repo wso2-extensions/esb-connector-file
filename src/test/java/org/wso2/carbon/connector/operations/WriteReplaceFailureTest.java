@@ -23,11 +23,15 @@ import org.apache.axis2.AxisFault;
 import org.apache.axis2.builder.ApplicationXMLBuilder;
 import org.apache.axis2.builder.SOAPBuilder;
 import org.apache.axis2.context.MessageContext;
+import org.apache.axis2.context.OperationContext;
 import org.apache.axis2.engine.AxisConfiguration;
 import org.apache.axis2.transport.TransportUtils;
 import org.apache.axis2.transport.http.ApplicationXMLFormatter;
+import org.apache.axis2.transport.http.MultipartFormDataFormatter;
 import org.apache.axis2.transport.http.SOAPMessageFormatter;
 import org.apache.synapse.SynapseException;
+import org.apache.synapse.commons.formatters.XFormURLEncodedFormatter;
+import org.apache.synapse.commons.json.JsonStreamFormatter;
 import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.mediators.template.TemplateContext;
@@ -69,23 +73,44 @@ public class WriteReplaceFailureTest {
 
     @DataProvider(name = "failures")
     public Object[][] failures() {
+        String late = "<order><item>1</item><item></order>";
+        StringBuilder large = new StringBuilder("<order>");
+        for (int i = 0; i < 5000; i++) {
+            large.append("<item>").append(i).append("</item>");
+        }
+        large.append("</order>");
         return new Object[][]{
-                {"body that breaks late", false, "<order><item>1</item><item></order>", "application/xml", "Overwrite",
-                        "700108", "The message body could not be read"},
+                {"body that breaks late", false, late, "application/xml", "Overwrite", "700108",
+                        "The message body could not be read", false},
                 {"body that breaks late", true, SOAP.replace("<item>3</item>", "<item>3</order>"), "text/xml",
-                        "Overwrite", "700108", "The message body could not be read"},
+                        "Overwrite", "700108", "The message body could not be read", false},
+                // These formatters read the body with the cache on, so the parser breaks inside the tree.
+                {"body that breaks late", false, late, "application/json", "Overwrite", "700108",
+                        "The message body could not be read", false},
+                {"body that breaks late", false, late, "application/x-www-form-urlencoded", "Overwrite", "700108",
+                        "The message body could not be read", false},
+                {"body that breaks late", false, late, "multipart/form-data", "Overwrite", "700108",
+                        "The message body could not be read", false},
                 {"target lost in the middle", false, XML, "application/xml", "Overwrite", "700101",
-                        "The connection was lost in the middle of the write"},
+                        "The connection was lost in the middle of the write", false},
                 {"target lost in the middle", true, SOAP, "text/xml", "Overwrite", "700101",
-                        "The connection was lost in the middle of the write"},
-                {"commit refused after the body", false, XML, "application/x-racing", "Create New", "700103", null},
-                {"commit refused after the body", true, SOAP, "application/x-racing", "Create New", "700103", null},
+                        "The connection was lost in the middle of the write", false},
+                // Larger than the buffer of the formatter, so the target fails with the body spent in part.
+                {"target lost in the middle", false, large.toString(), "application/xml", "Overwrite", "700101",
+                        "The connection was lost in the middle of the write", false},
+                {"target lost in the middle", false, large.toString(), "application/xml", "Overwrite", "700101",
+                        "The connection was lost in the middle of the write", true},
+                {"commit refused after the body", false, XML, "application/x-racing", "Create New", "700103", null,
+                        false},
+                {"commit refused after the body", true, SOAP, "application/x-racing", "Create New", "700103", null,
+                        false},
         };
     }
 
     @Test(dataProvider = "failures")
     public void failedReplacingWriteReportsItsOwnError(String failure, boolean soap, String body, String type,
-                                                      String mode, String code, String detail) throws Exception {
+                                                      String mode, String code, String detail, boolean streamed)
+            throws Exception {
         Path directory = WriteFileTest.directory();
         try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString(),
                 "maxActiveConnections", "1")) {
@@ -97,6 +122,10 @@ public class WriteReplaceFailureTest {
             AxisConfiguration configuration = axis.getConfigurationContext().getAxisConfiguration();
             configuration.addMessageFormatter("application/xml", new ApplicationXMLFormatter());
             configuration.addMessageFormatter("text/xml", new SOAPMessageFormatter());
+            configuration.addMessageFormatter("application/json", new JsonStreamFormatter());
+            configuration.addMessageFormatter("application/x-www-form-urlencoded", new XFormURLEncodedFormatter());
+            configuration.addMessageFormatter("multipart/form-data", new MultipartFormDataFormatter());
+            axis.setOperationContext(new OperationContext());
             // Writes the body as application/xml does, then puts a file at the target before the commit.
             configuration.addMessageFormatter("application/x-racing", new ApplicationXMLFormatter() {
                 @Override
@@ -118,6 +147,7 @@ public class WriteReplaceFailureTest {
             values.put("filePath", "/target");
             values.put("writeMode", mode);
             values.put("mimeType", type);
+            values.put("enableStreaming", Boolean.toString(streamed));
             TemplateContext template = new TemplateContext("file.write", Collections.emptyList());
             template.setMappedValues(values);
             Stack<TemplateContext> stack = new Stack<>();

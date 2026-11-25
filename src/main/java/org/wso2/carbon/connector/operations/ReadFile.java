@@ -37,6 +37,7 @@ import org.wso2.vfs.shared.log.NamedLog;
 import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
+import org.wso2.org.apache.commons.vfs2.provider.Fault;
 import org.wso2.org.apache.commons.vfs2.provider.local.LocalFile;
 import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 import org.wso2.vfs.shared.error.ErrorClassifier;
@@ -371,8 +372,10 @@ public class ReadFile extends OperationFrame.Mediator {
                     ((Axis2MessageContext) msgCtx).getAxis2MessageContext()
                             .removeProperty(PassThroughConstants.NO_ENTITY_BODY);
                 } catch (Exception failure) {
-                    lease.rejectDelivery(failure);
-                    throw failure;
+                    // The builder only wraps the stream here and reads nothing of the file.
+                    Exception reported = failure instanceof OperationFrame.Failure ? failure : content(failure, type);
+                    lease.rejectDelivery(reported);
+                    throw reported;
                 }
                 return;
             }
@@ -414,7 +417,8 @@ public class ReadFile extends OperationFrame.Mediator {
         ReadStream raw = new ReadStream(file.getContent().getInputStream(), attempt.progress());
         try {
             documentElement = buildSynapseMessage(readFile(raw, config), msgCtx, type, readLog);
-        } catch (Exception failed) {
+        } catch (Exception built) {
+            Exception failed = raw.failure == null ? content(built, type) : built;
             ErrorClassifier classifier = new ErrorClassifier(attempt.handler().getContext().getHealth().namedLog());
             boolean transport = classifier.classify(failed, attempt.progress().elapsedMillis(),
                     ErrorClassifier.CallType.READ).getKind().isTransport();
@@ -440,20 +444,35 @@ public class ReadFile extends OperationFrame.Mediator {
             ((Axis2MessageContext) msgCtx).getAxis2MessageContext().
                     removeProperty(PassThroughConstants.NO_ENTITY_BODY);
         } else {
-            if (Const.CONTENT_TYPE_JSON.equalsIgnoreCase(type)) {
-                org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
-                        Axis2MessageContext) msgCtx).getAxis2MessageContext();
-                response.setPayload(JsonParser.parseString(
-                        JsonUtil.jsonPayloadToString(axis2MsgCtx)));
-            } else {
-                response.setPayload(documentElement.toString());
+            try {
+                if (Const.CONTENT_TYPE_JSON.equalsIgnoreCase(type)) {
+                    org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
+                            Axis2MessageContext) msgCtx).getAxis2MessageContext();
+                    response.setPayload(JsonParser.parseString(
+                            JsonUtil.jsonPayloadToString(axis2MsgCtx)));
+                } else {
+                    response.setPayload(documentElement.toString());
+                }
+            } catch (RuntimeException failed) {
+                throw content(failed, type);
             }
         }
     }
 
+    // A failure of the build or of the variable when the stream of the file did not fail is a failure of the
+    // content. It fails this read alone and is no fault of the connection.
+    private static FileSystemException content(Exception failure, String type) {
+        FileSystemException content = new FileSystemException("The file content could not be read"
+                + (type == null ? "" : " as " + type), failure);
+        content.setFault(Fault.APPLICATION);
+        return content;
+    }
+
+    // Keeps the failure of the stream of the file, so that a failure of the build can be told from it.
     private static final class ReadStream extends FilterInputStream {
         private final ProgressClock progress;
         private boolean closed;
+        IOException failure;
 
         ReadStream(InputStream source, ProgressClock progress) {
             super(source);
@@ -463,20 +482,55 @@ public class ReadFile extends OperationFrame.Mediator {
         @Override
         public int read() throws IOException {
             progress.reset("read");
-            return in.read();
+            try {
+                return in.read();
+            } catch (IOException error) {
+                failure = error;
+                throw error;
+            }
         }
 
         @Override
         public int read(byte[] data, int offset, int length) throws IOException {
             progress.reset("read");
-            return in.read(data, offset, length);
+            try {
+                return in.read(data, offset, length);
+            } catch (IOException error) {
+                failure = error;
+                throw error;
+            }
+        }
+
+        @Override
+        public long skip(long count) throws IOException {
+            try {
+                return in.skip(count);
+            } catch (IOException error) {
+                failure = error;
+                throw error;
+            }
+        }
+
+        @Override
+        public int available() throws IOException {
+            try {
+                return in.available();
+            } catch (IOException error) {
+                failure = error;
+                throw error;
+            }
         }
 
         @Override
         public void close() throws IOException {
             if (!closed) {
                 closed = true;
-                super.close();
+                try {
+                    super.close();
+                } catch (IOException error) {
+                    failure = error;
+                    throw error;
+                }
             }
         }
     }
