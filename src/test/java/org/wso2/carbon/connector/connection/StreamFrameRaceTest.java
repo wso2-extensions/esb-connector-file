@@ -34,6 +34,11 @@ import org.wso2.carbon.connector.utils.Error;
 import org.wso2.integration.connector.core.connection.PoolCloseReason;
 import org.wso2.integration.connector.core.pool.CircuitBreaker;
 import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.provider.Fault;
+import org.wso2.org.apache.commons.vfs2.provider.local.DefaultLocalFileProvider;
 import org.wso2.org.apache.commons.vfs2.util.TestPoints;
 import org.wso2.vfs.shared.health.EndpointHealth;
 import org.wso2.vfs.shared.lock.HeldLock;
@@ -63,6 +68,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -117,6 +123,8 @@ public class StreamFrameRaceTest {
     }
 
     private interface Action<T> { T run(Attempt attempt) throws Exception; }
+
+    private interface Options { void apply(FileSystemHandler handler) throws Exception; }
 
     private static final class Bed implements AutoCloseable {
         final String label;
@@ -198,6 +206,11 @@ public class StreamFrameRaceTest {
 
         <T> T run(String uri, OperationFrame.Use use, OperationFrame.Lock mode, Action<T> action)
                 throws OperationFrame.Failure {
+            return run(uri, use, mode, 0, handler -> { }, action);
+        }
+
+        <T> T run(String uri, OperationFrame.Use use, OperationFrame.Lock mode, int retries, Options options,
+                Action<T> action) throws OperationFrame.Failure {
             OperationFrame.Operation<T> operation = new OperationFrame.Operation<T>() {
                 public LinkedHashMap<String, OperationFrame.Lock> paths() {
                     LinkedHashMap<String, OperationFrame.Lock> paths = new LinkedHashMap<>();
@@ -207,6 +220,7 @@ public class StreamFrameRaceTest {
                 public OperationFrame.Use use(String ignored) { return use; }
                 public OperationFrame.Retry retry() { return OperationFrame.Retry.READ; }
                 public T removed(String ignored) { throw new AssertionError(uri); }
+                public void options(FileSystemHandler handler) throws Exception { options.apply(handler); }
                 public T steps(Attempt attempt) throws Exception {
                     HeldLock lock = attempt.lock(uri);
                     if (lock != null) {
@@ -215,13 +229,16 @@ public class StreamFrameRaceTest {
                     return action.run(attempt);
                 }
             };
-            return OperationFrame.run(message, files.name, 0, operation);
+            return OperationFrame.run(message, files.name, retries, operation);
         }
 
         StreamLease publish(String name, boolean streaming) throws Exception {
             Path source = Files.write(root.resolve(name), new byte[]{23});
-            String uri = source.toUri().toString();
-            return run(uri, OperationFrame.Use.READ, OperationFrame.Lock.OWN, attempt -> {
+            return read(source.toUri().toString(), streaming, handler -> { });
+        }
+
+        StreamLease read(String uri, boolean streaming, Options options) throws Exception {
+            return run(uri, OperationFrame.Use.READ, OperationFrame.Lock.OWN, 0, options, attempt -> {
                 FileObject file = attempt.handler().resolveFile(uri);
                 facts.addProperty("readLock", id(attempt.lock(uri)));
                 return attempt.publishRead(message, uri, streaming ? file : null, "application/octet-stream",
@@ -780,6 +797,89 @@ public class StreamFrameRaceTest {
             } finally {
                 Files.deleteIfExists(hold);
             }
+        }
+    }
+
+    public void transportErrorInVerifyOwnerRetriesOnAFreshHandlerAndTakesNoLock() throws Exception {
+        try (Bed bed = new Bed("verify-transport")) {
+            // The file and its lock are reached through a scheme of this test, so the first read of the lock in
+            // the check of the owner can lose its connection.
+            String scheme = "lockfault";
+            AtomicBoolean fault = new AtomicBoolean();
+            List<FileSystemHandler> handlers = Collections.synchronizedList(new ArrayList<>());
+            Options faulty = handler -> {
+                handlers.add(handler);
+                DefaultFileSystemManager manager = (DefaultFileSystemManager) handler.getFsManager();
+                if (!manager.hasProvider(scheme)) {
+                    manager.addProvider(scheme, new DefaultLocalFileProvider() {
+                        @Override
+                        public FileObject findFile(FileObject base, String uri, FileSystemOptions options)
+                                throws FileSystemException {
+                            if (uri.endsWith(".lock") && fault.compareAndSet(true, false)) {
+                                FileSystemException lost = new FileSystemException("The lock read lost the connection");
+                                lost.setFault(Fault.TRANSPORT);
+                                throw lost;
+                            }
+                            return manager.resolveFile("file" + uri.substring(scheme.length()), options);
+                        }
+                    });
+                }
+            };
+            Path source = Files.write(bed.root.resolve("file.bin"), new byte[]{23});
+            Path marker = Paths.get(source + ".lock");
+            String uri = scheme + source.toUri().toString().substring("file".length());
+            StreamLease lease = bed.read(uri, true, faulty);
+            try (InputStream stream = lease.getInputStream()) {
+                Assert.assertEquals(stream.read(), 23);
+                Assert.assertEquals(stream.read(), -1);
+            }
+            Assert.assertEquals(lease.state(), StreamLease.State.REPLAY);
+            String readLock = bed.facts.get("readLock").getAsString();
+            byte[] owner = Files.readAllBytes(marker);
+            Path events = bed.root.resolve("connector.1/events.log");
+            int baseline = Files.readAllLines(events).size();
+            JsonObject before = new JsonObject();
+            bed.pool.inventory(before);
+            handlers.clear();
+            List<Integer> steps = Collections.synchronizedList(new ArrayList<>());
+            fault.set(true);
+            String result = bed.run(uri, OperationFrame.Use.SOURCE, OperationFrame.Lock.GUARD, 1, faulty, attempt -> {
+                steps.add(attempt.number);
+                Assert.assertEquals(id(attempt.lock(uri)), readLock);
+                return "ok";
+            });
+            List<String> answers = new ArrayList<>();
+            List<String> lines = Files.readAllLines(events);
+            for (String line : lines.subList(baseline, lines.size())) {
+                List<String> fields = Arrays.asList(line.split("\t"));
+                if (fields.contains("point=lock.verify-owner")) {
+                    Assert.assertTrue(fields.contains("handle=" + readLock), line);
+                    answers.add(fields.stream().filter(f -> f.startsWith("answer=")).findFirst().get().substring(7));
+                }
+            }
+            JsonArray checks = new JsonArray();
+            answers.forEach(checks::add);
+            bed.facts.add("verifyAnswers", checks);
+            JsonObject after = new JsonObject();
+            bed.pool.inventory(after);
+            JsonArray loans = after.getAsJsonArray("borrowedLoans");
+            int first = before.getAsJsonArray("borrowedLoans").size();
+            Assert.assertEquals(result, "ok");
+            Assert.assertFalse(fault.get());
+            // The first attempt failed in the check of the owner, so only the retry ran the steps.
+            Assert.assertEquals(steps, Collections.singletonList(2));
+            Assert.assertEquals(answers, Arrays.asList("CHECK_FAILED", "OURS"));
+            Assert.assertEquals(handlers.size(), 2);
+            Assert.assertNotSame(handlers.get(0), handlers.get(1));
+            Assert.assertEquals(loans.size(), first + 2);
+            Assert.assertEquals(after.getAsJsonObject("loanFates").get(loans.get(first).getAsString()).toString(),
+                    "[\"invalidated\"]");
+            Assert.assertEquals(after.getAsJsonObject("loanFates").get(loans.get(first + 1).getAsString()).toString(),
+                    "[\"returned\"]");
+            // No new lock was taken, and the lost reply did not end the handle. Closing the bed ends it once.
+            Assert.assertEquals(Files.readAllBytes(marker), owner);
+            Assert.assertEquals(lease.state(), StreamLease.State.REPLAY);
+            Assert.assertFalse(bed.endEvents().containsKey(readLock));
         }
     }
 }
