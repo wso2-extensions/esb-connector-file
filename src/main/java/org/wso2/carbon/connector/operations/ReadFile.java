@@ -349,12 +349,12 @@ public class ReadFile extends OperationFrame.Mediator {
             handleConnectorResponse(msgCtx, responseVariable, overwriteBody, result, null, attributes);
         } else {
             String type = StringUtils.isEmpty(config.contentType) ? getContentType(file) : config.contentType;
-            setCharsetEncoding(config.encoding, type, msgCtx, readLog);
             if (config.enableStreaming) {
                 if (!Boolean.TRUE.equals(overwriteBody)) {
                     throw new OperationFrame.Failure(Error.OPERATION_ERROR,
                             "The content cannot be stored in a variable while streaming is enabled");
                 }
+                setCharsetEncoding(config.encoding, type, msgCtx, readLog);
                 Builder builder = selectSynapseMessageBuilder(msgCtx, type, readLog);
                 if (!(builder instanceof DataSourceMessageBuilder)) {
                     throw new FileOperationException("Required builder for streaming not found");
@@ -376,45 +376,19 @@ public class ReadFile extends OperationFrame.Mediator {
                 }
                 return;
             }
-            OMElement documentElement;
-            attempt.progress().reset("open");
-            ReadStream raw = new ReadStream(file.getContent().getInputStream(), attempt.progress());
-            try {
-                documentElement = buildSynapseMessage(readFile(raw, config), msgCtx, type, readLog);
-            } catch (Exception failed) {
-                ErrorClassifier classifier = new ErrorClassifier(attempt.handler().getContext().getHealth().namedLog());
-                boolean transport = classifier.classify(failed, attempt.progress().elapsedMillis(),
-                        ErrorClassifier.CallType.READ).getKind().isTransport();
-                if (!transport || FileObjectUtils.isInstanceOf(file, LocalFile.class)) {
-                    try {
-                        raw.close();
-                    } catch (IOException cleanup) {
-                        if (!transport && classifier.classify(cleanup, attempt.progress().elapsedMillis(),
-                                ErrorClassifier.CallType.READ).getKind().isTransport()) {
-                            attempt.discardHandler();
-                        }
-                        if (failed != cleanup) {
-                            failed.addSuppressed(cleanup);
-                        }
-                    }
-                }
-                throw failed;
-            }
-            attempt.progress().reset("close");
-            raw.close();
+            // With the body kept, the charset of the file decodes its content only. The message keeps its own.
+            org.apache.axis2.context.MessageContext axis = ((Axis2MessageContext) msgCtx).getAxis2MessageContext();
+            boolean keep = !Boolean.TRUE.equals(overwriteBody);
+            Object charset = axis.getLocalProperty(Constants.Configuration.CHARACTER_SET_ENCODING);
+            Object charsetSet = axis.getLocalProperty(Const.SET_CHARACTER_ENCODING);
+            setCharsetEncoding(config.encoding, type, msgCtx, readLog);
             ConnectorResponse response = new DefaultConnectorResponse();
-            if (overwriteBody != null && overwriteBody) {
-                msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
-                ((Axis2MessageContext) msgCtx).getAxis2MessageContext().
-                        removeProperty(PassThroughConstants.NO_ENTITY_BODY);
-            } else {
-                if (Const.CONTENT_TYPE_JSON.equalsIgnoreCase(type)) {
-                    org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
-                            Axis2MessageContext) msgCtx).getAxis2MessageContext();
-                    response.setPayload(JsonParser.parseString(
-                            JsonUtil.jsonPayloadToString(axis2MsgCtx)));
-                } else {
-                    response.setPayload(documentElement.toString());
+            try {
+                readContent(attempt, file, msgCtx, config, type, readLog, keep, response);
+            } finally {
+                if (keep) {
+                    restore(axis, Constants.Configuration.CHARACTER_SET_ENCODING, charset);
+                    restore(axis, Const.SET_CHARACTER_ENCODING, charsetSet);
                 }
             }
             response.setAttributes(attributes);
@@ -422,6 +396,58 @@ public class ReadFile extends OperationFrame.Mediator {
         }
         if (config.enableLock || attempt.lock(path) != null) {
             attempt.publishRead(msgCtx, path, null, null, size, modified);
+        }
+    }
+
+    private static void restore(org.apache.axis2.context.MessageContext axis, String name, Object value) {
+        if (value == null) {
+            axis.removeProperty(name);
+        } else {
+            axis.setProperty(name, value);
+        }
+    }
+
+    private void readContent(Attempt attempt, FileObject file, MessageContext msgCtx, Config config, String type,
+                             NamedLog readLog, boolean keep, ConnectorResponse response) throws Exception {
+        OMElement documentElement;
+        attempt.progress().reset("open");
+        ReadStream raw = new ReadStream(file.getContent().getInputStream(), attempt.progress());
+        try {
+            documentElement = buildSynapseMessage(readFile(raw, config), msgCtx, type, readLog);
+        } catch (Exception failed) {
+            ErrorClassifier classifier = new ErrorClassifier(attempt.handler().getContext().getHealth().namedLog());
+            boolean transport = classifier.classify(failed, attempt.progress().elapsedMillis(),
+                    ErrorClassifier.CallType.READ).getKind().isTransport();
+            if (!transport || FileObjectUtils.isInstanceOf(file, LocalFile.class)) {
+                try {
+                    raw.close();
+                } catch (IOException cleanup) {
+                    if (!transport && classifier.classify(cleanup, attempt.progress().elapsedMillis(),
+                            ErrorClassifier.CallType.READ).getKind().isTransport()) {
+                        attempt.discardHandler();
+                    }
+                    if (failed != cleanup) {
+                        failed.addSuppressed(cleanup);
+                    }
+                }
+            }
+            throw failed;
+        }
+        attempt.progress().reset("close");
+        raw.close();
+        if (!keep) {
+            msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
+            ((Axis2MessageContext) msgCtx).getAxis2MessageContext().
+                    removeProperty(PassThroughConstants.NO_ENTITY_BODY);
+        } else {
+            if (Const.CONTENT_TYPE_JSON.equalsIgnoreCase(type)) {
+                org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
+                        Axis2MessageContext) msgCtx).getAxis2MessageContext();
+                response.setPayload(JsonParser.parseString(
+                        JsonUtil.jsonPayloadToString(axis2MsgCtx)));
+            } else {
+                response.setPayload(documentElement.toString());
+            }
         }
     }
 
