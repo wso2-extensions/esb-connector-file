@@ -205,10 +205,6 @@ public class WriteBodyCrossTest {
                     String.valueOf(untouched.getAxis2MessageContext().getEnvelope().getHeader()));
         } else if (streamed) {
             Assert.assertEquals(read(message, body), read(before, body), "body after a streamed write");
-        } else if ("application/json".equals(type) && body.xml()) {
-            // The JSON formatter of synapse takes the indentation and the namespaces out of an XML body while it
-            // writes, with preserve true and with false. The body must be as the write before left it.
-            Assert.assertEquals(read(message, body), read(before, body), "body after a JSON write");
         } else {
             Assert.assertEquals(read(message, body), read(untouched, body), "body after the write");
         }

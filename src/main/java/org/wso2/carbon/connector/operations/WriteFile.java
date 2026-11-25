@@ -88,6 +88,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -579,7 +580,18 @@ public class WriteFile extends OperationFrame.Mediator {
                 attempt.payloadStarted();
                 targetFailed = false;
                 boolean broken = false;
+                OMElement original = null;
+                OMElement copy = null;
                 try {
+                    if (keep && xmlToJson(axis, formatter)) {
+                        // The JSON formatter takes the indentation and the namespaces out of the XML element it
+                        // writes. The flow keeps its body, so the formatter writes a copy, as a call of an out only
+                        // message writes a clone.
+                        original = axis.getEnvelope().getBody().getFirstElement();
+                        copy = original.cloneOMElement();
+                        original.insertSiblingBefore(copy);
+                        original.detach();
+                    }
                     formatter.writeTo(axis, format, output, keep);
                 } catch (IOException | RuntimeException failure) {
                     if (targetFailed) {
@@ -591,6 +603,10 @@ public class WriteFile extends OperationFrame.Mediator {
                     body.setFault(Fault.APPLICATION);
                     throw body;
                 } finally {
+                    if (copy != null) {
+                        copy.insertSiblingBefore(original);
+                        copy.detach();
+                    }
                     if (replaceBody) {
                         // No attempt writes the body again once its payload started. Close what the write left of
                         // the body now, also when the write fails, so that the connector core does not read a
@@ -604,6 +620,15 @@ public class WriteFile extends OperationFrame.Mediator {
                 output.write(Const.NEW_LINE.toString().getBytes(encoding));
             }
             return output.getByteCount();
+        }
+
+        // True when the formatter turns an XML body into JSON: the message type names JSON, and the body is XML,
+        // not a JSON stream and not the text or the binary wrapper, which have formatters of their own.
+        private boolean xmlToJson(org.apache.axis2.context.MessageContext axis, MessageFormatter formatter) {
+            Object type = axis.getProperty(Const.MESSAGE_TYPE);
+            return type != null && type.toString().toLowerCase(Locale.ROOT).contains("json")
+                    && axis.getEnvelope().getBody().getFirstElement() != null && !JsonUtil.hasAJsonPayload(axis)
+                    && !(formatter instanceof BinaryFormatter) && !(formatter instanceof PlainTextFormatter);
         }
 
         private boolean unexpandedJson(org.apache.axis2.context.MessageContext axis) {
