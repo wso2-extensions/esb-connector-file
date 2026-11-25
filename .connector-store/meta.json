@@ -88,7 +88,7 @@
                             "type": "booleanOrExpression",
                             "required": true,
                             "defaultValue": "false",
-                            "description": "Write to the file in streaming manner. A streamed write reads the body once and keeps no body, also when overwriteBody is false."
+                            "description": "Write to the file in streaming manner. With true a binary body under application/octet-stream is read once and written with no copy in memory, and no body is kept, also when overwriteBody is false. Under another type the formatter of the type writes the body as with false. A body from a streamed read under application/binary is written as it is read, with no copy in memory."
                         },
                         {
                             "name": "enableLock",
@@ -164,8 +164,8 @@
                             "name": "overwriteBody",
                             "type": "checkbox",
                             "required": false,
-                            "defaultValue": "false",
-                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable). With false the body is kept in memory for the steps that follow. For a large file set it true or stream the write."
+                            "defaultValue": "true",
+                            "description": "With true, the default, the result of the write replaces the message body, so a step after the write no longer has the content, and the response variable holds no result payload. Set false on every write whose body is needed after it, the body is then held in memory. A streamed write keeps no body either way."
                         }
                     ],
                     "isHidden": false

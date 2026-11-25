@@ -58,6 +58,8 @@ public class SchemaDefaultsTest {
         add(cases, OPERATIONS, "maxRetries=1 diskShareAccessMask=MAXIMUM_ALLOWED");
         add(cases, "write read delete copy listFiles", "retryDelay=0");
         add(cases, "write", "enableLock=true lastModified= updateLastModified=true writeMode=Overwrite appendPosition=");
+        add(cases, "write", "overwriteBody=true");
+        add(cases, "read copy delete move listFiles", "overwriteBody=false");
         add(cases, "move copy delete read", "enableLock=false");
         add(cases, "move", "createParentDirectories=false isSourceMounted= isTargetMounted= updateLastModified=true");
         add(cases, "move rename", "overwrite=false");
