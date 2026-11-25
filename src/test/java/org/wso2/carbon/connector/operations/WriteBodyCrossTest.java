@@ -75,8 +75,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Every content type the pack registers a formatter for, and one type with no formatter, against every body state a
  * flow can hand to the write. The bytes of the file must be the bytes the formatter wrote before the body was kept,
- * that is with preserve false. A body that is kept must read as before after a write that is not streamed. A
- * streamed write must leave the body as it did before. A write that replaces the body must not fail on a body it
+ * that is with preserve false. A body that is kept must read as before after the write. Only a binary body is
+ * streamed, and it is left as before. Any other body is written as without streaming, by the formatter of its
+ * message type, as the transport sender writes it. A write that replaces the body must not fail on a body it
  * has spent.
  */
 public class WriteBodyCrossTest {
@@ -203,7 +204,7 @@ public class WriteBodyCrossTest {
             Assert.assertTrue(JsonUtil.jsonPayloadToString(axis).contains("\"success\":true"));
             Assert.assertEquals(String.valueOf(axis.getEnvelope().getHeader()),
                     String.valueOf(untouched.getAxis2MessageContext().getEnvelope().getHeader()));
-        } else if (streamed) {
+        } else if (streamed && body == Body.BINARY) {
             Assert.assertEquals(read(message, body), read(before, body), "body after a streamed write");
         } else {
             Assert.assertEquals(read(message, body), read(untouched, body), "body after the write");
@@ -458,11 +459,12 @@ public class WriteBodyCrossTest {
         }
     }
 
-    // The write before the body was kept: the same pick of the formatter, and preserve false.
+    // The write before the body was kept: the same pick of the formatter, and preserve false. A streamed write of a
+    // body that is not binary is written as the transport sender writes it, by the formatter of its message type.
     private static byte[] writeAsBefore(MessageContext axis, boolean streamed) throws Exception {
         MessageFormatter formatter;
         OMElement first = axis.getEnvelope().getBody().getFirstElement();
-        if (streamed) {
+        if (streamed && first != null && BaseConstants.DEFAULT_BINARY_WRAPPER.equals(first.getQName())) {
             formatter = new ExpandingMessageFormatter();
         } else if (first != null && BaseConstants.DEFAULT_BINARY_WRAPPER.equals(first.getQName())) {
             formatter = new BinaryFormatter();

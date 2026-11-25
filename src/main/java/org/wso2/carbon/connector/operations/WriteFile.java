@@ -572,11 +572,14 @@ public class WriteFile extends OperationFrame.Mediator {
                 if (!mime.isEmpty() && !Const.CONTENT_TYPE_AUTOMATIC.equals(mime)) {
                     axis.setProperty(Const.MESSAGE_TYPE, mime);
                 }
-                MessageFormatter formatter = streaming ? new ExpandingMessageFormatter() : getMessageFormatter(axis);
+                // Only a binary body is streamed. Any other body is written by the formatter of its message type, as
+                // the transport sender does, also when streaming is asked for.
+                boolean stream = streaming && binaryBody(axis);
+                MessageFormatter formatter = stream ? new ExpandingMessageFormatter() : getMessageFormatter(axis);
                 OMOutputFormat format = BaseUtils.getOMOutputFormat(axis);
                 // A body that is not built yet is pulled from its parser and lost unless the formatter keeps it.
                 // A JSON stream body is written again from its buffered stream, so it needs no tree.
-                boolean keep = !replaceBody && !streaming && !unexpandedJson(axis);
+                boolean keep = !replaceBody && !stream && !unexpandedJson(axis);
                 attempt.payloadStarted();
                 targetFailed = false;
                 boolean broken = false;
@@ -629,6 +632,11 @@ public class WriteFile extends OperationFrame.Mediator {
             return type != null && type.toString().toLowerCase(Locale.ROOT).contains("json")
                     && axis.getEnvelope().getBody().getFirstElement() != null && !JsonUtil.hasAJsonPayload(axis)
                     && !(formatter instanceof BinaryFormatter) && !(formatter instanceof PlainTextFormatter);
+        }
+
+        private boolean binaryBody(org.apache.axis2.context.MessageContext axis) {
+            OMElement first = axis.getEnvelope().getBody().getFirstElement();
+            return first != null && BaseConstants.DEFAULT_BINARY_WRAPPER.equals(first.getQName());
         }
 
         private boolean unexpandedJson(org.apache.axis2.context.MessageContext axis) {
