@@ -73,13 +73,13 @@ public class ReadContentErrorTest {
     @DataProvider(name = "contents")
     public Object[][] contents() {
         byte[] badUtf8 = {'<', 'r', '>', 'c', 'a', 'f', (byte) 0xE9, '<', '/', 'r', '>'};
-        byte[] text16 = "café\n".getBytes(StandardCharsets.UTF_16);
+        byte[] nul = "caf\u00e9\u0000\n".getBytes(StandardCharsets.UTF_8);
         byte[] json16 = "{\"a\":1}".getBytes(StandardCharsets.UTF_16);
         byte[] xml = "<r>1</r>".getBytes(StandardCharsets.UTF_8);
         return new Object[][]{
                 // A character that XML can not write, when the variable or the body is made.
-                {"text in UTF-16", "text/plain", "UTF-16", text16, false},
-                {"text in UTF-16", "text/plain", "UTF-16", text16, true},
+                {"text with a NUL character", "text/plain", "UTF-8", nul, false},
+                {"text with a NUL character", "text/plain", "UTF-8", nul, true},
                 // A byte that is not valid for the charset of the file.
                 {"XML with a byte that is not UTF-8", "application/xml", "UTF-8", badUtf8, false},
                 {"XML with a byte that is not UTF-8", "application/xml", "UTF-8", badUtf8, true},

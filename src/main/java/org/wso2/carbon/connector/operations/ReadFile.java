@@ -31,6 +31,7 @@ import org.apache.axis2.builder.BuilderUtil;
 import org.apache.axis2.format.DataSourceMessageBuilder;
 import org.apache.axis2.format.ManagedDataSource;
 import org.apache.axis2.format.ManagedDataSourceFactory;
+import org.apache.axis2.format.TextMessageBuilder;
 import org.apache.axis2.transport.TransportUtils;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.vfs.shared.log.NamedLog;
@@ -73,11 +74,13 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -240,6 +243,8 @@ public class ReadFile extends OperationFrame.Mediator {
         FileReadMode readMode = FileReadMode.COMPLETE_FILE;
         String contentType;
         String encoding;
+        // The encoding parameter as given, or null when the read names none.
+        String givenEncoding;
         boolean enableStreaming;
         int startLineNum;
         int endLineNum;
@@ -270,6 +275,7 @@ public class ReadFile extends OperationFrame.Mediator {
                 lookUpStringParam(msgCtx, CONTENT_TYPE_PARAM, Const.EMPTY_STRING);
         config.encoding = Utils.
                 lookUpStringParam(msgCtx, ENCODING_PARAM, Const.DEFAULT_ENCODING);
+        config.givenEncoding = Utils.lookUpStringParam(msgCtx, ENCODING_PARAM, null);
         config.enableStreaming = Utils.
                 lookUpBooleanParam(msgCtx, ENABLE_STREAMING_PARAM, false);
         config.startLineNum = Integer.
@@ -375,7 +381,8 @@ public class ReadFile extends OperationFrame.Mediator {
                 try {
                     lease.checkDelivery();
                     ManagedDataSource data = ManagedDataSourceFactory.create(lease);
-                    OMElement element = ((DataSourceMessageBuilder) builder).processDocument(data, type,
+                    OMElement element = ((DataSourceMessageBuilder) builder).processDocument(data,
+                            withCharset(type, builder, config.givenEncoding),
                             ((Axis2MessageContext) msgCtx).getAxis2MessageContext());
                     SOAPEnvelope envelope = TransportUtils.createSOAPEnvelope(element);
                     lease.checkDelivery();
@@ -431,7 +438,8 @@ public class ReadFile extends OperationFrame.Mediator {
         attempt.progress().reset("open");
         ReadStream raw = new ReadStream(file.getContent().getInputStream(), attempt.progress());
         try {
-            documentElement = buildSynapseMessage(readFile(raw, config), msgCtx, type, readLog);
+            documentElement = buildSynapseMessage(readFile(raw, config), msgCtx, type, config.givenEncoding,
+                    readLog);
         } catch (Exception built) {
             boolean content = raw.failure == null && !declared(built);
             boolean ended = raw.ended;
@@ -785,11 +793,11 @@ public class ReadFile extends OperationFrame.Mediator {
      * @return Processed stream
      * @throws FileOperationException in case of input error
      */
-    private InputStream processStream(InputStream in, int startLine, int endLine)
+    private InputStream processStream(InputStream in, int startLine, int endLine, Charset charset)
             throws FileOperationException {
 
         Stream<String> tempStream;
-        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(in, charset));
 
         if ((startLine > 0) && (endLine > 0) && (endLine > startLine)) {
             tempStream = reader.lines().skip((long) startLine - 1).limit((long) (endLine - startLine + 1));
@@ -801,7 +809,7 @@ public class ReadFile extends OperationFrame.Mediator {
             throw new FileOperationException("File connector:read Error while processing stream ");
         }
         return new ByteArrayInputStream(tempStream.collect(
-                Collectors.joining(Const.NEW_LINE)).getBytes());
+                Collectors.joining(Const.NEW_LINE)).getBytes(charset));
     }
 
 
@@ -816,15 +824,16 @@ public class ReadFile extends OperationFrame.Mediator {
     private InputStream readFile(InputStream in, Config config) throws FileOperationException {
         switch (config.readMode) {
             case STARTING_FROM_LINE:
-                return processStream(in, config.startLineNum, 0);
+                return processStream(in, config.startLineNum, 0, lineCharset(config));
             case UP_TO_LINE:
-                return processStream(in, 1, config.endLineNum);
+                return processStream(in, 1, config.endLineNum, lineCharset(config));
             case BETWEEN_LINES:
-                return processStream(in, config.startLineNum, config.endLineNum);
+                return processStream(in, config.startLineNum, config.endLineNum, lineCharset(config));
             case SPECIFIC_LINE:
-                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+                Charset charset = lineCharset(config);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in, charset));
                 String line = reader.lines().skip(config.lineNum - 1L).findFirst().orElse("");
-                return new ByteArrayInputStream(line.getBytes());
+                return new ByteArrayInputStream(line.getBytes(charset));
             case COMPLETE_FILE:
                 return in;
             default:
@@ -841,14 +850,31 @@ public class ReadFile extends OperationFrame.Mediator {
      * @param contentType         MIME type of the message
      * @throws FileOperationException In case of building the message
      */
+    // The lines are read and handed on in the encoding of the read, or in the default of the JVM when none is given.
+    private static Charset lineCharset(Config config) {
+        return config.givenEncoding == null ? Charset.defaultCharset() : Charset.forName(config.givenEncoding);
+    }
+
+    // A text builder takes its charset from the content type only. When the content type names none, the encoding
+    // of the read names it, as a charset in the content type does.
+    private static String withCharset(String type, Builder builder, String encoding) {
+        if (encoding == null || type == null || !(builder instanceof TextMessageBuilder)
+                || type.toLowerCase(Locale.ROOT).contains("charset=")) {
+            return type;
+        }
+        return type + "; charset=" + encoding;
+    }
+
     private OMElement buildSynapseMessage(InputStream inputStream, MessageContext msgCtx,
-                                     String contentType, NamedLog readLog) throws FileOperationException {
+                                     String contentType, String encoding, NamedLog readLog)
+            throws FileOperationException {
 
         try {
             org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
                     Axis2MessageContext) msgCtx).getAxis2MessageContext();
             Builder builder = selectSynapseMessageBuilder(msgCtx, contentType, readLog);
-            OMElement documentElement = builder.processDocument(inputStream, contentType, axis2MsgCtx);
+            OMElement documentElement = builder.processDocument(inputStream,
+                    withCharset(contentType, builder, encoding), axis2MsgCtx);
             //We need this to build the complete message before closing the stream
             documentElement.toString();
             return documentElement;
