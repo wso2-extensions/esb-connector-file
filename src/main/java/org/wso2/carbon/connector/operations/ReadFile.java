@@ -21,8 +21,11 @@ package org.wso2.carbon.connector.operations;
 import org.wso2.vfs.shared.log.UriMask;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMException;
+import org.apache.axiom.om.OMSourcedElement;
 import org.apache.axiom.soap.SOAPEnvelope;
 import org.apache.axis2.AxisFault;
 import org.apache.axis2.Constants;
@@ -74,7 +77,9 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PushbackReader;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.HashMap;
@@ -438,8 +443,13 @@ public class ReadFile extends OperationFrame.Mediator {
         attempt.progress().reset("open");
         ReadStream raw = new ReadStream(file.getContent().getInputStream(), attempt.progress());
         try {
-            documentElement = buildSynapseMessage(readFile(raw, config, type), msgCtx, type, config.givenEncoding,
-                    readLog);
+            try {
+                documentElement = buildSynapseMessage(readFile(raw, config, type), msgCtx, type,
+                        config.givenEncoding, readLog);
+            } catch (StackOverflowError deep) {
+                // A builder ran out of stack on the content. It fails this read alone, so the flow gets a reply.
+                throw new FileOperationException("Error while building message from Stream", deep);
+            }
         } catch (Exception built) {
             boolean content = raw.failure == null && !declared(built);
             boolean ended = raw.ended;
@@ -860,6 +870,33 @@ public class ReadFile extends OperationFrame.Mediator {
      * @param contentType         MIME type of the message
      * @throws FileOperationException In case of building the message
      */
+    // The JSON builder keeps the file as a buffered stream. One pass over it with a reader that walks with its own stack,
+    // and not by recursion, reads it to its end and finds content that is not JSON, with no conversion to XML. The
+    // stream is then put back to its start.
+    private static void readJson(org.apache.axis2.context.MessageContext axis) throws FileOperationException {
+        InputStream json = (InputStream) axis.getProperty(
+                org.apache.synapse.commons.json.Constants.ORG_APACHE_SYNAPSE_COMMONS_JSON_JSON_INPUT_STREAM);
+        try {
+            PushbackReader text = new PushbackReader(new InputStreamReader(json, StandardCharsets.UTF_8));
+            int first = text.read();
+            if (first == '\uFEFF') {
+                // The JSON reader of Synapse refuses a byte order mark, so the read refuses it as before.
+                throw new IOException("Illegal character: byte order mark");
+            }
+            if (first >= 0) {
+                text.unread(first);
+            }
+            JsonReader reader = new JsonReader(text);
+            reader.setLenient(true);
+            while (reader.peek() != JsonToken.END_DOCUMENT) {
+                reader.skipValue();
+            }
+            json.reset();
+        } catch (IOException e) {
+            throw new FileOperationException("Error while reading the JSON content", e);
+        }
+    }
+
     // The lines are read and handed on in the charset the builder takes: the charset of the content type first, then
     // the encoding of the read, then the default of the JVM.
     private static Charset lineCharset(Config config, String type) {
@@ -889,8 +926,12 @@ public class ReadFile extends OperationFrame.Mediator {
             Builder builder = selectSynapseMessageBuilder(msgCtx, contentType, readLog);
             OMElement documentElement = builder.processDocument(inputStream,
                     withCharset(contentType, builder, encoding), axis2MsgCtx);
-            //We need this to build the complete message before closing the stream
-            documentElement.toString();
+            // The whole content is read before the stream of the file is closed.
+            if (documentElement instanceof OMSourcedElement && JsonUtil.hasAJsonPayload(documentElement)) {
+                readJson(axis2MsgCtx);
+            } else {
+                documentElement.toString();
+            }
             return documentElement;
         } catch (AxisFault e) {
             throw new FileOperationException("Axis2 error while building message from Stream", e);
