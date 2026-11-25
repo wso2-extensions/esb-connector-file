@@ -38,9 +38,11 @@ import org.wso2.integration.connector.core.connection.ConnectionLease;
 import org.wso2.org.apache.commons.vfs2.FileName;
 import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.wso2.org.apache.commons.vfs2.provider.AbstractFileName;
+import org.wso2.org.apache.commons.vfs2.provider.Fault;
 import org.wso2.org.apache.commons.vfs2.provider.local.DefaultLocalFileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.local.LocalFile;
 import org.wso2.org.apache.commons.vfs2.provider.local.LocalFileName;
@@ -56,6 +58,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 /**
@@ -201,6 +204,67 @@ public class ReadContentErrorTest {
         }
     }
 
+    // The parser stops at a broken byte long before the end, and the close of the stream that was still sending
+    // fails, as an FTP server answers a close before the end. The file is broken, so the read is a content error.
+    @Test
+    public void closeBeforeTheEndAfterABrokenByteIsContent() throws Exception {
+        Path directory = WriteFileTest.directory();
+        StringBuilder rest = new StringBuilder();
+        for (int i = 0; i < 20000; i++) {
+            rest.append("<a>").append(i).append("</a>");
+        }
+        byte[] head = {'<', 'r', '>', (byte) 0xE9};
+        byte[] tail = (rest + "</r>").getBytes(StandardCharsets.UTF_8);
+        byte[] content = new byte[head.length + tail.length];
+        System.arraycopy(head, 0, content, 0, head.length);
+        System.arraycopy(tail, 0, content, head.length, tail.length);
+        Files.write(directory.resolve("in"), content);
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString(),
+                "maxActiveConnections", "1")) {
+            FileFrameLeaseTest.CountingPool pool = FileFrameLeaseTest.install(files);
+            failFileCloses(files, () -> new IOException("426 Connection closed, transfer aborted"));
+            int before = pool.attempts.size();
+            Axis2MessageContext message = message(files);
+            try {
+                read(message, "application/xml", "UTF-8", false, 1);
+                Assert.fail("The read of a byte that is not UTF-8 passed");
+            } catch (SynapseException expected) {
+                // The read fails.
+            }
+            Assert.assertEquals(code(message, false), OPERATION_ERROR);
+            Assert.assertEquals(pool.attempts.size() - before, 1, pool.attempts.toString());
+        }
+    }
+
+    // The stream ended and its close fails with a reply that is no fault of the connection: that reply is reported.
+    // The JSON builder leaves the close to the read. The XML parser closes the stream itself at its end.
+    @Test
+    public void closeAfterTheEndReportsItsOwnFailure() throws Exception {
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve("in"), "{\"a\":[1,2,3],\"b\":\"text\"}".getBytes(StandardCharsets.UTF_8));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString(),
+                "maxActiveConnections", "1")) {
+            cutFileReads(files, () -> {
+                FileSystemException refused = new FileSystemException("550 Requested action not taken");
+                refused.setFault(Fault.APPLICATION);
+                return refused;
+            });
+            Axis2MessageContext message = message(files);
+            try {
+                read(message, "application/json", "UTF-8", false, 0);
+                Assert.fail("The read of a cut stream passed");
+            } catch (SynapseException expected) {
+                // The read fails.
+            }
+            JsonObject error = JsonParser.parseString(String.valueOf(((ConnectorResponse) message
+                    .getVariable("content")).getPayload())).getAsJsonObject().getAsJsonObject("error");
+            Assert.assertTrue(error.get("detail").getAsString().contains("550 Requested action not taken"),
+                    error.toString());
+            Assert.assertFalse(error.get("detail").getAsString().contains("The file content could not be read"),
+                    error.toString());
+        }
+    }
+
     // A content error is not tried again on a new connection.
     @Test
     public void contentErrorIsNotTriedAgain() throws Exception {
@@ -304,6 +368,10 @@ public class ReadContentErrorTest {
     // The stream of the file ends cleanly after its first bytes, and its close fails, as the final reply of a cut
     // FTP transfer does.
     private static void cutFileReads(FilePoolFixture files) throws Exception {
+        cutFileReads(files, () -> new IOException("426 Connection closed, transfer aborted"));
+    }
+
+    private static void cutFileReads(FilePoolFixture files, Supplier<IOException> close) throws Exception {
         hookFileReads(files, stream -> new FilterInputStream(stream) {
             private int read;
 
@@ -325,7 +393,18 @@ public class ReadContentErrorTest {
             @Override
             public void close() throws IOException {
                 super.close();
-                throw new IOException("426 Connection closed, transfer aborted");
+                throw close.get();
+            }
+        });
+    }
+
+    // The stream of the file reads whole, and its close fails.
+    private static void failFileCloses(FilePoolFixture files, Supplier<IOException> close) throws Exception {
+        hookFileReads(files, stream -> new FilterInputStream(stream) {
+            @Override
+            public void close() throws IOException {
+                super.close();
+                throw close.get();
             }
         });
     }

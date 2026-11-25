@@ -434,6 +434,7 @@ public class ReadFile extends OperationFrame.Mediator {
             documentElement = buildSynapseMessage(readFile(raw, config), msgCtx, type, readLog);
         } catch (Exception built) {
             boolean content = raw.failure == null && !declared(built);
+            boolean ended = raw.ended;
             Exception failed;
             if (raw.failure != null) {
                 // The stream of the file failed. A builder can drop that cause, so the failure of the stream decides.
@@ -454,12 +455,13 @@ public class ReadFile extends OperationFrame.Mediator {
                     if (!transport && classifier.classify(cleanup, attempt.progress().elapsedMillis(),
                             ErrorClassifier.CallType.READ).getKind().isTransport()) {
                         attempt.discardHandler();
-                        if (content) {
-                            // A stream that was cut can read as a clean end, and its failure shows only at the
-                            // close, as the final reply of an FTP transfer does. The file then only looked broken.
-                            cleanup.addSuppressed(built);
-                            throw cleanup;
-                        }
+                    }
+                    if (content && ended) {
+                        // A stream that was cut can read as a clean end, and its failure shows only at the close,
+                        // as the final reply of an FTP transfer does. The file then only looked broken, so the
+                        // close decides by its own kind. A close before the end, after a broken byte, does not.
+                        cleanup.addSuppressed(built);
+                        throw cleanup;
                     }
                     if (failed != cleanup) {
                         failed.addSuppressed(cleanup);
@@ -525,6 +527,7 @@ public class ReadFile extends OperationFrame.Mediator {
         private final ProgressClock progress;
         private boolean closed;
         IOException failure;
+        boolean ended;
 
         ReadStream(InputStream source, ProgressClock progress) {
             super(source);
@@ -535,7 +538,9 @@ public class ReadFile extends OperationFrame.Mediator {
         public int read() throws IOException {
             progress.reset("read");
             try {
-                return in.read();
+                int value = in.read();
+                ended |= value < 0;
+                return value;
             } catch (IOException error) {
                 failure = error;
                 throw error;
@@ -546,7 +551,9 @@ public class ReadFile extends OperationFrame.Mediator {
         public int read(byte[] data, int offset, int length) throws IOException {
             progress.reset("read");
             try {
-                return in.read(data, offset, length);
+                int count = in.read(data, offset, length);
+                ended |= count < 0;
+                return count;
             } catch (IOException error) {
                 failure = error;
                 throw error;
