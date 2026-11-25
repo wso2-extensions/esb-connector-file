@@ -332,6 +332,13 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         setTimeout(message, "smb2WriteTimeout", value -> Smb2FileSystemConfigBuilder.getInstance().setWriteTimeout(options, value));
         setTimeout(message, "smb2TransactTimeout", value -> Smb2FileSystemConfigBuilder.getInstance().setTransactTimeout(options, value));
         setTimeout(message, "writeStallTimeout", value -> Smb2FileSystemConfigBuilder.getInstance().setWriteStallTimeout(options, value));
+        String dfsEnabled = Utils.lookUpStringParam(message, "smb2DfsEnabled", null);
+        if (dfsEnabled != null) {
+            if (!"true".equalsIgnoreCase(dfsEnabled) && !"false".equalsIgnoreCase(dfsEnabled)) {
+                throw new InvalidConfigurationException("Parameter 'smb2DfsEnabled' must be 'true' or 'false'.");
+            }
+            Smb2FileSystemConfigBuilder.getInstance().setDfsEnabled(options, Boolean.parseBoolean(dfsEnabled));
+        }
     }
 
     private static void setOption(MessageContext message, String name, Consumer<String> apply) {

@@ -304,6 +304,17 @@
           {
             "type": "attribute",
             "value": {
+              "name": "smb2DfsEnabled",
+              "displayName": "Smb2 DFS Enabled",
+              "inputType": "booleanOrExpression",
+              "defaultValue": "true",
+              "required": "false",
+              "helpTip": "When true, the SMB2 client resolves DFS paths. Set false for a server that does not use DFS."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
               "name": "writeStallTimeout",
               "displayName": "Write Stall Timeout",
               "inputType": "integerOrExpression",

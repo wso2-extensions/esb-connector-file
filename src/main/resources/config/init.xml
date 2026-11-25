@@ -86,6 +86,7 @@
 	<parameter name="smb2ReadTimeout" description="SMB2 read timeout in milliseconds."/>
 	<parameter name="smb2WriteTimeout" description="SMB2 write timeout in milliseconds."/>
 	<parameter name="smb2TransactTimeout" description="SMB2 transaction timeout in milliseconds."/>
+	<parameter name="smb2DfsEnabled" description="Whether the SMB2 client resolves DFS paths. The default is true."/>
 	<sequence>
 		<property name="name" expression="$func:name"/>
 		<class name="org.wso2.carbon.connector.operations.FileConfig" />

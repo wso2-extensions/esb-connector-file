@@ -200,6 +200,27 @@ public class ConnectionParametersTest {
         }
     }
 
+    @Test
+    public void smbDfsReachesOnlyTheConfiguredConnectionAndIsOnByDefault() throws Exception {
+        Smb2FileSystemConfigBuilder builder = Smb2FileSystemConfigBuilder.getInstance();
+        try (FilePoolFixture off = new FilePoolFixture("SMB2", "smb2DfsEnabled", "FALSE");
+             FilePoolFixture on = new FilePoolFixture("SMB2", "smb2DfsEnabled", "true");
+             FilePoolFixture defaults = new FilePoolFixture("SMB2");
+             FilePoolFixture empty = new FilePoolFixture("SMB2", "smb2DfsEnabled", "")) {
+            Assert.assertFalse(builder.getDfsEnabled(options(off)));
+            Assert.assertTrue(builder.getDfsEnabled(options(on)));
+            Assert.assertTrue(builder.getDfsEnabled(options(defaults)));
+            Assert.assertTrue(builder.getDfsEnabled(options(empty)));
+        }
+    }
+
+    @Test
+    public void smbDfsRefusesAValueThatIsNotTrueOrFalse() throws Exception {
+        String refused = refusal("connectionType", "SMB2", "smb2DfsEnabled", "yes");
+        Assert.assertNotNull(refused, "smb2DfsEnabled=yes was accepted");
+        Assert.assertTrue(refused.contains("'smb2DfsEnabled'"), refused);
+    }
+
     private static String refusal(String... settings) throws Exception {
         try (FilePoolFixture files = new FilePoolFixture("LOCAL")) {
             Map<String, String> values = new HashMap<>();

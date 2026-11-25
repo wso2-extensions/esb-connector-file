@@ -2387,6 +2387,13 @@
                             "description": "SMB2 transaction timeout in milliseconds."
                         },
                         {
+                            "name": "smb2DfsEnabled",
+                            "type": "booleanOrExpression",
+                            "required": false,
+                            "defaultValue": "true",
+                            "description": "When true, the SMB2 client resolves DFS paths. Set false for a server that does not use DFS."
+                        },
+                        {
                             "name": "writeStallTimeout",
                             "type": "integerOrExpression",
                             "required": false,
