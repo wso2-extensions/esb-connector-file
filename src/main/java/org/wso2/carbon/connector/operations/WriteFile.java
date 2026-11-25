@@ -652,9 +652,10 @@ public class WriteFile extends OperationFrame.Mediator {
                     && !(formatter instanceof BinaryFormatter) && !(formatter instanceof PlainTextFormatter);
         }
 
-        // A write straight into the target builds an XML body that is not built yet before it opens the target, as
-        // the transport sender does. A body that breaks late then fails before the first byte, and the target stays
-        // as it was. A JSON stream and the text and binary wrappers are not XML from a parser and are left alone.
+        // A write straight into the target builds an XML body that is not built yet before it opens the target. A call
+        // through the VFS transport writes a copy of the message, which is read whole before the target is opened. A
+        // body that breaks late then fails before the first byte, and the target stays as it was. A JSON stream and
+        // the text and binary wrappers are not XML from a parser and are left alone.
         private void buildBody() throws FileSystemException {
             org.apache.axis2.context.MessageContext axis = ((Axis2MessageContext) message).getAxis2MessageContext();
             if (unexpandedJson(axis)) {

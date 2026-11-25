@@ -17,10 +17,16 @@ package org.wso2.carbon.connector.operations;
 
 import org.apache.axiom.om.OMAbstractFactory;
 import org.apache.axiom.om.OMElement;
+import org.apache.axiom.om.OMSourcedElement;
+import org.apache.axiom.om.impl.llom.OMSourcedElementImpl;
+import org.apache.axis2.AxisFault;
+import org.apache.axis2.builder.Builder;
 import org.apache.axis2.builder.ApplicationXMLBuilder;
 import org.apache.axis2.context.ConfigurationContext;
 import org.apache.axis2.engine.AxisConfiguration;
 import org.apache.axis2.transport.TransportUtils;
+import org.apache.axis2.transport.http.ApplicationXMLFormatter;
+import org.apache.axis2.transport.http.SOAPMessageFormatter;
 import org.apache.synapse.SynapseException;
 import org.apache.synapse.commons.json.JsonStreamBuilder;
 import org.apache.synapse.commons.json.JsonUtil;
@@ -34,6 +40,9 @@ import org.testng.annotations.Test;
 import org.wso2.integration.connector.core.pool.CircuitBreaker;
 
 import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,8 +52,9 @@ import java.util.Map;
 import java.util.Stack;
 
 /**
- * A JSON file is read to its end with no conversion to XML, so a file with a long array is read whole, into the body
- * and into a variable, and can be read again. A file that is not JSON stays a content error of the read.
+ * A JSON file is read into memory to its end and then turned into XML as before, so every file that was read before
+ * gives the same result. Only when that conversion runs out of stack, as a long JSON array does on the runtime, does
+ * the body keep the JSON form, checked by a reader that walks with its own stack.
  */
 public class ReadJsonArrayTest {
 
@@ -81,7 +91,7 @@ public class ReadJsonArrayTest {
         }
     }
 
-    // What the read gives for files at the edge of JSON. Only the two lenient cases differ from before.
+    // What the read gives for files at the edge of JSON, the same as before.
     @DataProvider(name = "edges")
     public Object[][] edges() {
         byte[] bom = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF, '{', '"', 'a', '"', ':', '1', '}'};
@@ -93,9 +103,8 @@ public class ReadJsonArrayTest {
                 {"a byte order mark", bom, "700108"},
                 {"a cut in an array", "{\"a\":[1,2,".getBytes(StandardCharsets.UTF_8), "700108"},
                 {"a cut in a string", "{\"a\":\"tex".getBytes(StandardCharsets.UTF_8), "700108"},
-                // The lenient pass lets these through, where the read refused them before.
-                {"single quotes", "{'a':'b'}".getBytes(StandardCharsets.UTF_8), null},
-                {"a comment", "{\"a\":1 /* note */}".getBytes(StandardCharsets.UTF_8), null},
+                {"single quotes", "{'a':'b'}".getBytes(StandardCharsets.UTF_8), "700108"},
+                {"a comment", "{\"a\":1 /* note */}".getBytes(StandardCharsets.UTF_8), "700108"},
         };
     }
 
@@ -145,9 +154,160 @@ public class ReadJsonArrayTest {
         }
     }
 
+    // A JSON file read into the body and written as XML gives the XML form of the JSON, as before.
+    @DataProvider(name = "xmlWrites")
+    public Object[][] xmlWrites() {
+        return new Object[][]{{"text/xml", "<?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv="
+                + "\"http://schemas.xmlsoap.org/soap/envelope/\"><soapenv:Body>" + XML
+                + "</soapenv:Body></soapenv:Envelope>"}, {"application/xml", XML}};
+    }
+
+    @Test(dataProvider = "xmlWrites")
+    public void jsonBodyWrittenAsXml(String type, String expected) throws Exception {
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve("in.json"), SMALL.getBytes(StandardCharsets.UTF_8));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            Axis2MessageContext message = message(files, "none");
+            read(message, "application/json", true, 1);
+            Map<String, String> values = new HashMap<>();
+            values.put("filePath", "/out");
+            values.put("mimeType", type);
+            TemplateContext template = new TemplateContext("file.write", Collections.emptyList());
+            template.setMappedValues(values);
+            Stack<TemplateContext> stack = new Stack<>();
+            stack.push(template);
+            message.setProperty("_SYNAPSE_FUNCTION_STACK", stack);
+            new WriteFile().execute(message, "result", false);
+            String written = new String(Files.readAllBytes(directory.resolve("out")), StandardCharsets.UTF_8);
+            Assert.assertEquals(written, expected);
+        }
+    }
+
+    // A JSON file read into a variable under a content type with a charset gives what it gave before.
+    @Test
+    public void variableUnderJsonWithCharset() throws Exception {
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve("in.json"), SMALL.getBytes(StandardCharsets.UTF_8));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            Axis2MessageContext message = message(files, "none");
+            read(message, "application/json; charset=UTF-8", false, 1);
+            Object payload = ((ConnectorResponse) message.getVariable("content")).getPayload();
+            Assert.assertEquals(payload, XML);
+        }
+    }
+
+    // A conversion that runs out of stack once, before the element is expanded or after it is expanded in part. The
+    // read passes, the body keeps the JSON form with the bytes of the file, and a second read works.
+    @DataProvider(name = "overflows")
+    public Object[][] overflows() {
+        return new Object[][]{{false, true, "application/json"}, {false, false, "application/json"},
+                {true, true, "application/json"}, {true, false, "application/json"},
+                {false, false, "application/json; charset=UTF-8"}, {true, false, "application/json; charset=UTF-8"}};
+    }
+
+    @Test(dataProvider = "overflows")
+    public void conversionThatRunsOutOfStack(boolean expanded, boolean replace, String type) throws Exception {
+        String json = array(5000);
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve("in.json"), json.getBytes(StandardCharsets.UTF_8));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            Axis2MessageContext message = message(files, "xml");
+            message.getAxis2MessageContext().getConfigurationContext().getAxisConfiguration()
+                    .addMessageBuilder("application/json", new DeepJsonBuilder(expanded));
+            read(message, type, replace, 1);
+            org.apache.axis2.context.MessageContext axis = message.getAxis2MessageContext();
+            if (replace) {
+                OMElement body = axis.getEnvelope().getBody().getFirstElement();
+                Assert.assertFalse(((OMSourcedElement) body).isExpanded());
+                Assert.assertEquals(JsonUtil.jsonPayloadToString(axis), json);
+            } else {
+                Assert.assertEquals(String.valueOf(((ConnectorResponse) message.getVariable("content")).getPayload()),
+                        json);
+            }
+            Axis2MessageContext next = message(files, "none");
+            read(next, "application/json", true, 1);
+            Assert.assertEquals(JsonUtil.jsonPayloadToString(next.getAxis2MessageContext()), json);
+        }
+    }
+
+    // The stream of the file fails while the JSON file is read into memory. That is a fault of the connection, as
+    // before.
+    @Test
+    public void streamThatFailsWhileTheFileIsReadIsTheConnection() throws Exception {
+        Path directory = WriteFileTest.directory();
+        // The hook breaks the reads of the file named in.
+        Files.write(directory.resolve("in"), array(5000).getBytes(StandardCharsets.UTF_8));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            ReadContentErrorTest.hookFileReads(files, stream -> new FilterInputStream(stream) {
+                private int read;
+
+                @Override
+                public int read() throws IOException {
+                    if (++read > 20000) {
+                        throw new IOException("The connection was lost in the middle of the read");
+                    }
+                    return super.read();
+                }
+
+                @Override
+                public int read(byte[] bytes, int offset, int length) throws IOException {
+                    int next = read();
+                    if (next < 0) {
+                        return -1;
+                    }
+                    bytes[offset] = (byte) next;
+                    return 1;
+                }
+            });
+            Axis2MessageContext message = message(files, "none");
+            try {
+                read(message, "/in", "application/json", true, 0);
+                Assert.fail("The read of a lost stream passed");
+            } catch (SynapseException expected) {
+                Assert.assertEquals(String.valueOf(message.getProperty("ERROR_CODE")), "700101");
+            }
+        }
+    }
+
+    private static final String SMALL = "{\"a\":[1,2],\"b\":{\"c\":\"x\"}}";
+    private static final String XML = "<jsonObject><a>1</a><a>2</a><b><c>x</c></b></jsonObject>";
+
+    // A JSON builder whose element runs out of stack once when it is turned into XML. With expanded, the element is
+    // expanded in part first, as when the stack runs out while the tree is built.
+    private static final class DeepJsonBuilder implements Builder {
+        private final boolean expanded;
+
+        DeepJsonBuilder(boolean expanded) {
+            this.expanded = expanded;
+        }
+
+        @Override
+        public OMElement processDocument(InputStream in, String type, org.apache.axis2.context.MessageContext context)
+                throws AxisFault {
+            OMSourcedElement json = (OMSourcedElement) new JsonStreamBuilder().processDocument(in, type, context);
+            return new OMSourcedElementImpl(json.getQName(), json.getOMFactory(), json.getDataSource()) {
+                private boolean thrown;
+
+                @Override
+                public String toString() {
+                    if (!thrown) {
+                        thrown = true;
+                        if (expanded) {
+                            getFirstOMChild();
+                        }
+                        throw new StackOverflowError();
+                    }
+                    return super.toString();
+                }
+            };
+        }
+    }
+
     private static Axis2MessageContext message(FilePoolFixture files, String flow) throws Exception {
         AxisConfiguration configuration = new AxisConfiguration();
         configuration.addMessageBuilder("application/json", new JsonStreamBuilder());
+        configuration.addMessageFormatter("text/xml", new SOAPMessageFormatter());
+        configuration.addMessageFormatter("application/xml", new ApplicationXMLFormatter());
         org.apache.axis2.context.MessageContext axis = new org.apache.axis2.context.MessageContext();
         axis.setConfigurationContext(new ConfigurationContext(configuration));
         axis.setEnvelope(OMAbstractFactory.getSOAP11Factory().getDefaultEnvelope());
@@ -167,8 +327,13 @@ public class ReadJsonArrayTest {
 
     private static void read(Axis2MessageContext message, String type, boolean replace, int retries)
             throws Exception {
+        read(message, "/in.json", type, replace, retries);
+    }
+
+    private static void read(Axis2MessageContext message, String path, String type, boolean replace, int retries)
+            throws Exception {
         Map<String, String> values = new HashMap<>();
-        values.put("path", "/in.json");
+        values.put("path", path);
         values.put("contentType", type);
         values.put("maxRetries", Integer.toString(retries));
         TemplateContext template = new TemplateContext("file.read", Collections.emptyList());

@@ -509,7 +509,8 @@ public class ReadFile extends OperationFrame.Mediator {
                     removeProperty(PassThroughConstants.NO_ENTITY_BODY);
         } else {
             try {
-                if (Const.CONTENT_TYPE_JSON.equalsIgnoreCase(type)) {
+                if (Const.CONTENT_TYPE_JSON.equalsIgnoreCase(type) || (documentElement instanceof OMSourcedElement
+                        && !((OMSourcedElement) documentElement).isExpanded())) {
                     org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
                             Axis2MessageContext) msgCtx).getAxis2MessageContext();
                     response.setPayload(JsonParser.parseString(
@@ -861,42 +862,6 @@ public class ReadFile extends OperationFrame.Mediator {
         }
     }
 
-    /**
-     * Build synapse message using inputStream. This will read the stream
-     * completely and build the complete message.
-     *
-     * @param inputStream         Stream to file content
-     * @param msgCtx              Message context
-     * @param contentType         MIME type of the message
-     * @throws FileOperationException In case of building the message
-     */
-    // The JSON builder keeps the file as a buffered stream. One pass over it with a reader that walks with its own stack,
-    // and not by recursion, reads it to its end and finds content that is not JSON, with no conversion to XML. The
-    // stream is then put back to its start.
-    private static void readJson(org.apache.axis2.context.MessageContext axis) throws FileOperationException {
-        InputStream json = (InputStream) axis.getProperty(
-                org.apache.synapse.commons.json.Constants.ORG_APACHE_SYNAPSE_COMMONS_JSON_JSON_INPUT_STREAM);
-        try {
-            PushbackReader text = new PushbackReader(new InputStreamReader(json, StandardCharsets.UTF_8));
-            int first = text.read();
-            if (first == '\uFEFF') {
-                // The JSON reader of Synapse refuses a byte order mark, so the read refuses it as before.
-                throw new IOException("Illegal character: byte order mark");
-            }
-            if (first >= 0) {
-                text.unread(first);
-            }
-            JsonReader reader = new JsonReader(text);
-            reader.setLenient(true);
-            while (reader.peek() != JsonToken.END_DOCUMENT) {
-                reader.skipValue();
-            }
-            json.reset();
-        } catch (IOException e) {
-            throw new FileOperationException("Error while reading the JSON content", e);
-        }
-    }
-
     // The lines are read and handed on in the charset the builder takes: the charset of the content type first, then
     // the encoding of the read, then the default of the JVM.
     private static Charset lineCharset(Config config, String type) {
@@ -916,6 +881,15 @@ public class ReadFile extends OperationFrame.Mediator {
         return type + "; charset=" + encoding;
     }
 
+    /**
+     * Build synapse message using inputStream. This will read the stream
+     * completely and build the complete message.
+     *
+     * @param inputStream         Stream to file content
+     * @param msgCtx              Message context
+     * @param contentType         MIME type of the message
+     * @throws FileOperationException In case of building the message
+     */
     private OMElement buildSynapseMessage(InputStream inputStream, MessageContext msgCtx,
                                      String contentType, String encoding, NamedLog readLog)
             throws FileOperationException {
@@ -924,20 +898,70 @@ public class ReadFile extends OperationFrame.Mediator {
             org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
                     Axis2MessageContext) msgCtx).getAxis2MessageContext();
             Builder builder = selectSynapseMessageBuilder(msgCtx, contentType, readLog);
-            OMElement documentElement = builder.processDocument(inputStream,
-                    withCharset(contentType, builder, encoding), axis2MsgCtx);
-            // The whole content is read before the stream of the file is closed.
-            if (documentElement instanceof OMSourcedElement && JsonUtil.hasAJsonPayload(documentElement)) {
-                readJson(axis2MsgCtx);
-            } else {
+            String type = withCharset(contentType, builder, encoding);
+            OMElement documentElement = builder.processDocument(inputStream, type, axis2MsgCtx);
+            // The whole content is read before the stream of the file is closed. The JSON builder keeps the file as
+            // a buffered stream, which is read to its end first, so the conversion to XML reads from memory only.
+            InputStream json = jsonStream(documentElement, axis2MsgCtx);
+            if (json != null) {
+                byte[] buffer = new byte[8192];
+                while (json.read(buffer) >= 0) {
+                    // Only the end of the file is looked for.
+                }
+                json.reset();
+            }
+            try {
                 documentElement.toString();
+            } catch (StackOverflowError deep) {
+                // A long JSON array can run the JSON to XML reader out of stack. The body then keeps the JSON form,
+                // and a reader that walks with its own stack checks the content. An element that was expanded in
+                // part is not used, a new one is built from the content in memory.
+                if (json == null) {
+                    throw deep;
+                }
+                json.reset();
+                if (((OMSourcedElement) documentElement).isExpanded()) {
+                    documentElement = builder.processDocument(json, type, axis2MsgCtx);
+                    json = jsonStream(documentElement, axis2MsgCtx);
+                }
+                checkJson(json);
             }
             return documentElement;
         } catch (AxisFault e) {
             throw new FileOperationException("Axis2 error while building message from Stream", e);
         } catch (OMException e) {
             throw new FileOperationException("Error while building message from Stream", e);
+        } catch (IOException e) {
+            throw new FileOperationException("Error while reading the JSON content", e);
         }
+    }
+
+    // The buffered stream of a JSON element that the JSON builder made, or null for any other element.
+    private static InputStream jsonStream(OMElement element, org.apache.axis2.context.MessageContext axis) {
+        if (!(element instanceof OMSourcedElement) || !JsonUtil.hasAJsonPayload(element)) {
+            return null;
+        }
+        return (InputStream) axis.getProperty(
+                org.apache.synapse.commons.json.Constants.ORG_APACHE_SYNAPSE_COMMONS_JSON_JSON_INPUT_STREAM);
+    }
+
+    // One pass over the JSON content to its end, then back to its start. The JSON reader of Synapse refuses a byte
+    // order mark, so this pass refuses it too.
+    private static void checkJson(InputStream json) throws IOException {
+        PushbackReader text = new PushbackReader(new InputStreamReader(json, StandardCharsets.UTF_8));
+        int first = text.read();
+        if (first == '\uFEFF') {
+            throw new IOException("Illegal character: byte order mark");
+        }
+        if (first >= 0) {
+            text.unread(first);
+        }
+        JsonReader reader = new JsonReader(text);
+        reader.setLenient(true);
+        while (reader.peek() != JsonToken.END_DOCUMENT) {
+            reader.skipValue();
+        }
+        json.reset();
     }
 
     /**
