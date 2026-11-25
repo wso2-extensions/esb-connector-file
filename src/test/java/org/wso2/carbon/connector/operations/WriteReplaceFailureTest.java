@@ -168,6 +168,11 @@ public class WriteReplaceFailureTest {
                         result.toString());
                 Assert.assertTrue(thrown.getMessage().contains(detail), thrown.getMessage());
             }
+            if (failure.equals("body that breaks late")) {
+                Assert.assertTrue(thrown.getMessage().startsWith(detail), thrown.getMessage());
+            }
+            // The operator reads the sentence, not a message code of the file system library.
+            Assert.assertFalse(thrown.getMessage().contains("Unknown message with code"), thrown.getMessage());
             // The whole envelope reads after the write, with the result in place of the body.
             Assert.assertTrue(axis.getEnvelope().toString().contains("jsonObject"), axis.getEnvelope().toString());
         }

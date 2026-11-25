@@ -38,7 +38,6 @@ import org.wso2.vfs.shared.log.NamedLog;
 import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
-import org.wso2.org.apache.commons.vfs2.provider.Fault;
 import org.wso2.org.apache.commons.vfs2.provider.local.LocalFile;
 import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 import org.wso2.vfs.shared.error.ErrorClassifier;
@@ -63,6 +62,7 @@ import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.FileReadMode;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.ContentFailure;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.AdvancedFileFilter;
 
@@ -524,10 +524,7 @@ public class ReadFile extends OperationFrame.Mediator {
     // A failure of the build or of the variable when the stream of the file did not fail is a failure of the
     // content. It fails this read alone and is no fault of the connection.
     private static FileSystemException content(Exception failure, String type) {
-        FileSystemException content = new FileSystemException("The file content could not be read"
-                + (type == null ? "" : " as " + type), failure);
-        content.setFault(Fault.APPLICATION);
-        return content;
+        return new ContentFailure("The file content could not be read" + (type == null ? "" : " as " + type), failure);
     }
 
     // Keeps the failure of the stream of the file, so that a failure of the build can be told from it.

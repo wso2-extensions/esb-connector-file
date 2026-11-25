@@ -111,6 +111,10 @@ public class ReadContentErrorTest {
                 // The read fails.
             }
             Assert.assertEquals(code(message, replace), OPERATION_ERROR, name);
+            // The operator reads the sentence, not a message code of the file system library.
+            String detail = detail(message, replace);
+            Assert.assertTrue(detail.startsWith("The file content could not be read as " + type), detail);
+            Assert.assertFalse(detail.contains("Unknown message with code"), detail);
             // The next operation on the same connection is not refused.
             WriteFileTest.write(WriteFileTest.message(files), "next", "x");
             Assert.assertEquals(new String(Files.readAllBytes(directory.resolve("next")), StandardCharsets.UTF_8),
@@ -327,6 +331,15 @@ public class ReadContentErrorTest {
         stack.push(template);
         message.setProperty("_SYNAPSE_FUNCTION_STACK", stack);
         new ReadFile().execute(message, "content", replace);
+    }
+
+    private static String detail(Axis2MessageContext message, boolean replace) {
+        JsonObject result = replace
+                ? JsonParser.parseString(JsonUtil.jsonPayloadToString(message.getAxis2MessageContext()))
+                .getAsJsonObject()
+                : JsonParser.parseString(String.valueOf(((ConnectorResponse) message.getVariable("content"))
+                .getPayload())).getAsJsonObject();
+        return result.getAsJsonObject("error").get("detail").getAsString();
     }
 
     // The error code of the result: in the variable, or in place of the body.

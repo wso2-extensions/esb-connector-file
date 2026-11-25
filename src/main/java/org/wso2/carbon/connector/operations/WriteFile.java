@@ -56,6 +56,7 @@ import org.wso2.carbon.connector.frame.StreamLease;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.FileWriteMode;
 import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.ContentFailure;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.relay.ExpandingMessageFormatter;
@@ -66,7 +67,6 @@ import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
 import org.wso2.org.apache.commons.vfs2.provider.CommitStep;
-import org.wso2.org.apache.commons.vfs2.provider.Fault;
 import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileObject;
 import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 import org.wso2.org.apache.commons.vfs2.util.TestPoints;
@@ -622,9 +622,7 @@ public class WriteFile extends OperationFrame.Mediator {
                     }
                     broken = true;
                     // The source of the body failed and not the target, so this is no transport error of the target.
-                    FileSystemException body = new FileSystemException("The message body could not be read", failure);
-                    body.setFault(Fault.APPLICATION);
-                    throw body;
+                    throw new ContentFailure("The message body could not be read", failure);
                 } finally {
                     if (copy != null) {
                         copy.insertSiblingBefore(original);
@@ -673,9 +671,7 @@ public class WriteFile extends OperationFrame.Mediator {
                 if (replaceBody) {
                     closeSpent(axis.getEnvelope(), true);
                 }
-                FileSystemException body = new FileSystemException("The message body could not be read", failure);
-                body.setFault(Fault.APPLICATION);
-                throw body;
+                throw new ContentFailure("The message body could not be read", failure);
             }
         }
 
