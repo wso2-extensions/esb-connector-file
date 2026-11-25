@@ -162,6 +162,7 @@ public class WriteFile extends OperationFrame.Mediator {
         boolean ready;
         long bytes;
         boolean targetFailed;
+        boolean built;
 
         Write(MessageContext message, boolean replaceBody) throws InvalidConfigurationException, JaxenException {
             this.message = message;
@@ -291,6 +292,9 @@ public class WriteFile extends OperationFrame.Mediator {
                     boolean append = mode == FileWriteMode.APPEND;
                     if (append && attempt.hasShare(path)) {
                         appendPoint("append.after-share-lock");
+                    }
+                    if (!hasContent()) {
+                        buildBody();
                     }
                     attempt.progress().reset("open");
                     try (OutputStream output = target.getContent().getOutputStream(append)) {
@@ -606,7 +610,8 @@ public class WriteFile extends OperationFrame.Mediator {
                         original.insertSiblingBefore(copy);
                         original.detach();
                     }
-                    if (keep && parsedEnvelope(axis, formatter, format)) {
+                    // A body built before a direct write is written as a kept one, so it keeps its bytes as well.
+                    if ((keep || built) && parsedEnvelope(axis, formatter, format)) {
                         writeEnvelope(axis, format, output);
                     } else {
                         formatter.writeTo(axis, format, output, keep);
@@ -647,6 +652,31 @@ public class WriteFile extends OperationFrame.Mediator {
             return type != null && type.toString().toLowerCase(Locale.ROOT).contains("json")
                     && axis.getEnvelope().getBody().getFirstElement() != null && !JsonUtil.hasAJsonPayload(axis)
                     && !(formatter instanceof BinaryFormatter) && !(formatter instanceof PlainTextFormatter);
+        }
+
+        // A write straight into the target builds an XML body that is not built yet before it opens the target, as
+        // the transport sender does. A body that breaks late then fails before the first byte, and the target stays
+        // as it was. A JSON stream and the text and binary wrappers are not XML from a parser and are left alone.
+        private void buildBody() throws FileSystemException {
+            org.apache.axis2.context.MessageContext axis = ((Axis2MessageContext) message).getAxis2MessageContext();
+            if (unexpandedJson(axis)) {
+                return;
+            }
+            try {
+                axis.getEnvelope().build();
+                OMElement first = axis.getEnvelope().getBody().getFirstElement();
+                if (first != null && !(first instanceof OMSourcedElement)) {
+                    first.build();
+                }
+                built = true;
+            } catch (RuntimeException failure) {
+                if (replaceBody) {
+                    closeSpent(axis.getEnvelope(), true);
+                }
+                FileSystemException body = new FileSystemException("The message body could not be read", failure);
+                body.setFault(Fault.APPLICATION);
+                throw body;
+            }
         }
 
         // True for a SOAP envelope that a parser made, kept, and written whole by the SOAP formatter or by the relay

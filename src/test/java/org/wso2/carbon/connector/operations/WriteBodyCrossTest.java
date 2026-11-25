@@ -387,8 +387,6 @@ public class WriteBodyCrossTest {
         String name = "n" + names.incrementAndGet();
         write(message, name, "text/xml", "Create New", false, false, true);
         String kept = new String(Files.readAllBytes(directory.resolve(name)), StandardCharsets.UTF_8);
-        System.out.println("DECLARATIONS spent: " + spent);
-        System.out.println("DECLARATIONS kept:  " + kept);
         Assert.assertEquals(kept.replaceAll(" xmlns:[a-z]+=\"[^\"]*\"", ""),
                 spent.replaceAll(" xmlns:[a-z]+=\"[^\"]*\"", ""));
         for (String declaration : new String[]{"xmlns:xsi=\"urn:xsi\"", "xmlns:xsd=\"urn:xsd\"", "xmlns:m=\"urn:m\""}) {
@@ -530,7 +528,7 @@ public class WriteBodyCrossTest {
 
     // A SOAP envelope that is not built and holds a processing instruction in its body is not valid SOAP. The
     // write that keeps the body builds it and fails, where the write before spent the body and wrote the bytes. The
-    // target is left as a body that breaks late leaves it.
+    // target is left as it was, as after a body that breaks late.
     @Test(dataProvider = "atomic")
     public void processingInstructionInASoapBodyFailsTheKeptWrite(boolean atomic) throws Exception {
         byte[] soap = SOAP.replace("<item ", "<?keep this?><item ").getBytes(StandardCharsets.UTF_8);
@@ -556,19 +554,12 @@ public class WriteBodyCrossTest {
         } catch (SynapseException expected) {
             // A body that breaks late fails the write too.
         }
-        String left = new String(Files.readAllBytes(directory.resolve(pi)), StandardCharsets.UTF_8);
-        String leftByBreak = new String(Files.readAllBytes(directory.resolve(broken)), StandardCharsets.UTF_8);
-        if (atomic) {
-            Assert.assertEquals(left, "old content\n");
-            Assert.assertEquals(leftByBreak, "old content\n");
-        } else {
-            // The writer closes the open elements when the write fails, so the part that stays reads as a whole
-            // envelope that ends where the body broke.
-            Assert.assertTrue(left.startsWith("<?xml") && !left.contains("<item ")
-                    && left.endsWith("</soapenv:Envelope>"), left);
-            Assert.assertTrue(leftByBreak.startsWith("<?xml") && leftByBreak.endsWith("</soapenv:Envelope>"),
-                    leftByBreak);
-        }
+        // An atomic write drops its temp file, and a write straight into the target builds the body before it opens
+        // the target. So both leave the target as it was.
+        Assert.assertEquals(new String(Files.readAllBytes(directory.resolve(pi)), StandardCharsets.UTF_8),
+                "old content\n");
+        Assert.assertEquals(new String(Files.readAllBytes(directory.resolve(broken)), StandardCharsets.UTF_8),
+                "old content\n");
     }
 
     private Axis2MessageContext message(Body body) throws Exception {
