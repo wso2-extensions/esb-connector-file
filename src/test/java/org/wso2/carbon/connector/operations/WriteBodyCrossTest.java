@@ -53,6 +53,7 @@ import org.wso2.carbon.relay.BinaryRelayBuilder;
 import org.wso2.carbon.relay.ExpandingMessageFormatter;
 
 import javax.activation.DataHandler;
+import javax.mail.util.ByteArrayDataSource;
 import javax.xml.stream.XMLInputFactory;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -65,6 +66,7 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
@@ -79,7 +81,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class WriteBodyCrossTest {
     private static final String XML = "<a:order xmlns:a=\"urn:a\" xmlns=\"urn:d\" id=\"7\" note=\"x &amp; y\">\n"
-            + "  <item a:n=\"1\">café 中</item>\n"
+            + "  <item a:n=\"1\">caf\u00e9 \u4e2d</item>\n"
             + "  <a:empty/><!-- a comment -->\n"
             + "  <data><![CDATA[<raw> & text]]></data>\n"
             + "  <text>1 &lt; 2 &amp;&amp; 3 &gt; 2</text>\n"
@@ -90,9 +92,9 @@ public class WriteBodyCrossTest {
     private static final String SOAP = "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">"
             + "<soapenv:Header><h:trace xmlns:h=\"urn:h\">1</h:trace></soapenv:Header>"
             + "<soapenv:Body>" + XML + "</soapenv:Body></soapenv:Envelope>";
-    private static final String JSON = "{\"order\":{\"id\":42,\"items\":[{\"n\":\"café\",\"q\":1},"
+    private static final String JSON = "{\"order\":{\"id\":42,\"items\":[{\"n\":\"caf\u00e9\",\"q\":1},"
             + "{\"n\":\"b\",\"q\":2}],\"note\":null,\"flag\":true}}";
-    private static final String TEXT = "line one café\nline two & <three>\n";
+    private static final String TEXT = "line one caf\u00e9\nline two & <three>\n";
     private static final byte[] BINARY = new byte[1000];
     // XML that a parser and a tree write in the same bytes only when the serializer gets every case right.
     private static final String HARD = "<a:r xmlns:a=\"urn:a\" xmlns=\"urn:d\" one='single \"q\"' two=\"double 'q'\">\n"
@@ -115,7 +117,8 @@ public class WriteBodyCrossTest {
     }
 
     enum Body {
-        LAZY_XML, TOUCHED_XML, BUILT_XML, LAZY_SOAP, FACTORY_XML, FACTORY_TEXT, JSON_STREAM, TEXT, BINARY;
+        LAZY_XML, TOUCHED_XML, BUILT_XML, LAZY_SOAP, FACTORY_XML, FACTORY_TEXT, JSON_STREAM, JSON_EXPANDED, TEXT,
+        TEXT_SOURCE, BINARY, EMPTY;
 
         boolean xml() {
             return this == LAZY_XML || this == TOUCHED_XML || this == BUILT_XML || this == LAZY_SOAP
@@ -191,8 +194,15 @@ public class WriteBodyCrossTest {
         file.write(expected);
         Assert.assertEquals(digest(Files.readAllBytes(target)), digest(file.toByteArray()), "bytes of the file");
         if (replace) {
-            Assert.assertEquals(message.getAxis2MessageContext().getEnvelope().getBody().getFirstElement()
-                    .getLocalName(), "jsonObject");
+            // The whole envelope reads after the write: the header as it was, and the result alone in the body.
+            MessageContext axis = message.getAxis2MessageContext();
+            Assert.assertNotNull(axis.getEnvelope().toString());
+            Iterator<?> children = axis.getEnvelope().getBody().getChildElements();
+            Assert.assertEquals(((OMElement) children.next()).getLocalName(), "jsonObject");
+            Assert.assertFalse(children.hasNext());
+            Assert.assertTrue(JsonUtil.jsonPayloadToString(axis).contains("\"success\":true"));
+            Assert.assertEquals(String.valueOf(axis.getEnvelope().getHeader()),
+                    String.valueOf(untouched.getAxis2MessageContext().getEnvelope().getHeader()));
         } else if (streamed) {
             Assert.assertEquals(read(message, body), read(before, body), "body after a streamed write");
         } else if ("application/json".equals(type) && body.xml()) {
@@ -206,7 +216,7 @@ public class WriteBodyCrossTest {
 
     @DataProvider(name = "hard")
     public Object[][] hard() {
-        String latin = HARD.replace("&#x4e2d;", "éü");
+        String latin = HARD.replace("&#x4e2d;", "\u00e9\u00fc");
         byte[] bom = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
         byte[] utf16Mark = {(byte) 0xFF, (byte) 0xFE};
         Object[][] fixtures = {
@@ -226,6 +236,14 @@ public class WriteBodyCrossTest {
                         + "xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Header><h:t xmlns:h=\"urn:h\" "
                         + "s:mustUnderstand=\"0\">1</h:t></s:Header><s:Body>" + HARD + "</s:Body></s:Envelope>")
                         .getBytes(StandardCharsets.UTF_8), null, true},
+                {"namespaces of the envelope", ("<?xml version=\"1.0\" encoding=\"UTF-8\"?><soapenv:Envelope "
+                        + "xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:m=\"urn:m\" "
+                        + "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+                        + "xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"urn:d\"><soapenv:Header><m:h>1</m:h>"
+                        + "</soapenv:Header><soapenv:Body xmlns:b=\"urn:b\"><m:order m:id=\"1\" plain=\"p\">"
+                        + "<m:item xsi:type=\"m:ItemType\">a</m:item><value xsi:type=\"xs:string\">v</value>"
+                        + "<b:x b:a=\"1\"/><d>default</d><xsi:nil/><m:e xsi:nil=\"true\"/></m:order></soapenv:Body>"
+                        + "</soapenv:Envelope>").getBytes(StandardCharsets.UTF_8), null, true},
                 {"DOCTYPE", ("<!DOCTYPE a:r [<!ENTITY ent \"entity\">]>" + HARD.replace("t</a:k>", "&ent;</a:k>"))
                         .getBytes(StandardCharsets.UTF_8), null, false},
         };
@@ -269,8 +287,7 @@ public class WriteBodyCrossTest {
             return;
         }
         Assert.assertNull(beforeFailure, "The write passed where the formatter failed before");
-        Assert.assertEquals(new String(Files.readAllBytes(directory.resolve(name)), StandardCharsets.UTF_8),
-                new String(expected, StandardCharsets.UTF_8), fixture);
+        Assert.assertEquals(Files.readAllBytes(directory.resolve(name)), expected, fixture);
         Assert.assertEquals(message.getAxis2MessageContext().getEnvelope().toString(),
                 untouched.getAxis2MessageContext().getEnvelope().toString(), fixture);
     }
@@ -418,9 +435,23 @@ public class WriteBodyCrossTest {
                 axis.setEnvelope(TransportUtils.createSOAPEnvelope(
                         new JsonStreamBuilder().processDocument(stream(JSON), "application/json", axis)));
                 break;
+            case JSON_EXPANDED:
+                // A mediator read the JSON body as XML, so its element is expanded.
+                axis.setEnvelope(TransportUtils.createSOAPEnvelope(
+                        new JsonStreamBuilder().processDocument(stream(JSON), "application/json", axis)));
+                axis.getEnvelope().getBody().getFirstElement().getFirstElement();
+                break;
             case TEXT:
                 axis.setEnvelope(TransportUtils.createSOAPEnvelope(
                         new PlainTextBuilder().processDocument(stream(TEXT), "text/plain", axis)));
+                break;
+            case TEXT_SOURCE:
+                // As the inbound builds a text file with Streaming true: the text is read from a data source.
+                axis.setEnvelope(TransportUtils.createSOAPEnvelope(new PlainTextBuilder().processDocument(
+                        new ByteArrayDataSource(TEXT.getBytes(StandardCharsets.UTF_8), "text/plain"), "text/plain",
+                        axis)));
+                break;
+            case EMPTY:
                 break;
             case BINARY:
                 axis.setEnvelope(TransportUtils.createSOAPEnvelope(new BinaryRelayBuilder().processDocument(
@@ -472,9 +503,13 @@ public class WriteBodyCrossTest {
             switch (body) {
                 case JSON_STREAM:
                     return JsonUtil.jsonPayloadToString(axis);
+                case JSON_EXPANDED:
+                    return JsonUtil.jsonPayloadToString(axis) + axis.getEnvelope().getBody().getFirstElement();
                 case LAZY_SOAP:
+                case EMPTY:
                     return axis.getEnvelope().toString();
                 case TEXT:
+                case TEXT_SOURCE:
                 case FACTORY_TEXT:
                     return axis.getEnvelope().getBody().getFirstElement().getText();
                 case BINARY: {

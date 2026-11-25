@@ -35,7 +35,9 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class WriteXmlResponseTest {
-    @Test public void completedStandaloneXmlKeepsEnvelopeAndClosesAfterCommit() throws Exception {
+    // The write closes the parser it has spent right after the body is written, before the connector core puts the
+    // result in place of the body.
+    @Test public void completedStandaloneXmlKeepsEnvelopeAndClosesOnce() throws Exception {
         Path directory = WriteFileTest.directory();
         Path file = directory.resolve("xml");
         String input = "<request><value>42</value></request>";
@@ -43,7 +45,6 @@ public class WriteXmlResponseTest {
         XMLStreamReader reader = new StreamReaderDelegate(XMLInputFactory.newFactory()
                 .createXMLStreamReader(new StringReader(input))) {
             @Override public void close() throws javax.xml.stream.XMLStreamException {
-                Assert.assertTrue(Files.isRegularFile(file), "The file must be committed before reader release");
                 closes[0]++;
                 super.close();
             }
@@ -83,7 +84,7 @@ public class WriteXmlResponseTest {
         }
     }
     public static void main(String[] args) throws Exception {
-        new WriteXmlResponseTest().completedStandaloneXmlKeepsEnvelopeAndClosesAfterCommit();
-        System.out.println("PASS public WriteFile retained envelope/header/body/comment/extension; parser closed once after commit");
+        new WriteXmlResponseTest().completedStandaloneXmlKeepsEnvelopeAndClosesOnce();
+        System.out.println("PASS public WriteFile retained envelope/header/body/comment/extension; parser closed once");
     }
 }

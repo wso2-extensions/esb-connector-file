@@ -113,11 +113,6 @@ public class WriteFile extends OperationFrame.Mediator {
         try {
             long bytes = runFrame(message, Utils.getConnectionName(message), write.retries, write,
                     "write", responseVariable, overwriteBody);
-            if (write.replaceBody && !write.hasContent()) {
-                // The file commit succeeded. Close what the write left of the body before the connector core
-                // removes the body, so that the removal does not read a parser that the write has spent.
-                closeSpent(((Axis2MessageContext) message).getAxis2MessageContext().getEnvelope());
-            }
             JsonObject result = generateOperationResult(message, new FileOperationResult("write", true, (int) bytes));
             handleConnectorResponse(message, responseVariable, overwriteBody, result, null, null);
         } finally {
@@ -593,6 +588,13 @@ public class WriteFile extends OperationFrame.Mediator {
                     FileSystemException body = new FileSystemException("The message body could not be read", failure);
                     body.setFault(Fault.APPLICATION);
                     throw body;
+                } finally {
+                    if (replaceBody) {
+                        // No attempt writes the body again once its payload started. Close what the write left of
+                        // the body now, also when the write fails, so that the connector core does not read a
+                        // parser the write has spent when it puts the result in place of the body.
+                        closeSpent(axis.getEnvelope());
+                    }
                 }
             }
             if (newline && (hasContent() || !compress)) {
