@@ -314,7 +314,7 @@
                             "displayName": "Overwrite Message Body",
                             "inputType": "checkbox",
                             "defaultValue": "true",
-                            "helpTip": "With true, the default, the result of the write replaces the message body, so a step after the write no longer has the content, and the response variable holds no result payload. Set false on every write whose body is needed after it, the body is then held in memory. A streamed write keeps no body either way.",
+                            "helpTip": "The designer sets true for a new write. A write must name a value. With true the result of the write replaces the message body, so a step after the write no longer has the content, and the response variable holds no result payload. Set false on every write whose body is needed after it, the body is then held in memory. A streamed write keeps no body either way.",
                             "required": "false"
                         }
                     }
