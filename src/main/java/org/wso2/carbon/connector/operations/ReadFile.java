@@ -433,7 +433,17 @@ public class ReadFile extends OperationFrame.Mediator {
         try {
             documentElement = buildSynapseMessage(readFile(raw, config), msgCtx, type, readLog);
         } catch (Exception built) {
-            Exception failed = raw.failure == null && !declared(built) ? content(built, type) : built;
+            boolean content = raw.failure == null && !declared(built);
+            Exception failed;
+            if (raw.failure != null) {
+                // The stream of the file failed. A builder can drop that cause, so the failure of the stream decides.
+                failed = raw.failure;
+                if (!inChain(built, failed)) {
+                    failed.addSuppressed(built);
+                }
+            } else {
+                failed = content ? content(built, type) : built;
+            }
             ErrorClassifier classifier = new ErrorClassifier(attempt.handler().getContext().getHealth().namedLog());
             boolean transport = classifier.classify(failed, attempt.progress().elapsedMillis(),
                     ErrorClassifier.CallType.READ).getKind().isTransport();
@@ -444,6 +454,12 @@ public class ReadFile extends OperationFrame.Mediator {
                     if (!transport && classifier.classify(cleanup, attempt.progress().elapsedMillis(),
                             ErrorClassifier.CallType.READ).getKind().isTransport()) {
                         attempt.discardHandler();
+                        if (content) {
+                            // A stream that was cut can read as a clean end, and its failure shows only at the
+                            // close, as the final reply of an FTP transfer does. The file then only looked broken.
+                            cleanup.addSuppressed(built);
+                            throw cleanup;
+                        }
                     }
                     if (failed != cleanup) {
                         failed.addSuppressed(cleanup);
@@ -472,6 +488,16 @@ public class ReadFile extends OperationFrame.Mediator {
                 throw content(failed, type);
             }
         }
+    }
+
+    private static boolean inChain(Throwable failure, Throwable member) {
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Throwable link = failure; link != null && seen.add(link); link = link.getCause()) {
+            if (link == member) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // True when a file system exception in the chain names its fault, so the provider has said what failed.

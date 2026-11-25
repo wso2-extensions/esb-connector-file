@@ -18,6 +18,7 @@ package org.wso2.carbon.connector.operations;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.axiom.om.OMAbstractFactory;
+import org.apache.axis2.AxisFault;
 import org.apache.axis2.builder.ApplicationXMLBuilder;
 import org.apache.axis2.context.ConfigurationContext;
 import org.apache.axis2.engine.AxisConfiguration;
@@ -55,6 +56,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
+import java.util.function.UnaryOperator;
 
 /**
  * A file whose content the builder can not read fails that read alone, with an operation error, and the connection
@@ -144,11 +146,96 @@ public class ReadContentErrorTest {
         }
     }
 
+    @DataProvider(name = "cut")
+    public Object[][] cut() {
+        return new Object[][]{
+                {"application/xml", "<r><a>1</a><a>2</a><a>3</a></r>"},
+                {"application/json", "{\"a\":[1,2,3],\"b\":\"text\"}"},
+        };
+    }
+
+    // The file only looks broken: the read is a fault of the connection, and a second try on a new connection
+    // reads it whole.
+    @Test(dataProvider = "cut")
+    public void cutStreamThatFailsAtTheCloseIsAFaultOfTheConnection(String type, String content) throws Exception {
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve("in"), content.getBytes(StandardCharsets.UTF_8));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString(),
+                "maxActiveConnections", "1")) {
+            cutFileReads(files);
+            Axis2MessageContext message = message(files);
+            try {
+                read(message, type, "UTF-8", false, 0);
+                Assert.fail("The read of a cut stream passed");
+            } catch (SynapseException expected) {
+                // The read fails.
+            }
+            Assert.assertEquals(code(message, false), CONNECTION_ERROR);
+        }
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString(),
+                "maxActiveConnections", "1")) {
+            cutFileReads(files);
+            Axis2MessageContext message = message(files);
+            read(message, type, "UTF-8", false, 1);
+            Assert.assertTrue(String.valueOf(((ConnectorResponse) message.getVariable("content")).getPayload())
+                    .contains("3"));
+        }
+    }
+
+    // A builder that drops the cause of its failure: the failure of the stream still decides.
+    @Test
+    public void failureOfTheStreamDecidesWhenTheBuilderDropsIt() throws Exception {
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve("in"), "0123456789".getBytes(StandardCharsets.UTF_8));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString(),
+                "maxActiveConnections", "1")) {
+            breakFileReads(files);
+            Axis2MessageContext message = message(files);
+            try {
+                read(message, "application/x-dropping", "UTF-8", false, 0);
+                Assert.fail("The read of a lost stream passed");
+            } catch (SynapseException expected) {
+                // The read fails.
+            }
+            Assert.assertEquals(code(message, false), CONNECTION_ERROR);
+        }
+    }
+
+    // A content error is not tried again on a new connection.
+    @Test
+    public void contentErrorIsNotTriedAgain() throws Exception {
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve("in"), new byte[]{'<', 'r', '>', (byte) 0xE9, '<', '/', 'r', '>'});
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            FileFrameLeaseTest.CountingPool pool = FileFrameLeaseTest.install(files);
+            Axis2MessageContext message = message(files);
+            try {
+                read(message, "application/xml", "UTF-8", false, 1);
+                Assert.fail("The read of a byte that is not UTF-8 passed");
+            } catch (SynapseException expected) {
+                // The read fails.
+            }
+            Assert.assertEquals(code(message, false), OPERATION_ERROR);
+            Assert.assertEquals(pool.attempts.size(), 1, pool.attempts.toString());
+        }
+    }
+
     private static Axis2MessageContext message(FilePoolFixture files) throws Exception {
         AxisConfiguration configuration = new AxisConfiguration();
         configuration.addMessageBuilder("application/xml", new ApplicationXMLBuilder());
         configuration.addMessageBuilder("text/plain", new PlainTextBuilder());
         configuration.addMessageBuilder("application/json", new JsonStreamBuilder());
+        // Reads the whole file and drops the cause when the read fails, as some builders do.
+        configuration.addMessageBuilder("application/x-dropping", (in, type, context) -> {
+            try {
+                while (in.read() >= 0) {
+                    continue;
+                }
+            } catch (IOException dropped) {
+                throw new AxisFault("The builder could not read the file");
+            }
+            throw new AxisFault("The builder found nothing");
+        });
         org.apache.axis2.context.MessageContext axis = new org.apache.axis2.context.MessageContext();
         axis.setConfigurationContext(new ConfigurationContext(configuration));
         axis.setEnvelope(OMAbstractFactory.getSOAP11Factory().getDefaultEnvelope());
@@ -159,12 +246,17 @@ public class ReadContentErrorTest {
 
     private static void read(Axis2MessageContext message, String type, String encoding, boolean replace)
             throws Exception {
+        read(message, type, encoding, replace, 0);
+    }
+
+    private static void read(Axis2MessageContext message, String type, String encoding, boolean replace,
+                             int retries) throws Exception {
         Map<String, String> values = new HashMap<>();
         values.put("path", "/in");
         values.put("contentType", type);
         values.put("encoding", encoding);
-        // No second try on a new connection, so that a failure of the stream reaches the breaker.
-        values.put("maxRetries", "0");
+        // With no second try on a new connection, a failure of the stream reaches the breaker.
+        values.put("maxRetries", Integer.toString(retries));
         TemplateContext template = new TemplateContext("file.read", Collections.emptyList());
         template.setMappedValues(values);
         Stack<TemplateContext> stack = new Stack<>();
@@ -186,6 +278,59 @@ public class ReadContentErrorTest {
     // The stream of the file "in" fails after its first bytes. The read meets the file through the cache of the
     // file system, so the failure is put into the local file that the provider makes.
     private static void breakFileReads(FilePoolFixture files) throws Exception {
+        hookFileReads(files, stream -> new FilterInputStream(stream) {
+            private int read;
+
+            @Override
+            public int read() throws IOException {
+                if (++read > 5) {
+                    throw new IOException("The connection was lost in the middle of the read");
+                }
+                return super.read();
+            }
+
+            @Override
+            public int read(byte[] bytes, int offset, int length) throws IOException {
+                int next = read();
+                if (next < 0) {
+                    return -1;
+                }
+                bytes[offset] = (byte) next;
+                return 1;
+            }
+        });
+    }
+
+    // The stream of the file ends cleanly after its first bytes, and its close fails, as the final reply of a cut
+    // FTP transfer does.
+    private static void cutFileReads(FilePoolFixture files) throws Exception {
+        hookFileReads(files, stream -> new FilterInputStream(stream) {
+            private int read;
+
+            @Override
+            public int read() throws IOException {
+                return ++read > 5 ? -1 : super.read();
+            }
+
+            @Override
+            public int read(byte[] bytes, int offset, int length) throws IOException {
+                int next = read();
+                if (next < 0) {
+                    return -1;
+                }
+                bytes[offset] = (byte) next;
+                return 1;
+            }
+
+            @Override
+            public void close() throws IOException {
+                super.close();
+                throw new IOException("426 Connection closed, transfer aborted");
+            }
+        });
+    }
+
+    private static void hookFileReads(FilePoolFixture files, UnaryOperator<InputStream> hook) throws Exception {
         ConnectionLease lease = files.borrow();
         DefaultFileSystemManager manager =
                 (DefaultFileSystemManager) ((FileSystemHandler) lease.getConnection()).getFsManager();
@@ -201,30 +346,7 @@ public class ReadContentErrorTest {
                             @Override
                             protected InputStream doGetInputStream(int bufferSize) throws Exception {
                                 InputStream stream = super.doGetInputStream(bufferSize);
-                                if (!"in".equals(file.getBaseName())) {
-                                    return stream;
-                                }
-                                return new FilterInputStream(stream) {
-                                    private int read;
-
-                                    @Override
-                                    public int read() throws IOException {
-                                        if (++read > 5) {
-                                            throw new IOException("The connection was lost in the middle of the read");
-                                        }
-                                        return super.read();
-                                    }
-
-                                    @Override
-                                    public int read(byte[] bytes, int offset, int length) throws IOException {
-                                        int next = read();
-                                        if (next < 0) {
-                                            return -1;
-                                        }
-                                        bytes[offset] = (byte) next;
-                                        return 1;
-                                    }
-                                };
+                                return "in".equals(file.getBaseName()) ? hook.apply(stream) : stream;
                             }
                         };
                     }
