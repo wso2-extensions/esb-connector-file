@@ -676,10 +676,12 @@ public class WriteFile extends OperationFrame.Mediator {
         }
 
         // True for a SOAP envelope that a parser made, kept, and written whole by the SOAP formatter or by the relay
-        // formatter that hands it to the SOAP formatter. With no SwA and no MTOM.
+        // formatter that hands it to the SOAP formatter. With no SwA and no MTOM. A binary body is written as its
+        // content by the relay formatter, never as an envelope.
         private boolean parsedEnvelope(org.apache.axis2.context.MessageContext axis, MessageFormatter formatter,
                                        OMOutputFormat format) {
-            if (axis.getEnvelope().getBuilder() == null || format.isOptimized() || format.isDoingSWA()) {
+            if (axis.getEnvelope().getBuilder() == null || format.isOptimized() || format.isDoingSWA()
+                    || binaryBody(axis)) {
                 return false;
             }
             if (formatter.getClass() == SOAPMessageFormatter.class) {
