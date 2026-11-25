@@ -101,6 +101,14 @@ public class ReadFile extends OperationFrame.Mediator {
     private static final String START_LINE_NUM_PARAM = "startLineNum";
     private static final String END_LINE_NUM_PARAM = "endLineNum";
     private static final String LINE_NUM_PARAM = "lineNum";
+    private static final String JSON_OBJECT = "org.apache.synapse.commons.json.JsonInputStream.IsJsonObject";
+    // What the read and its builder set on the message: the charset, the message type, the XML declaration and
+    // processing instructions, and the JSON stream with its kind.
+    private static final String[] BUILD_PROPERTIES = {Constants.Configuration.CHARACTER_SET_ENCODING,
+            Const.SET_CHARACTER_ENCODING, Constants.Configuration.MESSAGE_TYPE,
+            Constants.Configuration.XML_DECLARATION_ENCODING,
+            Constants.Configuration.XML_PROCESSING_INSTRUCTION_ELEMENTS,
+            org.apache.synapse.commons.json.Constants.ORG_APACHE_SYNAPSE_COMMONS_JSON_JSON_INPUT_STREAM, JSON_OBJECT};
     private static final String CHARSET_PARAM = "charset";
     private static final String FILE_FILTER_TYPE = "fileFilterType";
     private static final String INCLUDE_FILES = "includeFiles";
@@ -382,19 +390,23 @@ public class ReadFile extends OperationFrame.Mediator {
                 }
                 return;
             }
-            // With the body kept, the charset of the file decodes its content only. The message keeps its own.
+            // With the body kept, what the read sets on the message serves the build of the file only. The message
+            // keeps its own, also when the read fails.
             org.apache.axis2.context.MessageContext axis = ((Axis2MessageContext) msgCtx).getAxis2MessageContext();
             boolean keep = !Boolean.TRUE.equals(overwriteBody);
-            Object charset = axis.getLocalProperty(Constants.Configuration.CHARACTER_SET_ENCODING);
-            Object charsetSet = axis.getLocalProperty(Const.SET_CHARACTER_ENCODING);
+            Map<String, Object> own = new HashMap<>();
+            for (String name : BUILD_PROPERTIES) {
+                own.put(name, axis.getLocalProperty(name));
+            }
             setCharsetEncoding(config.encoding, type, msgCtx, readLog);
             ConnectorResponse response = new DefaultConnectorResponse();
             try {
                 readContent(attempt, file, msgCtx, config, type, readLog, keep, response);
             } finally {
                 if (keep) {
-                    restore(axis, Constants.Configuration.CHARACTER_SET_ENCODING, charset);
-                    restore(axis, Const.SET_CHARACTER_ENCODING, charsetSet);
+                    for (Map.Entry<String, Object> property : own.entrySet()) {
+                        restore(axis, property.getKey(), property.getValue());
+                    }
                 }
             }
             response.setAttributes(attributes);

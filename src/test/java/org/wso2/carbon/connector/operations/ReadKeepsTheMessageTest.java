@@ -15,6 +15,7 @@
  */
 package org.wso2.carbon.connector.operations;
 
+import com.google.gson.JsonParser;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMText;
 import org.apache.axis2.Constants;
@@ -34,6 +35,7 @@ import org.apache.synapse.commons.json.JsonStreamFormatter;
 import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
+import org.apache.synapse.data.connector.ConnectorResponse;
 import org.apache.synapse.mediators.template.TemplateContext;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -54,6 +56,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -111,9 +114,6 @@ public class ReadKeepsTheMessageTest {
         List<Object[]> cases = new ArrayList<>();
         for (String body : BODIES) {
             for (String file : FILES) {
-                if ("application/json".equals(body) && "application/json".equals(file)) {
-                    continue;
-                }
                 for (String encoding : ENCODINGS) {
                     for (String preset : new String[]{null, "UTF-8"}) {
                         cases.add(new Object[]{body, file, encoding, preset});
@@ -134,15 +134,89 @@ public class ReadKeepsTheMessageTest {
         String expected = writeBody(before, body);
 
         Axis2MessageContext message = message(body, preset);
+        Map<String, Object> own = buildProperties(message);
         try {
             read(message, source, file, encoding, false);
         } catch (SynapseException failed) {
             // A content that the builder can not read fails the read. The message must still be as it was.
         }
+        Assert.assertEquals(buildProperties(message), own, "what the read set on the message");
         Assert.assertEquals(writeBody(message, body), expected, "bytes of the body written after the read");
+    }
+
+    // A read in UTF-8, and a text read that takes its charset from the content type, give the file in the variable.
+    @DataProvider(name = "variables")
+    public Object[][] variables() {
+        List<Object[]> cases = new ArrayList<>();
+        for (String body : BODIES) {
+            for (String file : FILES) {
+                cases.add(new Object[]{body, file, "UTF-8", file});
+            }
+            cases.add(new Object[]{body, "text/plain", "ISO-8859-1", "text/plain; charset=ISO-8859-1"});
+        }
+        return cases.toArray(new Object[0][]);
+    }
+
+    @Test(dataProvider = "variables")
+    public void readIntoAVariableGivesTheFile(String body, String file, String encoding, String type)
+            throws Exception {
+        String source = "v" + names.incrementAndGet();
+        Files.write(directory.resolve(source), content(file, encoding));
+        Axis2MessageContext before = message(body, null);
+        String expected = writeBody(before, body);
+        Axis2MessageContext message = message(body, null);
+        Map<String, Object> own = buildProperties(message);
+        read(message, source, type, null, false);
+        Object payload = ((ConnectorResponse) message.getVariable("content")).getPayload();
+        switch (file) {
+            case "application/xml":
+                // The XML builder gives the envelope, so the variable holds the file inside it, as before.
+                Assert.assertTrue(String.valueOf(payload).contains(XML), String.valueOf(payload));
+                break;
+            case "application/json":
+                Assert.assertEquals(payload, JsonParser.parseString(JSON));
+                break;
+            case "text/plain":
+                Assert.assertTrue(String.valueOf(payload).contains(TEXT), String.valueOf(payload));
+                break;
+            default:
+                Assert.assertTrue(String.valueOf(payload).contains(Base64.getEncoder().encodeToString(BINARY)),
+                        String.valueOf(payload));
+        }
+        Assert.assertEquals(buildProperties(message), own, "what the read set on the message");
+        Assert.assertEquals(writeBody(message, body), expected, "bytes of the body written after the read");
+    }
+
+    // A read that fails leaves the message as it was, so the fault sequence sees the body with its own type.
+    @Test
+    public void failedReadLeavesTheMessageTypeOfTheBody() throws Exception {
+        String source = "x" + names.incrementAndGet();
+        Files.write(directory.resolve(source), new byte[]{'<', 'r', '>', (byte) 0xE9, '<', '/', 'r', '>'});
+        Axis2MessageContext message = message("application/json", null);
+        message.getAxis2MessageContext().setProperty(Constants.Configuration.MESSAGE_TYPE, "application/json");
+        Map<String, Object> own = buildProperties(message);
+        try {
+            read(message, source, "application/xml", "UTF-8", false);
+            Assert.fail("The read of a byte that is not UTF-8 passed");
+        } catch (SynapseException expected) {
+            // The read fails.
+        }
+        Assert.assertEquals(message.getAxis2MessageContext().getLocalProperty(Constants.Configuration.MESSAGE_TYPE),
+                "application/json");
+        Assert.assertEquals(buildProperties(message), own);
+    }
+
+    private static Map<String, Object> buildProperties(Axis2MessageContext message) {
         MessageContext axis = message.getAxis2MessageContext();
-        Assert.assertEquals(axis.getLocalProperty(Constants.Configuration.CHARACTER_SET_ENCODING), preset);
-        Assert.assertEquals(axis.getLocalProperty(Const.SET_CHARACTER_ENCODING), null);
+        Map<String, Object> properties = new HashMap<>();
+        for (String name : new String[]{Constants.Configuration.CHARACTER_SET_ENCODING, Const.SET_CHARACTER_ENCODING,
+                Constants.Configuration.MESSAGE_TYPE, Constants.Configuration.XML_DECLARATION_ENCODING,
+                Constants.Configuration.XML_PROCESSING_INSTRUCTION_ELEMENTS,
+                "org.apache.synapse.commons.json.JsonInputStream",
+                "org.apache.synapse.commons.json.JsonInputStream.IsJsonObject"}) {
+            properties.put(name, axis.getLocalProperty(name));
+        }
+        return properties;
     }
 
     // The text and the JSON builder decode by the charset of the content type, and UTF-8 when it names none, so
@@ -242,7 +316,9 @@ public class ReadKeepsTheMessageTest {
         Map<String, String> values = new HashMap<>();
         values.put("path", "/" + path);
         values.put("contentType", type);
-        values.put("encoding", encoding);
+        if (encoding != null) {
+            values.put("encoding", encoding);
+        }
         TemplateContext template = new TemplateContext("file.read", Collections.emptyList());
         template.setMappedValues(values);
         Stack<TemplateContext> stack = new Stack<>();
