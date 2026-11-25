@@ -88,7 +88,7 @@
                             "type": "booleanOrExpression",
                             "required": true,
                             "defaultValue": "false",
-                            "description": "Write to the file in streaming manner."
+                            "description": "Write to the file in streaming manner. A streamed write reads the body once and keeps no body, also when overwriteBody is false."
                         },
                         {
                             "name": "enableLock",
@@ -165,7 +165,7 @@
                             "type": "checkbox",
                             "required": false,
                             "defaultValue": "false",
-                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable)."
+                            "description": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable). With false the body is kept in memory for the steps that follow. For a large file set it true or stream the write."
                         }
                     ],
                     "isHidden": false
