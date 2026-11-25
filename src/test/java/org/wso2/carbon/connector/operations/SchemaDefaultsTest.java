@@ -60,7 +60,7 @@ public class SchemaDefaultsTest {
         add(cases, "move copy delete read", "enableLock=false");
         add(cases, "move", "createParentDirectories=false isSourceMounted= isTargetMounted= updateLastModified=true");
         add(cases, "move rename", "overwrite=false");
-        add(cases, "read", "enableStreaming=false");
+        add(cases, "read", "enableStreaming=false encoding=");
         add(cases, "listFiles", "includeSystemFiles=false");
         add(cases, "write copy mergeFiles unzip compress splitFile", "atomicWrite=true");
         add(cases, "copy delete compress listFiles mergeFiles move read", "minFileAge=");

@@ -379,7 +379,7 @@ public class ReadFile extends OperationFrame.Mediator {
                     throw new OperationFrame.Failure(Error.OPERATION_ERROR,
                             "The content cannot be stored in a variable while streaming is enabled");
                 }
-                setCharsetEncoding(config.encoding, type, msgCtx, readLog);
+                setCharsetEncoding(markCharset(config, type), type, msgCtx, readLog);
                 Builder builder = selectSynapseMessageBuilder(msgCtx, type, readLog);
                 if (!(builder instanceof DataSourceMessageBuilder)) {
                     throw new FileOperationException("Required builder for streaming not found");
@@ -412,7 +412,7 @@ public class ReadFile extends OperationFrame.Mediator {
             for (String name : BUILD_PROPERTIES) {
                 own.put(name, axis.getLocalProperty(name));
             }
-            setCharsetEncoding(config.encoding, type, msgCtx, readLog);
+            setCharsetEncoding(markCharset(config, type), type, msgCtx, readLog);
             ConnectorResponse response = new DefaultConnectorResponse();
             try {
                 readContent(attempt, file, msgCtx, config, type, readLog, keep, response);
@@ -871,6 +871,17 @@ public class ReadFile extends OperationFrame.Mediator {
             return Charset.forName(BuilderUtil.getCharSetEncoding(type));
         }
         return config.givenEncoding == null ? Charset.defaultCharset() : Charset.forName(config.givenEncoding);
+    }
+
+    // The charset a later write of the body takes. The encoding of the read names it. With no encoding, the charset
+    // of the content type names it, and UTF-8 when the content type names none. A JSON type keeps UTF-8, because the
+    // JSON formatter writes the bytes of the file as they are only under UTF-8.
+    private static String markCharset(Config config, String type) {
+        String lower = type == null ? "" : type.toLowerCase(Locale.ROOT);
+        if (config.givenEncoding == null && lower.contains("charset=") && !lower.contains("json")) {
+            return BuilderUtil.getCharSetEncoding(type);
+        }
+        return config.encoding;
     }
 
     // A text builder takes its charset from the content type only. When the content type names none, the encoding

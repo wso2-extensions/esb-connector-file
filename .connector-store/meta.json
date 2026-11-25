@@ -1375,8 +1375,8 @@
                             "name": "encoding",
                             "type": "stringOrExpression",
                             "required": false,
-                            "defaultValue": "UTF-8",
-                            "description": "Encoding of the message generated."
+                            "defaultValue": "",
+                            "description": "Encoding of the message generated. Empty means the charset of the content type, and UTF-8 when the type names none."
                         },
                         {
                             "name": "enableStreaming",

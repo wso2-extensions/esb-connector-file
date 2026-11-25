@@ -189,7 +189,7 @@
                                         "name": "encoding",
                                         "displayName": "Encoding",
                                         "inputType": "stringOrExpression",
-                                        "defaultValue": "UTF-8",
+                                        "defaultValue": "",
                                         "required": "false",
                                         "enableCondition": [
                                             "NOT",
@@ -197,7 +197,7 @@
                                                 "readMode": "Metadata Only"
                                             }
                                         ],
-                                        "helpTip": "Encoding of the message generated."
+                                        "helpTip": "Encoding of the message generated. Empty means the charset of the content type, and UTF-8 when the type names none."
                                     }
                                 },
                                 {
