@@ -74,9 +74,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -418,7 +421,7 @@ public class ReadFile extends OperationFrame.Mediator {
         try {
             documentElement = buildSynapseMessage(readFile(raw, config), msgCtx, type, readLog);
         } catch (Exception built) {
-            Exception failed = raw.failure == null ? content(built, type) : built;
+            Exception failed = raw.failure == null && !declared(built) ? content(built, type) : built;
             ErrorClassifier classifier = new ErrorClassifier(attempt.handler().getContext().getHealth().namedLog());
             boolean transport = classifier.classify(failed, attempt.progress().elapsedMillis(),
                     ErrorClassifier.CallType.READ).getKind().isTransport();
@@ -457,6 +460,17 @@ public class ReadFile extends OperationFrame.Mediator {
                 throw content(failed, type);
             }
         }
+    }
+
+    // True when a file system exception in the chain names its fault, so the provider has said what failed.
+    private static boolean declared(Throwable failure) {
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Throwable link = failure; link != null && seen.add(link); link = link.getCause()) {
+            if (link instanceof FileSystemException && ((FileSystemException) link).getFault() != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // A failure of the build or of the variable when the stream of the file did not fail is a failure of the
