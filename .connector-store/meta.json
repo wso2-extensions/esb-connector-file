@@ -46,7 +46,7 @@
                             "type": "comboOrExpression",
                             "required": true,
                             "defaultValue": "Automatic",
-                            "description": "MIME Type of the message. When formatting message for writing this will be used. Supported values: Automatic, text/plain, application/xml, application/binary, application/json, text/xml"
+                            "description": "MIME Type of the message. When formatting message for writing this will be used. Supported values: Automatic, text/plain, application/xml, application/binary, application/octet-stream, application/json, text/xml. application/binary takes a base64 content and writes the decoded bytes, application/octet-stream writes the content as it is given."
                         },
                         {
                             "name": "writeMode",

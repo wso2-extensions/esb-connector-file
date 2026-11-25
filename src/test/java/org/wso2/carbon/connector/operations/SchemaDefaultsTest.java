@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.NodeList;
@@ -101,6 +102,22 @@ public class SchemaDefaultsTest {
         }
     }
 
+    // The write offers application/octet-stream after application/binary, and the other types keep their order.
+    @Test
+    public void writeOffersTheMimeTypesInOrder() throws Exception {
+        try (InputStream json = resource("uischema/write.json")) {
+            JsonObject contents = new JsonParser().parse(new InputStreamReader(json, StandardCharsets.UTF_8))
+                    .getAsJsonObject();
+            List<JsonObject> fields = new ArrayList<>();
+            fields(contents.getAsJsonArray("elements"), "mimeType", fields);
+            Assert.assertEquals(fields.size(), 1);
+            List<String> types = new ArrayList<>();
+            fields.get(0).getAsJsonArray("comboValues").forEach(type -> types.add(type.getAsString()));
+            Assert.assertEquals(types, Arrays.asList("Automatic", "text/plain", "application/xml", "application/binary",
+                    "application/octet-stream", "application/json", "text/xml"));
+        }
+    }
+
     @DataProvider(name = "resultFields")
     public Object[][] resultFields() {
         return new Object[][]{{"move", "success inferred targetComplete filesMoved filesLeft error"},
@@ -124,6 +141,17 @@ public class SchemaDefaultsTest {
         InputStream input = getClass().getClassLoader().getResourceAsStream(name);
         Assert.assertNotNull(input, name);
         return input;
+    }
+
+    private void fields(JsonArray elements, String name, List<JsonObject> matches) {
+        for (JsonElement element : elements) {
+            JsonObject value = element.getAsJsonObject().getAsJsonObject("value");
+            if (value.has("elements")) {
+                fields(value.getAsJsonArray("elements"), name, matches);
+            } else if (value.has("name") && name.equals(value.get("name").getAsString())) {
+                matches.add(value);
+            }
+        }
     }
 
     private void collect(JsonArray elements, String name, List<String> matches) {
