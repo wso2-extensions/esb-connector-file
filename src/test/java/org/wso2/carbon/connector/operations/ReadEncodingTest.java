@@ -18,6 +18,7 @@ package org.wso2.carbon.connector.operations;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.axiom.om.OMAbstractFactory;
+import org.apache.axiom.om.OMException;
 import org.apache.axiom.om.util.AXIOMUtil;
 import org.apache.axis2.builder.ApplicationXMLBuilder;
 import org.apache.axis2.context.ConfigurationContext;
@@ -150,20 +151,116 @@ public class ReadEncodingTest {
         Assert.assertEquals(text(message, replace), expected);
     }
 
+    // A charset in the content type decides the lines too, before the encoding parameter.
+    @DataProvider(name = "typed")
+    public Object[][] typed() {
+        return new Object[][]{{null}, {"UTF-8"}};
+    }
+
+    @Test(dataProvider = "typed")
+    public void lineReadTakesTheCharsetOfTheContentType(String encoding) throws Exception {
+        Map<String, String> options = new HashMap<>();
+        options.put("readMode", "Up To Line");
+        options.put("endLineNum", "2");
+        Axis2MessageContext message = read(LINES.getBytes(StandardCharsets.ISO_8859_1),
+                "text/plain; charset=ISO-8859-1", encoding, true, options);
+        Assert.assertEquals(text(message, true), "l1 caf\u00e9\nl2 \u00fc");
+    }
+
+    // An encoding the JVM does not know fails that read alone, on each path, with one attempt.
+    @DataProvider(name = "unknown")
+    public Object[][] unknown() {
+        return new Object[][]{{"complete", false}, {"lines", false}, {"streamed", true}};
+    }
+
+    @Test(dataProvider = "unknown")
+    public void unknownEncodingFailsTheReadAlone(String path, boolean replace) throws Exception {
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve("in"), TEXT.getBytes(StandardCharsets.UTF_8));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            FileFrameLeaseTest.CountingPool pool = FileFrameLeaseTest.install(files);
+            Map<String, String> options = new HashMap<>();
+            options.put("maxRetries", "1");
+            if ("lines".equals(path)) {
+                options.put("readMode", "Up To Line");
+                options.put("endLineNum", "1");
+            } else if ("streamed".equals(path)) {
+                options.put("enableStreaming", "true");
+            }
+            int before = pool.attempts.size();
+            Axis2MessageContext message = message(files);
+            try {
+                execute(message, "text/plain", "x-no-such-charset", replace, options);
+                if ("streamed".equals(path)) {
+                    // The streamed builder decodes later, when a step reads the body.
+                    message.getAxis2MessageContext().getEnvelope().getBody().getFirstElement().getText();
+                }
+                Assert.fail("A read in an unknown encoding passed");
+            } catch (SynapseException | IllegalArgumentException | OMException expected) {
+                // The read fails.
+            }
+            Assert.assertEquals(pool.attempts.size() - before, 1, pool.attempts.toString());
+            if (!"streamed".equals(path) || message.getAxis2MessageContext().getProperty("ERROR_CODE") != null) {
+                Assert.assertEquals(String.valueOf(message.getProperty("ERROR_CODE")), "700108");
+            }
+        }
+    }
+
+    @Test
+    public void streamedTextReadTakesTheEncoding() throws Exception {
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve("in"), TEXT.getBytes(StandardCharsets.ISO_8859_1));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            Map<String, String> options = new HashMap<>();
+            options.put("enableStreaming", "true");
+            Axis2MessageContext message = message(files);
+            execute(message, "text/plain", "ISO-8859-1", true, options);
+            // The streamed body is read from the file while the connection lives.
+            Assert.assertEquals(text(message, true), TEXT);
+        }
+    }
+
+    // A byte order mark: the UTF-16 decoder takes it away, the UTF-8 decoder of the JVM keeps it as a character.
+    @Test
+    public void byteOrderMarkOfTheFile() throws Exception {
+        byte[] utf8 = TEXT.getBytes(StandardCharsets.UTF_8);
+        byte[] marked = new byte[utf8.length + 3];
+        marked[0] = (byte) 0xEF;
+        marked[1] = (byte) 0xBB;
+        marked[2] = (byte) 0xBF;
+        System.arraycopy(utf8, 0, marked, 3, utf8.length);
+        Assert.assertEquals(text(read(marked, "text/plain", "UTF-8", true, null), true), "\ufeff" + TEXT);
+        Assert.assertEquals(text(read(TEXT.getBytes(StandardCharsets.UTF_16), "text/plain", "UTF-16", true, null), true),
+                TEXT);
+    }
+
     private static Axis2MessageContext read(byte[] content, String type, String encoding, boolean replace,
                                             Map<String, String> options) throws Exception {
         Path directory = WriteFileTest.directory();
         Files.write(directory.resolve("in"), content);
         try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
-            AxisConfiguration configuration = new AxisConfiguration();
-            configuration.addMessageBuilder("application/xml", new ApplicationXMLBuilder());
-            configuration.addMessageBuilder("text/plain", new PlainTextBuilder());
-            configuration.addMessageBuilder("application/json", new JsonStreamBuilder());
-            org.apache.axis2.context.MessageContext axis = new org.apache.axis2.context.MessageContext();
-            axis.setConfigurationContext(new ConfigurationContext(configuration));
-            axis.setEnvelope(OMAbstractFactory.getSOAP11Factory().getDefaultEnvelope());
-            Axis2MessageContext message = new Axis2MessageContext(axis, new SynapseConfiguration(), null);
-            message.setProperty("name", files.name);
+            Axis2MessageContext message = message(files);
+            execute(message, type, encoding, replace, options);
+            return message;
+        }
+    }
+
+    private static Axis2MessageContext message(FilePoolFixture files) throws Exception {
+        AxisConfiguration configuration = new AxisConfiguration();
+        configuration.addMessageBuilder("application/xml", new ApplicationXMLBuilder());
+        configuration.addMessageBuilder("text/plain", new PlainTextBuilder());
+        configuration.addMessageBuilder("application/json", new JsonStreamBuilder());
+        org.apache.axis2.context.MessageContext axis = new org.apache.axis2.context.MessageContext();
+        axis.setConfigurationContext(new ConfigurationContext(configuration));
+        axis.setEnvelope(OMAbstractFactory.getSOAP11Factory().getDefaultEnvelope());
+        Axis2MessageContext message = new Axis2MessageContext(axis, new SynapseConfiguration(), null);
+        message.setProperty("name", files.name);
+        return message;
+    }
+
+    private static void execute(Axis2MessageContext message, String type, String encoding, boolean replace,
+                                Map<String, String> options) throws Exception {
+        {
             Map<String, String> values = new HashMap<>();
             values.put("path", "/in");
             values.put("contentType", type);
@@ -179,7 +276,6 @@ public class ReadEncodingTest {
             stack.push(template);
             message.setProperty("_SYNAPSE_FUNCTION_STACK", stack);
             new ReadFile().execute(message, "content", replace);
-            return message;
         }
     }
 

@@ -422,7 +422,7 @@ public class ReadContentErrorTest {
         });
     }
 
-    private static void hookFileReads(FilePoolFixture files, UnaryOperator<InputStream> hook) throws Exception {
+    static void hookFileReads(FilePoolFixture files, UnaryOperator<InputStream> hook) throws Exception {
         ConnectionLease lease = files.borrow();
         DefaultFileSystemManager manager =
                 (DefaultFileSystemManager) ((FileSystemHandler) lease.getConnection()).getFsManager();

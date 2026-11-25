@@ -438,7 +438,7 @@ public class ReadFile extends OperationFrame.Mediator {
         attempt.progress().reset("open");
         ReadStream raw = new ReadStream(file.getContent().getInputStream(), attempt.progress());
         try {
-            documentElement = buildSynapseMessage(readFile(raw, config), msgCtx, type, config.givenEncoding,
+            documentElement = buildSynapseMessage(readFile(raw, config, type), msgCtx, type, config.givenEncoding,
                     readLog);
         } catch (Exception built) {
             boolean content = raw.failure == null && !declared(built);
@@ -479,7 +479,20 @@ public class ReadFile extends OperationFrame.Mediator {
             throw failed;
         }
         attempt.progress().reset("close");
-        raw.close();
+        if (config.readMode != FileReadMode.COMPLETE_FILE && !raw.ended) {
+            // A read by lines stops before the end by its own choice and has its lines. A server can refuse the
+            // close of a transfer that was not read to its end, as an FTP server answers 426. That does not fail
+            // the read, but the state of the connection is then not known, so it is not used again.
+            try {
+                raw.close();
+            } catch (IOException refused) {
+                attempt.discardHandler();
+                readLog.debug("The close of a file read in part failed, so its connection is not used again. "
+                        + refused);
+            }
+        } else {
+            raw.close();
+        }
         if (!keep) {
             msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
             ((Axis2MessageContext) msgCtx).getAxis2MessageContext().
@@ -818,16 +831,16 @@ public class ReadFile extends OperationFrame.Mediator {
      * @return InputStream to the file
      * @throws FileOperationException In case of I/O error
      */
-    private InputStream readFile(InputStream in, Config config) throws FileOperationException {
+    private InputStream readFile(InputStream in, Config config, String type) throws FileOperationException {
         switch (config.readMode) {
             case STARTING_FROM_LINE:
-                return processStream(in, config.startLineNum, 0, lineCharset(config));
+                return processStream(in, config.startLineNum, 0, lineCharset(config, type));
             case UP_TO_LINE:
-                return processStream(in, 1, config.endLineNum, lineCharset(config));
+                return processStream(in, 1, config.endLineNum, lineCharset(config, type));
             case BETWEEN_LINES:
-                return processStream(in, config.startLineNum, config.endLineNum, lineCharset(config));
+                return processStream(in, config.startLineNum, config.endLineNum, lineCharset(config, type));
             case SPECIFIC_LINE:
-                Charset charset = lineCharset(config);
+                Charset charset = lineCharset(config, type);
                 BufferedReader reader = new BufferedReader(new InputStreamReader(in, charset));
                 String line = reader.lines().skip(config.lineNum - 1L).findFirst().orElse("");
                 return new ByteArrayInputStream(line.getBytes(charset));
@@ -847,8 +860,12 @@ public class ReadFile extends OperationFrame.Mediator {
      * @param contentType         MIME type of the message
      * @throws FileOperationException In case of building the message
      */
-    // The lines are read and handed on in the encoding of the read, or in the default of the JVM when none is given.
-    private static Charset lineCharset(Config config) {
+    // The lines are read and handed on in the charset the builder takes: the charset of the content type first, then
+    // the encoding of the read, then the default of the JVM.
+    private static Charset lineCharset(Config config, String type) {
+        if (type != null && type.toLowerCase(Locale.ROOT).contains("charset=")) {
+            return Charset.forName(BuilderUtil.getCharSetEncoding(type));
+        }
         return config.givenEncoding == null ? Charset.defaultCharset() : Charset.forName(config.givenEncoding);
     }
 
