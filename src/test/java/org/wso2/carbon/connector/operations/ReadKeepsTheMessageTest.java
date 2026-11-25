@@ -206,6 +206,39 @@ public class ReadKeepsTheMessageTest {
         Assert.assertEquals(buildProperties(message), own);
     }
 
+    // A streamed read into a variable is refused before it sets anything, also with a charset on the message.
+    @Test(dataProvider = "presets")
+    public void refusedStreamedReadLeavesTheMessage(String preset) throws Exception {
+        String source = "s" + names.incrementAndGet();
+        Files.write(directory.resolve(source), content("text/plain", "ISO-8859-1"));
+        Axis2MessageContext message = message("application/xml", preset);
+        message.getAxis2MessageContext().setProperty(Constants.Configuration.MESSAGE_TYPE, "application/xml");
+        Map<String, Object> own = buildProperties(message);
+        Map<String, String> values = new HashMap<>();
+        values.put("path", "/" + source);
+        values.put("contentType", "text/plain");
+        values.put("encoding", "ISO-8859-1");
+        values.put("enableStreaming", "true");
+        TemplateContext template = new TemplateContext("file.read", Collections.emptyList());
+        template.setMappedValues(values);
+        Stack<TemplateContext> stack = new Stack<>();
+        stack.push(template);
+        message.setProperty("_SYNAPSE_FUNCTION_STACK", stack);
+        message.setProperty("name", files.name);
+        try {
+            new ReadFile().execute(message, "content", false);
+            Assert.fail("A streamed read into a variable passed");
+        } catch (SynapseException expected) {
+            Assert.assertTrue(expected.getMessage().contains("while streaming is enabled"), expected.getMessage());
+        }
+        Assert.assertEquals(buildProperties(message), own);
+    }
+
+    @DataProvider(name = "presets")
+    public Object[][] presets() {
+        return new Object[][]{{null}, {"ISO-8859-1"}};
+    }
+
     private static Map<String, Object> buildProperties(Axis2MessageContext message) {
         MessageContext axis = message.getAxis2MessageContext();
         Map<String, Object> properties = new HashMap<>();
