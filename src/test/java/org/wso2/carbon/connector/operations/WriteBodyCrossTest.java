@@ -118,12 +118,11 @@ public class WriteBodyCrossTest {
     }
 
     enum Body {
-        LAZY_XML, TOUCHED_XML, BUILT_XML, LAZY_SOAP, FACTORY_XML, FACTORY_TEXT, JSON_STREAM, JSON_EXPANDED, TEXT,
-        TEXT_SOURCE, BINARY, EMPTY;
+        LAZY_XML, TOUCHED_XML, BUILT_XML, LAZY_SOAP, TOUCHED_SOAP, BUILT_SOAP, FACTORY_XML, FACTORY_TEXT,
+        JSON_STREAM, JSON_EXPANDED, TEXT, TEXT_SOURCE, BINARY, EMPTY;
 
-        boolean xml() {
-            return this == LAZY_XML || this == TOUCHED_XML || this == BUILT_XML || this == LAZY_SOAP
-                    || this == FACTORY_XML;
+        boolean soap() {
+            return this == LAZY_SOAP || this == TOUCHED_SOAP || this == BUILT_SOAP;
         }
     }
 
@@ -209,6 +208,13 @@ public class WriteBodyCrossTest {
         } else {
             Assert.assertEquals(read(message, body), read(untouched, body), "body after the write");
         }
+        if (!replace && !(streamed && body == Body.BINARY)) {
+            // A kept body is written a second time in the same bytes.
+            String second = name + "-second";
+            write(message, second, type, "Create New", streamed, false, true);
+            Assert.assertEquals(digest(Files.readAllBytes(directory.resolve(second))), digest(expected),
+                    "bytes of a second write of the kept body");
+        }
     }
 
     @DataProvider(name = "hard")
@@ -248,6 +254,9 @@ public class WriteBodyCrossTest {
         for (Object[] fixture : fixtures) {
             for (String type : XML_TYPES) {
                 cases.add(new Object[]{fixture[0], fixture[1], fixture[2], fixture[3], type});
+            }
+            if ("namespaces of the envelope".equals(fixture[0])) {
+                cases.add(new Object[]{fixture[0], fixture[1], fixture[2], fixture[3], "application/json"});
             }
         }
         return cases.toArray(new Object[0][]);
@@ -410,8 +419,16 @@ public class WriteBodyCrossTest {
                 break;
             }
             case LAZY_SOAP:
+            case TOUCHED_SOAP:
+            case BUILT_SOAP:
                 axis.setEnvelope(TransportUtils.createSOAPEnvelope(
                         new SOAPBuilder().processDocument(stream(SOAP), "text/xml", axis)));
+                if (body == Body.BUILT_SOAP) {
+                    // As a full log builds the envelope. Axiom still takes it as not complete.
+                    axis.getEnvelope().toString();
+                } else if (body == Body.TOUCHED_SOAP) {
+                    axis.getEnvelope().getBody().getFirstElement().getFirstElement();
+                }
                 break;
             case FACTORY_XML: {
                 // As the payload factory puts an XML payload into the body.
@@ -504,6 +521,8 @@ public class WriteBodyCrossTest {
                 case JSON_EXPANDED:
                     return JsonUtil.jsonPayloadToString(axis) + axis.getEnvelope().getBody().getFirstElement();
                 case LAZY_SOAP:
+                case TOUCHED_SOAP:
+                case BUILT_SOAP:
                 case EMPTY:
                     return axis.getEnvelope().toString();
                 case TEXT:
