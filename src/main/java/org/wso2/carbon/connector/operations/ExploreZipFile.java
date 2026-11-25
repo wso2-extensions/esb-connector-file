@@ -49,10 +49,12 @@ public class ExploreZipFile extends FileOperation {
         }
         String encoding = Utils.validateArchiveEncoding(call.option(Const.FILE_NAME_ENCODING), call.connectionLog::warn);
         JsonArray names = new JsonArray();
-        try (ZipArchiveInputStream zip = new ZipArchiveInputStream(source.getContent().getInputStream(),
-                encoding, true, true)) {
+        // A cut or broken zip fails this operation alone. A failure of the stream of the file is still a fault of the
+        // connection.
+        ArchiveStream raw = new ArchiveStream(source.getContent().getInputStream());
+        try (ZipArchiveInputStream zip = new ZipArchiveInputStream(raw, encoding, true, true)) {
             ZipArchiveEntry entry;
-            while ((entry = zip.getNextZipEntry()) != null) {
+            while ((entry = raw.decode(zip::getNextZipEntry)) != null) {
                 if (!entry.isDirectory()) {
                     names.add(entry.getName());
                 }

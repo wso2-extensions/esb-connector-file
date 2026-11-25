@@ -42,6 +42,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.function.UnaryOperator;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -124,6 +125,98 @@ public class UnzipCutArchiveTest {
         }
     }
 
+    // A cut zip under exploreZipFile fails that operation alone, as under unzip.
+    @Test
+    public void cutZipFailsTheExploreAlone() throws Exception {
+        Path directory = WriteFileTest.directory();
+        byte[] content = zip(TEXT, "a.txt", "sub/b.txt");
+        Files.write(directory.resolve("in.zip"), Arrays.copyOf(content, content.length / 2));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            FileFrameLeaseTest.CountingPool pool = FileFrameLeaseTest.install(files);
+            JsonObject result = FileTreeOperationTest.invoke(new ExploreZipFile(), WriteFileTest.message(files),
+                    "zipFilePath", "/in.zip", "maxRetries", "1");
+            Assert.assertEquals(code(result), OPERATION_ERROR, result.toString());
+            Assert.assertTrue(result.toString().contains("The archive could not be read"), result.toString());
+            Assert.assertEquals(pool.attempts.size(), 1, pool.attempts.toString());
+            WriteFileTest.write(WriteFileTest.message(files), "next", "x");
+            Assert.assertEquals(new String(Files.readAllBytes(directory.resolve("next")), StandardCharsets.UTF_8),
+                    "x");
+        }
+    }
+
+    // The entries are written straight into their targets.
+    @Test(dataProvider = "archives")
+    public void cutArchiveWrittenStraightFailsTheUnzipAlone(String archive, byte[] content, String entry)
+            throws Exception {
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve(archive), Arrays.copyOf(content, content.length / 2));
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            JsonObject result = FileTreeOperationTest.invoke(new UnzipFile(), WriteFileTest.message(files),
+                    "sourceFilePath", "/" + archive, "targetDirectory", "/out", "maxRetries", "1",
+                    "atomicWrite", "false");
+            Assert.assertEquals(code(result), OPERATION_ERROR, result.toString());
+        }
+    }
+
+    // A file that is no archive fails as a broken archive, under a gz name and under a zip name.
+    @Test
+    public void fileThatIsNoArchive() throws Exception {
+        Path directory = WriteFileTest.directory();
+        Files.write(directory.resolve("in.gz"), TEXT);
+        Files.write(directory.resolve("in.zip"), TEXT);
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            JsonObject gz = unzip(files, "in.gz", 1);
+            Assert.assertEquals(code(gz), OPERATION_ERROR, gz.toString());
+            Assert.assertTrue(gz.toString().contains("The archive could not be read"), gz.toString());
+            JsonObject zip = unzip(files, "in.zip", 1);
+            Assert.assertEquals(code(zip), OPERATION_ERROR, zip.toString());
+            Assert.assertTrue(zip.toString().contains("The archive could not be read"), zip.toString());
+        }
+    }
+
+    // A cut that shows only at the close of the stream, as the final reply of a cut FTP transfer does. The stream of a
+    // file closes itself when a read gives its end, so the failure of that close comes out of the read and is a
+    // failure of the stream. The unzip is tried again on a new connection and reads the whole archive.
+    @Test
+    public void cutThatShowsOnlyAtTheCloseIsTriedAgain() throws Exception {
+        Path directory = WriteFileTest.directory();
+        byte[] content = zip(TEXT, "a.txt");
+        Files.write(directory.resolve("in.zip"), content);
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString(),
+                "maxActiveConnections", "1")) {
+            FileFrameLeaseTest.CountingPool pool = FileFrameLeaseTest.install(files);
+            hookReads(files, "in.zip", stream -> new FilterInputStream(stream) {
+                private int read;
+
+                @Override
+                public int read() throws IOException {
+                    return ++read > content.length / 2 ? -1 : super.read();
+                }
+
+                @Override
+                public int read(byte[] bytes, int offset, int length) throws IOException {
+                    int next = read();
+                    if (next < 0) {
+                        return -1;
+                    }
+                    bytes[offset] = (byte) next;
+                    return 1;
+                }
+
+                @Override
+                public void close() throws IOException {
+                    super.close();
+                    throw new IOException("426 Connection closed, transfer aborted");
+                }
+            });
+            int before = pool.attempts.size();
+            JsonObject result = unzip(files, "in.zip", 1);
+            Assert.assertTrue(result.get("success").getAsBoolean(), result.toString());
+            Assert.assertEquals(pool.attempts.size() - before, 2, pool.attempts.toString());
+        }
+        Assert.assertEquals(Files.readAllBytes(directory.resolve("out/a.txt")), TEXT);
+    }
+
     private static JsonObject unzip(FilePoolFixture files, String archive, int retries) throws Exception {
         return FileTreeOperationTest.invoke(new UnzipFile(), WriteFileTest.message(files),
                 "sourceFilePath", "/" + archive, "targetDirectory", "/out", "maxRetries", Integer.toString(retries));
@@ -164,6 +257,11 @@ public class UnzipCutArchiveTest {
     // The stream of the archive fails after its first bytes. The unzip meets the file through the cache of the file
     // system, so the failure is put into the local file that the provider makes.
     private static void breakReads(FilePoolFixture files, String archive) throws Exception {
+        hookReads(files, archive, UnzipCutArchiveTest::breaking);
+    }
+
+    private static void hookReads(FilePoolFixture files, String archive, UnaryOperator<InputStream> hook)
+            throws Exception {
         ConnectionLease lease = files.borrow();
         DefaultFileSystemManager manager =
                 (DefaultFileSystemManager) ((FileSystemHandler) lease.getConnection()).getFsManager();
@@ -179,7 +277,7 @@ public class UnzipCutArchiveTest {
                             @Override
                             protected InputStream doGetInputStream(int bufferSize) throws Exception {
                                 InputStream stream = super.doGetInputStream(bufferSize);
-                                return archive.equals(file.getBaseName()) ? breaking(stream) : stream;
+                                return archive.equals(file.getBaseName()) ? hook.apply(stream) : stream;
                             }
                         };
                     }
