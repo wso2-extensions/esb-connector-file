@@ -119,8 +119,8 @@ public class WriteBodyCrossTest {
             + "  <n xmlns=\"\"><m/></n><a:k xmlns:a=\"urn:other\">t</a:k>\n"
             + "</a:r>";
     private static final String[] TYPES = {"application/xml", "text/xml", "application/soap+xml", "application/json",
-            "text/plain", "application/octet-stream", "application/x-www-form-urlencoded", "multipart/form-data",
-            "text/csv"};
+            "text/plain", "application/octet-stream", "application/binary", "application/x-www-form-urlencoded",
+            "multipart/form-data", "text/csv"};
     private static final String[] XML_TYPES = {"application/xml", "text/xml", "application/soap+xml",
             "application/octet-stream", "text/csv"};
     private static final String[] MODES = {"Overwrite", "Create New", "Append"};
@@ -193,6 +193,19 @@ public class WriteBodyCrossTest {
             expected = writeAsBefore(before.getAxis2MessageContext(), streamed);
         } catch (Exception failure) {
             beforeFailure = failure;
+        }
+        if (beforeFailure != null && !replace && !(streamed && body == Body.BINARY) && body != Body.JSON_STREAM) {
+            // The transport sender writes with preserve false, and a formatter that writes XML fails on a text source
+            // that can be read once. The write keeps the body, so the formatter expands the source and writes it. A
+            // JSON stream body is written with preserve false in both, so it fails in both.
+            Axis2MessageContext kept = message(body);
+            kept.getAxis2MessageContext().setProperty(Constants.Configuration.MESSAGE_TYPE, type);
+            try {
+                expected = writeKept(kept.getAxis2MessageContext());
+                beforeFailure = null;
+            } catch (Exception failure) {
+                // The formatter fails on the kept body too.
+            }
         }
         Axis2MessageContext untouched = message(body);
         Axis2MessageContext message = message(body);
@@ -566,12 +579,14 @@ public class WriteBodyCrossTest {
         Axis2MessageContext message = WriteFileTest.message(files);
         MessageContext axis = message.getAxis2MessageContext();
         AxisConfiguration configuration = axis.getConfigurationContext().getAxisConfiguration();
-        // The formatters of the pack (conf/axis2/axis2.xml). The JSON formatter of the pack hands on to this one.
+        // The formatters of the pack (conf/axis2/axis2.xml as the pack writes it at start). The JSON formatter of the
+        // pack hands on to this one.
         configuration.addMessageFormatter("application/xml", new ApplicationXMLFormatter());
         configuration.addMessageFormatter("text/xml", new SOAPMessageFormatter());
         configuration.addMessageFormatter("application/soap+xml", new SOAPMessageFormatter());
         configuration.addMessageFormatter("text/plain", new PlainTextFormatter());
         configuration.addMessageFormatter("application/octet-stream", new ExpandingMessageFormatter());
+        configuration.addMessageFormatter("application/binary", new BinaryFormatter());
         configuration.addMessageFormatter("application/json", new JsonStreamFormatter());
         configuration.addMessageFormatter("application/x-www-form-urlencoded", new XFormURLEncodedFormatter());
         configuration.addMessageFormatter("multipart/form-data", new MultipartFormDataFormatter());
@@ -693,22 +708,25 @@ public class WriteBodyCrossTest {
         }
     }
 
-    // The write before the body was kept: the same pick of the formatter, and preserve false. A streamed write of a
-    // body that is not binary is written as the transport sender writes it, by the formatter of its message type.
+    // The write as the transport sender writes it: the formatter of the message type, and preserve false. A streamed
+    // write of a binary body takes the relay formatter.
     private static byte[] writeAsBefore(MessageContext axis, boolean streamed) throws Exception {
         MessageFormatter formatter;
         OMElement first = axis.getEnvelope().getBody().getFirstElement();
         if (streamed && first != null && BaseConstants.DEFAULT_BINARY_WRAPPER.equals(first.getQName())) {
             formatter = new ExpandingMessageFormatter();
-        } else if (first != null && BaseConstants.DEFAULT_BINARY_WRAPPER.equals(first.getQName())) {
-            formatter = new BinaryFormatter();
-        } else if (first != null && BaseConstants.DEFAULT_TEXT_WRAPPER.equals(first.getQName())) {
-            formatter = new PlainTextFormatter();
         } else {
             formatter = MessageProcessorSelector.getMessageFormatter(axis);
         }
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         formatter.writeTo(axis, BaseUtils.getOMOutputFormat(axis), output, false);
+        return output.toByteArray();
+    }
+
+    private static byte[] writeKept(MessageContext axis) throws Exception {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        MessageProcessorSelector.getMessageFormatter(axis).writeTo(axis, BaseUtils.getOMOutputFormat(axis), output,
+                true);
         return output.toByteArray();
     }
 

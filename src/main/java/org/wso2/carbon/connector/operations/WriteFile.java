@@ -31,8 +31,6 @@ import org.apache.axiom.om.impl.OMContainerEx;
 import org.apache.axiom.om.impl.OMNodeEx;
 import org.apache.axiom.om.impl.serialize.StreamingOMSerializer;
 import org.apache.axis2.AxisFault;
-import org.apache.axis2.format.BinaryFormatter;
-import org.apache.axis2.format.PlainTextFormatter;
 import org.apache.axis2.transport.MessageFormatter;
 import org.apache.axis2.transport.base.BaseConstants;
 import org.apache.axis2.transport.base.BaseTransportException;
@@ -588,9 +586,13 @@ public class WriteFile extends OperationFrame.Mediator {
                 if (!mime.isEmpty() && !Const.CONTENT_TYPE_AUTOMATIC.equals(mime)) {
                     axis.setProperty(Const.MESSAGE_TYPE, mime);
                 }
+                // The first element of the body is read before the write. A lazy SOAP body then has its header and
+                // the start of its body in the tree, so the connector core can take the children out of the body
+                // after a write that replaces it spent the parser.
+                OMElement first = axis.getEnvelope().getBody().getFirstElement();
                 // Only a binary body is streamed. Any other body is written by the formatter of its message type, as
                 // the transport sender does, also when streaming is asked for.
-                boolean stream = streaming && binaryBody(axis);
+                boolean stream = streaming && binaryWrapper(first);
                 MessageFormatter formatter = stream ? new ExpandingMessageFormatter() : getMessageFormatter(axis);
                 OMOutputFormat format = BaseUtils.getOMOutputFormat(axis);
                 // A body that is not built yet is pulled from its parser and lost unless the formatter keeps it.
@@ -602,7 +604,7 @@ public class WriteFile extends OperationFrame.Mediator {
                 OMElement original = null;
                 OMElement copy = null;
                 try {
-                    if (keep && xmlToJson(axis, formatter)) {
+                    if (keep && xmlToJson(axis)) {
                         // The JSON formatter takes the indentation and the namespaces out of the XML element it
                         // writes. The flow keeps its body, so the formatter writes a copy, as a call of an out only
                         // message writes a clone.
@@ -644,13 +646,12 @@ public class WriteFile extends OperationFrame.Mediator {
             return output.getByteCount();
         }
 
-        // True when the formatter turns an XML body into JSON: the message type names JSON, and the body is XML,
-        // not a JSON stream and not the text or the binary wrapper, which have formatters of their own.
-        private boolean xmlToJson(org.apache.axis2.context.MessageContext axis, MessageFormatter formatter) {
+        // True when the formatter turns an XML body into JSON: the message type names JSON, and the body is XML and
+        // not a JSON stream. The text and the binary wrapper are XML here too.
+        private boolean xmlToJson(org.apache.axis2.context.MessageContext axis) {
             Object type = axis.getProperty(Const.MESSAGE_TYPE);
             return type != null && type.toString().toLowerCase(Locale.ROOT).contains("json")
-                    && axis.getEnvelope().getBody().getFirstElement() != null && !JsonUtil.hasAJsonPayload(axis)
-                    && !(formatter instanceof BinaryFormatter) && !(formatter instanceof PlainTextFormatter);
+                    && axis.getEnvelope().getBody().getFirstElement() != null && !JsonUtil.hasAJsonPayload(axis);
         }
 
         // A write straight into the target builds an XML body that is not built yet before it opens the target. A call
@@ -699,10 +700,6 @@ public class WriteFile extends OperationFrame.Mediator {
                     && axis.getProperty(MessageBuilder.FORCED_RELAY_FORMATTER) == null
                     && !(relayed instanceof Map && ((Map<?, ?>) relayed).get(axis.getProperty(Const.MESSAGE_TYPE))
                     != null);
-        }
-
-        private boolean binaryBody(org.apache.axis2.context.MessageContext axis) {
-            return binaryWrapper(axis.getEnvelope().getBody().getFirstElement());
         }
 
         private boolean unexpandedJson(org.apache.axis2.context.MessageContext axis) {
@@ -836,15 +833,10 @@ public class WriteFile extends OperationFrame.Mediator {
         return !(child instanceof OMText) || ((OMText) child).isBinary();
     }
 
+    // The formatter comes from the message type, as the transport sender takes it, and never from the shape of the
+    // body. So a binary body under an XML type is written as an envelope, and a body that the formatter of its type
+    // does not write gives an empty file, as on the transport.
     private MessageFormatter getMessageFormatter(org.apache.axis2.context.MessageContext msgContext) {
-        OMElement firstChild = msgContext.getEnvelope().getBody().getFirstElement();
-        if (firstChild != null) {
-            if (binaryWrapper(firstChild)) {
-                return new BinaryFormatter();
-            } else if (BaseConstants.DEFAULT_TEXT_WRAPPER.equals(firstChild.getQName())) {
-                return new PlainTextFormatter();
-            }
-        }
         try {
             return MessageProcessorSelector.getMessageFormatter(msgContext);
         } catch (Exception e) {

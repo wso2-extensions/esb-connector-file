@@ -154,9 +154,12 @@ public class WriteBinaryWrapperTextTest {
         return cases(4);
     }
 
-    // A wrapper with binary content is written as that content under any message type, in every form of the write.
+    // Under application/octet-stream a wrapper with binary content is written as that content, in every form of the
+    // write. Under text/xml the SOAP formatter writes the envelope with the content as base64 text, as the transport
+    // sender does. A streamed write of binary content takes the relay formatter.
     @Test(dataProvider = "binary")
-    public void binaryContentIsWrittenAsBefore(boolean parsed, boolean replace, boolean streamed, boolean soap)
+    public void binaryContentIsWrittenByTheFormatterOfItsType(boolean parsed, boolean replace, boolean streamed,
+                                                               boolean soap)
             throws Exception {
         byte[] content = new byte[300];
         for (int i = 0; i < content.length; i++) {
@@ -171,7 +174,15 @@ public class WriteBinaryWrapperTextTest {
                 Files.deleteIfExists(directory.resolve("target"));
                 write(message, soap ? "text/xml" : "application/octet-stream", "Overwrite", atomic, streamed,
                         replace);
-                Assert.assertEquals(Files.readAllBytes(directory.resolve("target")), content, "atomic " + atomic);
+                byte[] written = Files.readAllBytes(directory.resolve("target"));
+                if (soap && !streamed) {
+                    String envelope = new String(written, StandardCharsets.UTF_8);
+                    Assert.assertTrue(envelope.startsWith("<?xml") && envelope.contains("Envelope"), envelope);
+                    Assert.assertTrue(envelope.contains(">" + Base64.getEncoder().encodeToString(content) + "</"),
+                            envelope);
+                } else {
+                    Assert.assertEquals(written, content, "atomic " + atomic);
+                }
             }
         }
     }
@@ -181,22 +192,20 @@ public class WriteBinaryWrapperTextTest {
         return cases(2);
     }
 
-    // An empty wrapper gives an empty file. With streaming on the relay formatter finds no content and the write
-    // fails as a content failure, as before.
+    // The relay formatter of application/octet-stream finds no content in an empty wrapper and fails, as the
+    // transport sender fails with the same formatter. The write fails as a content failure and writes nothing.
     @Test(dataProvider = "empty")
-    public void emptyWrapperIsWrittenAsBefore(boolean parsed, boolean streamed) throws Exception {
+    public void emptyWrapperUnderOctetStreamFailsAsTheTransport(boolean parsed, boolean streamed) throws Exception {
         Path directory = WriteFileTest.directory();
         try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
             try {
                 write(wrapped(files, parsed, null), "application/octet-stream", "Overwrite", true, streamed, false);
-                Assert.assertFalse(streamed, "The empty wrapper was streamed");
-                Assert.assertEquals(Files.readAllBytes(directory.resolve("target")).length, 0);
+                Assert.fail("The empty wrapper was written under application/octet-stream");
             } catch (SynapseException failure) {
-                Assert.assertTrue(streamed, failure.getMessage());
                 Assert.assertTrue(failure.getMessage().contains("The message body could not be read"),
                         failure.getMessage());
-                Assert.assertFalse(Files.exists(directory.resolve("target")));
             }
+            Assert.assertFalse(Files.exists(directory.resolve("target")));
         }
     }
 

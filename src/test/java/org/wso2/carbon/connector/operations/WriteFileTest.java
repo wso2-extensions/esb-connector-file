@@ -21,9 +21,11 @@ import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMOutputFormat;
 import org.apache.axiom.soap.SOAPEnvelope;
 import org.apache.axis2.AxisFault;
+import org.apache.axis2.Constants;
 import org.apache.axis2.context.ConfigurationContext;
 import org.apache.axis2.context.MessageContext;
 import org.apache.axis2.engine.AxisConfiguration;
+import org.apache.axis2.format.PlainTextFormatter;
 import org.apache.axis2.transport.base.BaseConstants;
 import org.apache.axis2.transport.http.ApplicationXMLFormatter;
 import org.apache.synapse.SynapseException;
@@ -178,10 +180,14 @@ public class WriteFileTest {
                     }
                 }
             }
-            // With no expression text the connector uses the message body, even for an empty text body.
+            // With no expression text the connector uses the message body, even for an empty text body. The text
+            // formatter of text/plain writes the empty text.
             org.apache.axiom.om.OMElement text = OMAbstractFactory.getOMFactory().createOMElement(
                     org.apache.axis2.transport.base.BaseConstants.DEFAULT_TEXT_WRAPPER);
             message.getEnvelope().getBody().addChild(text);
+            message.getAxis2MessageContext().getConfigurationContext().getAxisConfiguration()
+                    .addMessageFormatter("text/plain", new PlainTextFormatter());
+            message.getAxis2MessageContext().setProperty(Constants.Configuration.MESSAGE_TYPE, "text/plain");
             write(message, "empty", "", "encoding", "UTF-16", "appendNewLine", "true");
             Assert.assertEquals(Files.readAllBytes(dir.resolve("empty")), System.lineSeparator().getBytes("UTF-16"));
         }
