@@ -66,6 +66,9 @@ import javax.xml.namespace.QName;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.UnsupportedCharsetException;
 
 import static org.wso2.carbon.connector.utils.Const.IS_VALID_CONNECTION;
 import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
@@ -242,14 +245,14 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         }
 
         if (connectionConfig.isRemote()) {
-            connectionConfig.setRemoteServerConfig(getRemoteServerConfig(msgContext, connectionConfig));
+            connectionConfig.setRemoteServerConfig(getRemoteServerConfig(msgContext, connectionConfig, connectionLog));
         }
 
         return connectionConfig;
     }
 
-    private RemoteServerConfig getRemoteServerConfig(MessageContext msgContext, ConnectionConfiguration configuration)
-            throws InvalidConfigurationException {
+    private RemoteServerConfig getRemoteServerConfig(MessageContext msgContext, ConnectionConfiguration configuration,
+                                                     NamedLog connectionLog) throws InvalidConfigurationException {
 
         RemoteServerConfig remoteServerConfig;
         FileSystemOptions options = configuration.getProviderOptions();
@@ -271,7 +274,7 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
                 remoteServerConfig = new SFTPConnectionConfig();
                 setCommonRemoteServerConfigs(msgContext, remoteServerConfig);
                 setSFTPConnectionConfigsFromContext(msgContext, (SFTPConnectionConfig) remoteServerConfig);
-                setSftpOptions(msgContext, options);
+                setSftpOptions(msgContext, options, message -> warn(connectionLog, message));
                 break;
             case SMB:
             case SMB2:
@@ -303,7 +306,7 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         setTimeout(message, "writeStallTimeout", value -> builder.setWriteStallTimeout(options, value));
     }
 
-    private static void setSftpOptions(MessageContext message, FileSystemOptions options)
+    private static void setSftpOptions(MessageContext message, FileSystemOptions options, Consumer<String> warning)
             throws InvalidConfigurationException {
         SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder.getInstance();
         setOption(message, "sftpKeyExchangeAlgorithms", value -> builder.setKeyExchangeAlgorithm(options, value));
@@ -311,6 +314,15 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         setOption(message, "sftpCiphers", value -> builder.setCiphers(options, value));
         setOption(message, "sftpMacs", value -> builder.setMacs(options, value));
         setOption(message, "sftpPubkeyAcceptedAlgorithms", value -> builder.setPubkeyAcceptedAlgorithms(options, value));
+        setOption(message, "sftpFileNameEncoding", value -> {
+            // A wrong charset leaves the option unset, so the provider keeps UTF-8 as for the address option.
+            try {
+                Charset.forName(value);
+                builder.setFileNameEncoding(options, value);
+            } catch (IllegalCharsetNameException | UnsupportedCharsetException e) {
+                warning.accept("Invalid sftpFileNameEncoding '" + value + "'. Using UTF-8.");
+            }
+        });
         setTimeout(message, "writeStallTimeout", value -> builder.setWriteStallTimeout(options, value));
     }
 

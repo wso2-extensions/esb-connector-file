@@ -119,6 +119,7 @@ public class ConnectionParametersTest {
             Assert.assertNull(builder.getCiphers(input));
             Assert.assertNull(builder.getMacs(input));
             Assert.assertNull(builder.getPubkeyAcceptedAlgorithms(input));
+            Assert.assertNull(builder.getFileNameEncoding(input));
             Assert.assertFalse(builder.isSessionTimeoutSet(input));
             Assert.assertFalse(builder.isConnectTimeoutSet(input));
             Assert.assertNull(builder.getKeepAliveCountMax(input));
@@ -128,6 +129,7 @@ public class ConnectionParametersTest {
         try (FilePoolFixture files = new FilePoolFixture("SFTP", "sftpKeyExchangeAlgorithms", "curve25519-sha256",
                 "sftpHostKeyAlgorithms", "ssh-ed25519", "sftpCiphers", "aes128-ctr",
                 "sftpMacs", "hmac-sha2-256", "sftpPubkeyAcceptedAlgorithms", "rsa-sha2-512",
+                "sftpFileNameEncoding", "ISO-8859-1",
                 "sftpSessionTimeout", "800", "sftpConnectionTimeout", "500", "sftpKeepAliveCount", "2",
                 "writeStallTimeout", "400", "setAvoidPermission", "false")) {
             FileSystemOptions input = options(files);
@@ -136,11 +138,42 @@ public class ConnectionParametersTest {
             Assert.assertEquals(builder.getCiphers(input), "aes128-ctr");
             Assert.assertEquals(builder.getMacs(input), "hmac-sha2-256");
             Assert.assertEquals(builder.getPubkeyAcceptedAlgorithms(input), "rsa-sha2-512");
+            Assert.assertEquals(builder.getFileNameEncoding(input), "ISO-8859-1");
             Assert.assertEquals(builder.getSessionTimeout(input), Duration.ofMillis(800));
             Assert.assertEquals(builder.getConnectTimeout(input), Duration.ofMillis(500));
             Assert.assertEquals(builder.getKeepAliveCountMax(input), Integer.valueOf(2));
             Assert.assertEquals(builder.getWriteStallTimeout(input), Duration.ofMillis(400));
             Assert.assertEquals(builder.getAvoidPermissionCheck(input), "false");
+        }
+    }
+
+    @DataProvider(name = "wrongCharsets")
+    public Object[][] wrongCharsets() {
+        return new Object[][]{{"x-no-such-charset"}, {"not a charset"}};
+    }
+
+    @Test(dataProvider = "wrongCharsets")
+    public void wrongFileNameEncodingWarnsAndKeepsTheDefault(String charset) throws Exception {
+        List<String> warnings = Collections.synchronizedList(new ArrayList<>());
+        AppenderSkeleton appender = new AppenderSkeleton() {
+            protected void append(LoggingEvent event) {
+                String line = event.getRenderedMessage();
+                if (line.contains("sftpFileNameEncoding")) {
+                    warnings.add(line);
+                }
+            }
+
+            public void close() { }
+
+            public boolean requiresLayout() { return false; }
+        };
+        Logger.getRootLogger().addAppender(appender);
+        try (FilePoolFixture files = new FilePoolFixture("SFTP", "sftpFileNameEncoding", charset)) {
+            Assert.assertNull(SftpFileSystemConfigBuilder.getInstance().getFileNameEncoding(options(files)));
+            Assert.assertEquals(warnings.size(), 1, warnings.toString());
+            Assert.assertTrue(warnings.get(0).contains("'" + charset + "'. Using UTF-8."), warnings.get(0));
+        } finally {
+            Logger.getRootLogger().removeAppender(appender);
         }
     }
 

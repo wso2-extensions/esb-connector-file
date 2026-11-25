@@ -82,6 +82,7 @@
 	<parameter name="sftpCiphers" description="SSH ciphers."/>
 	<parameter name="sftpMacs" description="SSH message authentication algorithms."/>
 	<parameter name="sftpPubkeyAcceptedAlgorithms" description="SSH public key algorithms accepted for authentication."/>
+	<parameter name="sftpFileNameEncoding" description="Character set of SFTP file names. Leave empty to use UTF-8."/>
 	<parameter name="smb2ReadTimeout" description="SMB2 read timeout in milliseconds."/>
 	<parameter name="smb2WriteTimeout" description="SMB2 write timeout in milliseconds."/>
 	<parameter name="smb2TransactTimeout" description="SMB2 transaction timeout in milliseconds."/>

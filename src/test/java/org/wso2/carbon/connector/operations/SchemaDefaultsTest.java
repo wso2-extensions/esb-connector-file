@@ -47,7 +47,7 @@ public class SchemaDefaultsTest {
                 + "tempFolderName=.part useTempFolder=true tempFileSuffix=.part maxFailureRetryCount=");
         add(cases, "sftp", "sftpConnectionTimeout= sftpSessionTimeout= sftpKeepAliveCount= "
                 + "sftpPoolConnectionAgedTimeout= sftpKeyExchangeAlgorithms= sftpHostKeyAlgorithms= "
-                + "sftpCiphers= sftpMacs= sftpPubkeyAcceptedAlgorithms= setAvoidPermission=true "
+                + "sftpCiphers= sftpMacs= sftpPubkeyAcceptedAlgorithms= sftpFileNameEncoding= setAvoidPermission=true "
                 + "strictHostKeyChecking=false privateKeyFilePath= privateKeyPassword= sftpPathFromRoot=false");
         add(cases, "ftp ftps", "ftpConnectionTimeout= ftpSocketTimeout= ftpDataTimeout= retryCount=5 "
                 + "ftpTransferType=BINARY isPassive=true");

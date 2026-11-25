@@ -1829,6 +1829,13 @@
                             "description": "SSH public key algorithms accepted for authentication."
                         },
                         {
+                            "name": "sftpFileNameEncoding",
+                            "type": "stringOrExpression",
+                            "required": false,
+                            "defaultValue": "",
+                            "description": "Character set of SFTP file names. Leave empty to use UTF-8."
+                        },
+                        {
                             "name": "writeStallTimeout",
                             "type": "integerOrExpression",
                             "required": false,
