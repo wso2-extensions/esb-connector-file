@@ -25,6 +25,7 @@ import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMNode;
 import org.apache.axiom.om.OMOutputFormat;
 import org.apache.axiom.om.OMSourcedElement;
+import org.apache.axiom.om.OMText;
 import org.apache.axiom.om.impl.MTOMXMLStreamWriter;
 import org.apache.axiom.om.impl.OMContainerEx;
 import org.apache.axiom.om.impl.OMNodeEx;
@@ -681,14 +682,16 @@ public class WriteFile extends OperationFrame.Mediator {
         // content by the relay formatter, never as an envelope.
         private boolean parsedEnvelope(org.apache.axis2.context.MessageContext axis, MessageFormatter formatter,
                                        OMOutputFormat format) {
-            if (axis.getEnvelope().getBuilder() == null || format.isOptimized() || format.isDoingSWA()
-                    || binaryBody(axis)) {
+            if (axis.getEnvelope().getBuilder() == null || format.isOptimized() || format.isDoingSWA()) {
                 return false;
             }
             if (formatter.getClass() == SOAPMessageFormatter.class) {
                 return true;
             }
-            if (formatter.getClass() != ExpandingMessageFormatter.class || axis.getOperationContext() == null) {
+            // The relay formatter takes every body in the binary wrapper as binary, by the name alone.
+            OMElement first = axis.getEnvelope().getBody().getFirstElement();
+            if (formatter.getClass() != ExpandingMessageFormatter.class || axis.getOperationContext() == null
+                    || first != null && BaseConstants.DEFAULT_BINARY_WRAPPER.equals(first.getQName())) {
                 return false;
             }
             Object relayed = axis.getProperty(MessageBuilder.RELAY_FORMATTERS_MAP);
@@ -699,8 +702,7 @@ public class WriteFile extends OperationFrame.Mediator {
         }
 
         private boolean binaryBody(org.apache.axis2.context.MessageContext axis) {
-            OMElement first = axis.getEnvelope().getBody().getFirstElement();
-            return first != null && BaseConstants.DEFAULT_BINARY_WRAPPER.equals(first.getQName());
+            return binaryWrapper(axis.getEnvelope().getBody().getFirstElement());
         }
 
         private boolean unexpandedJson(org.apache.axis2.context.MessageContext axis) {
@@ -823,10 +825,21 @@ public class WriteFile extends OperationFrame.Mediator {
         }
     }
 
+    // The binary wrapper holds binary content or nothing. A wrapper whose first child is a text node that is not
+    // binary, as a payload factory or an XML parser makes it, is plain XML. It is written by the formatter of its
+    // message type, as the transport sender does.
+    private static boolean binaryWrapper(OMElement element) {
+        if (element == null || !BaseConstants.DEFAULT_BINARY_WRAPPER.equals(element.getQName())) {
+            return false;
+        }
+        OMNode child = element.getFirstOMChild();
+        return !(child instanceof OMText) || ((OMText) child).isBinary();
+    }
+
     private MessageFormatter getMessageFormatter(org.apache.axis2.context.MessageContext msgContext) {
         OMElement firstChild = msgContext.getEnvelope().getBody().getFirstElement();
         if (firstChild != null) {
-            if (BaseConstants.DEFAULT_BINARY_WRAPPER.equals(firstChild.getQName())) {
+            if (binaryWrapper(firstChild)) {
                 return new BinaryFormatter();
             } else if (BaseConstants.DEFAULT_TEXT_WRAPPER.equals(firstChild.getQName())) {
                 return new PlainTextFormatter();
