@@ -185,16 +185,18 @@ public class WriteBodyCrossTest {
             Files.write(target, prior);
         }
 
+        // Only a binary body under the relay formatter of application/octet-stream is streamed.
+        boolean streamedBinary = streamed && body == Body.BINARY && "application/octet-stream".equals(type);
         Axis2MessageContext before = message(body);
         before.getAxis2MessageContext().setProperty(Constants.Configuration.MESSAGE_TYPE, type);
         byte[] expected = null;
         Exception beforeFailure = null;
         try {
-            expected = writeAsBefore(before.getAxis2MessageContext(), streamed);
+            expected = writeAsBefore(before.getAxis2MessageContext());
         } catch (Exception failure) {
             beforeFailure = failure;
         }
-        if (beforeFailure != null && !replace && !(streamed && body == Body.BINARY) && body != Body.JSON_STREAM) {
+        if (beforeFailure != null && !replace && !streamedBinary && body != Body.JSON_STREAM) {
             // The transport sender writes with preserve false, and a formatter that writes XML fails on a text source
             // that can be read once. The write keeps the body, so the formatter expands the source and writes it. A
             // JSON stream body is written with preserve false in both, so it fails in both.
@@ -230,12 +232,12 @@ public class WriteBodyCrossTest {
             Assert.assertTrue(JsonUtil.jsonPayloadToString(axis).contains("\"success\":true"));
             Assert.assertEquals(String.valueOf(axis.getEnvelope().getHeader()),
                     String.valueOf(untouched.getAxis2MessageContext().getEnvelope().getHeader()));
-        } else if (streamed && body == Body.BINARY) {
+        } else if (streamedBinary) {
             Assert.assertEquals(read(message, body), read(before, body), "body after a streamed write");
         } else {
             Assert.assertEquals(read(message, body), read(untouched, body), "body after the write");
         }
-        if (!replace && !(streamed && body == Body.BINARY)) {
+        if (!replace && !streamedBinary) {
             // A kept body is written a second time in the same bytes.
             String second = name + "-second";
             write(message, second, type, "Create New", streamed, false, true);
@@ -332,7 +334,7 @@ public class WriteBodyCrossTest {
         byte[] expected = null;
         Exception beforeFailure = null;
         try {
-            expected = writeAsBefore(before.getAxis2MessageContext(), false);
+            expected = writeAsBefore(before.getAxis2MessageContext());
         } catch (Exception failure) {
             beforeFailure = failure;
         }
@@ -372,7 +374,7 @@ public class WriteBodyCrossTest {
         Axis2MessageContext before = message(null);
         install(before.getAxis2MessageContext(), content, null, false);
         before.getAxis2MessageContext().setProperty(Constants.Configuration.MESSAGE_TYPE, "application/xml");
-        Assert.assertEquals(new String(writeAsBefore(before.getAxis2MessageContext(), false), StandardCharsets.UTF_8),
+        Assert.assertEquals(new String(writeAsBefore(before.getAxis2MessageContext()), StandardCharsets.UTF_8),
                 "<r><?keep this?><?t?></r>");
         Axis2MessageContext message = message(null);
         install(message.getAxis2MessageContext(), content, null, false);
@@ -394,7 +396,7 @@ public class WriteBodyCrossTest {
         Axis2MessageContext before = message(null);
         install(before.getAxis2MessageContext(), content, null, true);
         before.getAxis2MessageContext().setProperty(Constants.Configuration.MESSAGE_TYPE, "text/xml");
-        String spent = new String(writeAsBefore(before.getAxis2MessageContext(), false), StandardCharsets.UTF_8);
+        String spent = new String(writeAsBefore(before.getAxis2MessageContext()), StandardCharsets.UTF_8);
         Axis2MessageContext message = message(null);
         install(message.getAxis2MessageContext(), content, null, true);
         String name = "n" + names.incrementAndGet();
@@ -709,15 +711,9 @@ public class WriteBodyCrossTest {
     }
 
     // The write as the transport sender writes it: the formatter of the message type, and preserve false. A streamed
-    // write of a binary body takes the relay formatter.
-    private static byte[] writeAsBefore(MessageContext axis, boolean streamed) throws Exception {
-        MessageFormatter formatter;
-        OMElement first = axis.getEnvelope().getBody().getFirstElement();
-        if (streamed && first != null && BaseConstants.DEFAULT_BINARY_WRAPPER.equals(first.getQName())) {
-            formatter = new ExpandingMessageFormatter();
-        } else {
-            formatter = MessageProcessorSelector.getMessageFormatter(axis);
-        }
+    // write of a binary body under application/octet-stream takes the same relay formatter.
+    private static byte[] writeAsBefore(MessageContext axis) throws Exception {
+        MessageFormatter formatter = MessageProcessorSelector.getMessageFormatter(axis);
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         formatter.writeTo(axis, BaseUtils.getOMOutputFormat(axis), output, false);
         return output.toByteArray();

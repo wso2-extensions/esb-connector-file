@@ -155,8 +155,8 @@ public class WriteBinaryWrapperTextTest {
     }
 
     // Under application/octet-stream a wrapper with binary content is written as that content, in every form of the
-    // write. Under text/xml the SOAP formatter writes the envelope with the content as base64 text, as the transport
-    // sender does. A streamed write of binary content takes the relay formatter.
+    // write, and streamed when streaming is on. Under text/xml the SOAP formatter writes the envelope with the content
+    // as base64 text, as the transport sender does, also when streaming is on.
     @Test(dataProvider = "binary")
     public void binaryContentIsWrittenByTheFormatterOfItsType(boolean parsed, boolean replace, boolean streamed,
                                                                boolean soap)
@@ -175,7 +175,7 @@ public class WriteBinaryWrapperTextTest {
                 write(message, soap ? "text/xml" : "application/octet-stream", "Overwrite", atomic, streamed,
                         replace);
                 byte[] written = Files.readAllBytes(directory.resolve("target"));
-                if (soap && !streamed) {
+                if (soap) {
                     String envelope = new String(written, StandardCharsets.UTF_8);
                     Assert.assertTrue(envelope.startsWith("<?xml") && envelope.contains("Envelope"), envelope);
                     Assert.assertTrue(envelope.contains(">" + Base64.getEncoder().encodeToString(content) + "</"),

@@ -23,6 +23,8 @@ import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMFactory;
 import org.apache.axiom.om.OMText;
 import org.apache.axis2.Constants;
+import org.apache.axis2.builder.ApplicationXMLBuilder;
+import org.apache.axis2.builder.SOAPBuilder;
 import org.apache.axis2.context.MessageContext;
 import org.apache.axis2.context.OperationContext;
 import org.apache.axis2.engine.AxisConfiguration;
@@ -31,9 +33,12 @@ import org.apache.axis2.format.BinaryFormatter;
 import org.apache.axis2.format.PlainTextFormatter;
 import org.apache.axis2.transport.TransportUtils;
 import org.apache.axis2.transport.base.BaseConstants;
+import org.apache.axis2.transport.base.BaseUtils;
 import org.apache.axis2.transport.http.ApplicationXMLFormatter;
 import org.apache.axis2.transport.http.SOAPMessageFormatter;
+import org.apache.axis2.util.MessageProcessorSelector;
 import org.apache.synapse.SynapseException;
+import org.apache.synapse.commons.json.JsonStreamBuilder;
 import org.apache.synapse.commons.json.JsonStreamFormatter;
 import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
@@ -46,13 +51,16 @@ import org.wso2.carbon.relay.BinaryRelayBuilder;
 import org.wso2.carbon.relay.ExpandingMessageFormatter;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Stack;
@@ -231,6 +239,129 @@ public class WriteMessageTypeTest {
             write(message, "second", "Automatic", false, false);
             Assert.assertEquals(Files.readAllBytes(directory.resolve("second")), bytes);
         }
+    }
+
+    private static final String[][] FAMILIES = {
+            {"binary relay", "application/octet-stream"}, {"binary", "application/binary"},
+            {"xml", "application/xml"}, {"soap 1.1", "text/xml"}, {"soap 1.2", "application/soap+xml"},
+            {"json", "application/json"}};
+
+    @DataProvider(name = "families")
+    public Object[][] families() {
+        List<Object[]> cases = new ArrayList<>();
+        for (String[] family : FAMILIES) {
+            for (boolean replace : new boolean[]{false, true}) {
+                for (boolean streamed : new boolean[]{false, true}) {
+                    for (boolean mimeSet : new boolean[]{false, true}) {
+                        cases.add(new Object[]{family[0], family[1], replace, streamed, mimeSet});
+                    }
+                }
+            }
+        }
+        return cases.toArray(new Object[0][]);
+    }
+
+    // A body of each family under its own type, as its builder made it: binary under application/octet-stream and
+    // application/binary, XML under application/xml, SOAP under text/xml and application/soap+xml, and JSON under
+    // application/json. Kept and replaced, streaming on and off, with the type set by the write and with the type of
+    // the flow. The file holds the bytes the formatter of the type gives with preserve false, as the transport
+    // sender writes them. A binary body is its bytes. A kept body that was not streamed is written a second time in
+    // the same bytes. Only the relay body under application/octet-stream is streamed.
+    @Test(dataProvider = "families")
+    public void bodyOfEachFamilyIsWrittenByTheFormatterOfItsType(String family, String type, boolean replace,
+                                                                 boolean streamed, boolean mimeSet) throws Exception {
+        Path directory = WriteFileTest.directory();
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            Axis2MessageContext sender = family(files, family, type);
+            ByteArrayOutputStream expected = new ByteArrayOutputStream();
+            MessageContext reference = sender.getAxis2MessageContext();
+            reference.getConfigurationContext().getAxisConfiguration().getMessageFormatter(type)
+                    .writeTo(reference, BaseUtils.getOMOutputFormat(reference), expected, false);
+            if (family.startsWith("binary")) {
+                Assert.assertEquals(expected.toByteArray(), CONTENT);
+            }
+            Axis2MessageContext message = family(files, family, type);
+            String mime = type(message.getAxis2MessageContext(), type, mimeSet);
+            write(message, "target", mime, streamed, replace);
+            Assert.assertEquals(Files.readAllBytes(directory.resolve("target")), expected.toByteArray(),
+                    new String(Files.readAllBytes(directory.resolve("target")), StandardCharsets.UTF_8));
+            assertResult(message, replace);
+            boolean spent = streamed && "application/octet-stream".equals(type);
+            if (!replace && !spent) {
+                write(message, "second", mime, false, false);
+                Assert.assertEquals(Files.readAllBytes(directory.resolve("second")), expected.toByteArray());
+            }
+        }
+    }
+
+    @DataProvider(name = "streamedUnderAnotherType")
+    public Object[][] streamedUnderAnotherType() {
+        List<Object[]> cases = new ArrayList<>();
+        for (String type : new String[]{"text/plain", "application/xml", "application/json", "text/xml",
+                "application/x-unknown"}) {
+            for (boolean replace : new boolean[]{false, true}) {
+                cases.add(new Object[]{type, replace});
+            }
+        }
+        return cases.toArray(new Object[0][]);
+    }
+
+    // A relay body from the inbound written with streaming on and a stated type whose formatter is not the relay
+    // formatter. It is not streamed. The formatter of the stated type writes it, as the transport sender writes it:
+    // nothing under text/plain, and the content as base64 text under an XML, JSON or unknown type.
+    @Test(dataProvider = "streamedUnderAnotherType")
+    public void relayBodyStreamedUnderAnotherTypeIsWrittenByThatType(String type, boolean replace) throws Exception {
+        Path directory = WriteFileTest.directory();
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", directory.toString())) {
+            Axis2MessageContext twin = family(files, "binary relay", "application/octet-stream");
+            MessageContext reference = twin.getAxis2MessageContext();
+            reference.setProperty(Constants.Configuration.MESSAGE_TYPE, type);
+            ByteArrayOutputStream expected = new ByteArrayOutputStream();
+            MessageProcessorSelector.getMessageFormatter(reference)
+                    .writeTo(reference, BaseUtils.getOMOutputFormat(reference), expected, false);
+            if ("text/plain".equals(type)) {
+                Assert.assertEquals(expected.size(), 0);
+            }
+            Axis2MessageContext message = family(files, "binary relay", "application/octet-stream");
+            write(message, "target", type, true, replace);
+            Assert.assertEquals(Files.readAllBytes(directory.resolve("target")), expected.toByteArray(),
+                    new String(Files.readAllBytes(directory.resolve("target")), StandardCharsets.UTF_8));
+            assertResult(message, replace);
+            if (!replace) {
+                write(message, "second", type, true, false);
+                Assert.assertEquals(Files.readAllBytes(directory.resolve("second")), expected.toByteArray());
+            }
+        }
+    }
+
+    private static Axis2MessageContext family(FilePoolFixture files, String family, String type) throws Exception {
+        Axis2MessageContext message = message(files);
+        MessageContext axis = message.getAxis2MessageContext();
+        OMElement element;
+        switch (family) {
+            case "binary relay":
+                element = new BinaryRelayBuilder().processDocument(new ByteArrayInputStream(CONTENT), type, axis);
+                break;
+            case "binary":
+                element = new BinaryBuilder().processDocument(new ByteArrayInputStream(CONTENT), type, axis);
+                break;
+            case "xml":
+                byte[] xml = "<order><id>7</id><note>caf\u00e9</note></order>".getBytes(StandardCharsets.UTF_8);
+                element = new ApplicationXMLBuilder().processDocument(new ByteArrayInputStream(xml), type, axis);
+                break;
+            case "json":
+                byte[] json = "{\"order\":{\"id\":7,\"note\":\"caf\u00e9\"}}".getBytes(StandardCharsets.UTF_8);
+                element = new JsonStreamBuilder().processDocument(new ByteArrayInputStream(json), type, axis);
+                break;
+            default:
+                String namespace = "soap 1.1".equals(family) ? "http://schemas.xmlsoap.org/soap/envelope/"
+                        : "http://www.w3.org/2003/05/soap-envelope";
+                element = new SOAPBuilder().processDocument(new ByteArrayInputStream(("<s:Envelope xmlns:s=\""
+                        + namespace + "\"><s:Body><order><id>7</id></order></s:Body></s:Envelope>")
+                        .getBytes(StandardCharsets.UTF_8)), type, axis);
+        }
+        axis.setEnvelope(TransportUtils.createSOAPEnvelope(element));
+        return message;
     }
 
     // The message type of the flow when the write sets none, else the type of the write.

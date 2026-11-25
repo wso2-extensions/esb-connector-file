@@ -590,10 +590,12 @@ public class WriteFile extends OperationFrame.Mediator {
                 // the start of its body in the tree, so the connector core can take the children out of the body
                 // after a write that replaces it spent the parser.
                 OMElement first = axis.getEnvelope().getBody().getFirstElement();
-                // Only a binary body is streamed. Any other body is written by the formatter of its message type, as
-                // the transport sender does, also when streaming is asked for.
-                boolean stream = streaming && binaryWrapper(first);
-                MessageFormatter formatter = stream ? new ExpandingMessageFormatter() : getMessageFormatter(axis);
+                MessageFormatter formatter = getMessageFormatter(axis);
+                // With streaming on, a binary body is streamed when the formatter of its message type is the relay
+                // formatter, which then reads the content once and keeps no copy. Any other body, and a binary body
+                // under another type, is written by the formatter of its type as a write that is not streamed.
+                boolean stream = streaming && formatter.getClass() == ExpandingMessageFormatter.class
+                        && binaryWrapper(first);
                 OMOutputFormat format = BaseUtils.getOMOutputFormat(axis);
                 // A body that is not built yet is pulled from its parser and lost unless the formatter keeps it.
                 // A JSON stream body is written again from its buffered stream, so it needs no tree.
