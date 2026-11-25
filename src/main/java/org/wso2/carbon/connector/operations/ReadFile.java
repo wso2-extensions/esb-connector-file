@@ -59,6 +59,7 @@ import org.wso2.carbon.connector.frame.StreamLease;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
 import org.wso2.carbon.connector.utils.SourceGuard;
 import org.wso2.integration.connector.core.ConnectException;
+import org.wso2.integration.connector.core.util.PayloadUtils;
 import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
@@ -396,6 +397,7 @@ public class ReadFile extends OperationFrame.Mediator {
                     msgCtx.setEnvelope(envelope);
                     ((Axis2MessageContext) msgCtx).getAxis2MessageContext()
                             .removeProperty(PassThroughConstants.NO_ENTITY_BODY);
+                    carryBuiltType(msgCtx);
                 } catch (Exception failure) {
                     // The builder only wraps the stream here and reads nothing of the file.
                     Exception reported = failure instanceof OperationFrame.Failure ? failure : content(failure, type);
@@ -509,6 +511,7 @@ public class ReadFile extends OperationFrame.Mediator {
             msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
             ((Axis2MessageContext) msgCtx).getAxis2MessageContext().
                     removeProperty(PassThroughConstants.NO_ENTITY_BODY);
+            carryBuiltType(msgCtx);
         } else {
             try {
                 if (Const.CONTENT_TYPE_JSON.equalsIgnoreCase(type) || (documentElement instanceof OMSourcedElement
@@ -1011,8 +1014,19 @@ public class ReadFile extends OperationFrame.Mediator {
                 }
                 builder = new BinaryRelayBuilder();
                 axis2MsgCtx.setProperty(Constants.Configuration.MESSAGE_TYPE, RELAY_TYPE);
+            } else {
+                // With content negotiation on, axis2 names the first type of the Accept header of the request. The
+                // read names the type of the file.
+                axis2MsgCtx.setProperty(Constants.Configuration.MESSAGE_TYPE, type);
             }
         }
         return builder;
+    }
+
+    // A read that replaces the body carries the type of what it built as the message type, the property ContentType
+    // and the header Content-Type, so a later write, respond or call does not take the type of the request.
+    private static void carryBuiltType(MessageContext msgCtx) {
+        org.apache.axis2.context.MessageContext axis = ((Axis2MessageContext) msgCtx).getAxis2MessageContext();
+        PayloadUtils.handleSpecialProperties((String) axis.getProperty(Constants.Configuration.MESSAGE_TYPE), axis);
     }
 }

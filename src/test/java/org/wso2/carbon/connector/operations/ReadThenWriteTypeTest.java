@@ -23,6 +23,7 @@ import org.apache.axis2.builder.ApplicationXMLBuilder;
 import org.apache.axis2.context.ConfigurationContext;
 import org.apache.axis2.context.MessageContext;
 import org.apache.axis2.context.OperationContext;
+import org.apache.axis2.description.Parameter;
 import org.apache.axis2.engine.AxisConfiguration;
 import org.apache.axis2.format.BinaryBuilder;
 import org.apache.axis2.format.BinaryFormatter;
@@ -47,6 +48,7 @@ import org.wso2.carbon.relay.BinaryRelayBuilder;
 import org.wso2.carbon.relay.ExpandingMessageFormatter;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -132,7 +134,7 @@ public class ReadThenWriteTypeTest {
     // A read of the whole file with contentType application/binary into the body, as a flow does before it sends the
     // body as a BYTES message. The binary builder of the pack puts the binary wrapper with a binary node of the bytes
     // in the body. The message type is application/binary, the charset is the encoding of the read, UTF-8 by
-    // default, and ContentType is left as the flow had it.
+    // default, and ContentType names application/binary too, as the read carries the type of what it built.
     @Test
     public void readAsApplicationBinaryPutsTheBinaryWrapper() throws Exception {
         String source = "s" + names.incrementAndGet() + ".png";
@@ -153,7 +155,53 @@ public class ReadThenWriteTypeTest {
         }
         Assert.assertEquals(axis.getProperty(Constants.Configuration.MESSAGE_TYPE), "application/binary");
         Assert.assertEquals(axis.getProperty(Constants.Configuration.CHARACTER_SET_ENCODING), "UTF-8");
-        Assert.assertNull(axis.getProperty(Constants.Configuration.CONTENT_TYPE));
+        Assert.assertEquals(axis.getProperty(Constants.Configuration.CONTENT_TYPE), "application/binary");
+    }
+
+    // A read into the body carries the type of the file as the message type, the property ContentType and the header
+    // Content-Type, also behind a request that came with JSON and an Accept header of JSON, with content negotiation
+    // on as in the pack. A write with mime type Automatic then gives the bytes of the file. A read into a variable
+    // leaves the three as the request had them.
+    @DataProvider(name = "typed")
+    public Object[][] typed() {
+        return new Object[][]{{".txt", "text/plain", "text/plain", false}, {".txt", null, "text/plain", false},
+                {".xml", "application/xml", "application/xml", false}, {".xml", null, "application/xml", false},
+                {".txt", "text/plain", "text/plain", true}};
+    }
+
+    @Test(dataProvider = "typed")
+    public void readIntoTheBodyCarriesTheTypeOfTheFile(String extension, String contentType, String expected,
+                                                       boolean streamed) throws Exception {
+        byte[] content = (".xml".equals(extension) ? "<a>file</a>" : "a file\n").getBytes(StandardCharsets.UTF_8);
+        for (boolean replace : streamed ? new boolean[]{true} : new boolean[]{true, false}) {
+            String source = "s" + names.incrementAndGet() + extension;
+            Files.write(directory.resolve(source), content);
+            Axis2MessageContext message = message("application/json");
+            MessageContext axis = message.getAxis2MessageContext();
+            axis.getConfigurationContext().getAxisConfiguration().addParameter(
+                    new Parameter(Constants.Configuration.ENABLE_HTTP_CONTENT_NEGOTIATION, "true"));
+            axis.setProperty(Constants.Configuration.CONTENT_TYPE, "application/json");
+            Map<String, Object> headers = new HashMap<>();
+            headers.put("Accept", "application/json");
+            headers.put("Content-Type", "application/json");
+            axis.setProperty(MessageContext.TRANSPORT_HEADERS, headers);
+            Map<String, String> values = new HashMap<>();
+            if (contentType != null) {
+                values.put("contentType", contentType);
+            }
+            values.put("enableStreaming", Boolean.toString(streamed));
+            read(message, source, replace, values);
+            String type = replace ? expected : "application/json";
+            Assert.assertEquals(axis.getProperty(Constants.Configuration.MESSAGE_TYPE), type, "message type");
+            Assert.assertEquals(axis.getProperty(Constants.Configuration.CONTENT_TYPE), type, "ContentType");
+            Assert.assertEquals(headers.get("Content-Type"), type, "header");
+            if (replace) {
+                String target = "t" + names.incrementAndGet();
+                write(message, target);
+                Assert.assertEquals(new String(Files.readAllBytes(directory.resolve(target)), StandardCharsets.UTF_8),
+                        new String(content, StandardCharsets.UTF_8));
+            }
+        }
     }
 
     // The builders and the formatters of the pack, as it writes conf/axis2/axis2.xml at start.
