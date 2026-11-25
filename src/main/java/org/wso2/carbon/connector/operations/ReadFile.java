@@ -104,6 +104,8 @@ public class ReadFile extends OperationFrame.Mediator {
     private static final String ENABLE_LOCK_PARAM = "enableLock";
     private static final String READ_MODE_PARAM = "readMode";
     private static final String CONTENT_TYPE_PARAM = "contentType";
+    // The type of the relay builder, which reads any content as bytes.
+    private static final String RELAY_TYPE = "application/octet-stream";
     private static final String ENCODING_PARAM = "encoding";
     private static final String ENABLE_STREAMING_PARAM = "enableStreaming";
     private static final String START_LINE_NUM_PARAM = "startLineNum";
@@ -979,10 +981,14 @@ public class ReadFile extends OperationFrame.Mediator {
         org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
                 Axis2MessageContext) msgCtx).getAxis2MessageContext();
 
+        // The relay builder reads the content as bytes. The message type then names it, as the builder selection names
+        // the type of a builder it finds, so a later write takes the formatter of bytes. A read with the body kept
+        // puts the message type back.
         Builder builder;
         if (StringUtils.isEmpty(contentType)) {
             readLog.debug("No content type specified. Using RELAY builder.");
             builder = new BinaryRelayBuilder();
+            axis2MsgCtx.setProperty(Constants.Configuration.MESSAGE_TYPE, RELAY_TYPE);
         } else {
             int index = contentType.indexOf(';');
             String type = index > 0 ? contentType.substring(0, index) : contentType;
@@ -993,6 +999,7 @@ public class ReadFile extends OperationFrame.Mediator {
                             + "to RELAY builder.");
                 }
                 builder = new BinaryRelayBuilder();
+                axis2MsgCtx.setProperty(Constants.Configuration.MESSAGE_TYPE, RELAY_TYPE);
             }
         }
         return builder;
