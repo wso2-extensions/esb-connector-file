@@ -78,6 +78,7 @@ import org.wso2.vfs.shared.log.UriMask;
 import org.wso2.vfs.shared.write.AtomicWriter;
 
 import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.util.StreamReaderDelegate;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FilterInputStream;
@@ -775,7 +776,10 @@ public class WriteFile extends OperationFrame.Mediator {
                         charset == null ? OMConstants.DEFAULT_CHAR_SET_ENCODING : charset,
                         version == null ? OMConstants.DEFAULT_XML_VERSION : version);
             }
-            new StreamingOMSerializer().serialize(axis.getEnvelope().getXMLStreamReader(true), writer);
+            // The plain delegate keeps the data source events off, so an element with a data source is expanded
+            // into the tree once and a source that can be read only once is not spent by the first write.
+            new StreamingOMSerializer().serialize(new StreamReaderDelegate(axis.getEnvelope().getXMLStreamReader(true)),
+                    writer);
             writer.flush();
         } catch (XMLStreamException failure) {
             throw AxisFault.makeFault(failure);

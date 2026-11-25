@@ -17,6 +17,11 @@ package org.wso2.carbon.connector.operations;
 
 import org.apache.axiom.om.OMAbstractFactory;
 import org.apache.axiom.om.OMElement;
+import org.apache.axiom.om.OMDataSource;
+import org.apache.axiom.om.OMFactory;
+import org.apache.axiom.om.OMOutputFormat;
+import org.apache.axiom.om.impl.llom.OMSourcedElementImpl;
+import org.apache.axiom.om.util.AXIOMUtil;
 import org.apache.axiom.om.OMText;
 import org.apache.axiom.om.impl.builder.StAXOMBuilder;
 import org.apache.axis2.Constants;
@@ -28,6 +33,7 @@ import org.apache.axis2.engine.AxisConfiguration;
 import org.apache.axis2.format.BinaryFormatter;
 import org.apache.axis2.format.PlainTextBuilder;
 import org.apache.axis2.format.PlainTextFormatter;
+import org.apache.axiom.om.ds.WrappedTextNodeOMDataSourceFromReader;
 import org.apache.axis2.transport.MessageFormatter;
 import org.apache.axis2.transport.TransportUtils;
 import org.apache.axis2.transport.base.BaseConstants;
@@ -54,11 +60,18 @@ import org.wso2.carbon.relay.ExpandingMessageFormatter;
 
 import javax.activation.DataHandler;
 import javax.mail.util.ByteArrayDataSource;
+import javax.xml.namespace.QName;
 import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.stream.XMLStreamWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.StringReader;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -271,8 +284,10 @@ public class WriteBodyCrossTest {
         List<Object[]> cases = new ArrayList<>();
         for (Object[] fixture : fixtures) {
             // A SOAP envelope is written as the parser made it, as a log read it, and as a mediator touched it.
-            String[] states = Boolean.TRUE.equals(fixture[3]) ? new String[]{"lazy", "logged", "touched"}
-                    : new String[]{"lazy"};
+            // An envelope with an element after the body can not be built at all, by any step of a flow.
+            String[] states = !Boolean.TRUE.equals(fixture[3]) ? new String[]{"lazy"}
+                    : "SOAP element after the body".equals(fixture[0]) ? new String[]{"lazy", "logged", "touched"}
+                    : new String[]{"lazy", "logged", "touched", "built"};
             for (String state : states) {
                 for (String type : XML_TYPES) {
                     cases.add(new Object[]{fixture[0], fixture[1], fixture[2], fixture[3], type, state});
@@ -298,7 +313,9 @@ public class WriteBodyCrossTest {
             return;
         }
         before.getAxis2MessageContext().setProperty(Constants.Configuration.MESSAGE_TYPE, type);
-        touch(before.getAxis2MessageContext(), state);
+        // A built envelope gives the file of the lazy one: the bytes do not depend on what built it before.
+        touch(before.getAxis2MessageContext(), "built".equals(state) && !"application/xml".equals(type)
+                ? "lazy" : state);
         byte[] expected = null;
         Exception beforeFailure = null;
         try {
@@ -352,6 +369,158 @@ public class WriteBodyCrossTest {
                 "<r><?keep  this?><?t ?></r>");
         Assert.assertEquals(message.getAxis2MessageContext().getEnvelope().getBody().getFirstElement().toString(),
                 "<r><?keep  this?><?t ?></r>");
+    }
+
+    // Three declarations on an element the parser has not built yet. The reader that keeps what it reads takes them
+    // from the tree, the order of a declaration list is not content. The test pins what is written.
+    @Test
+    public void declarationsOfAnElementThatIsNotBuilt() throws Exception {
+        byte[] content = ("<s:Envelope xmlns:s=\"" + S11 + "\"><s:Body><m:x xmlns:xsi=\"urn:xsi\" xmlns:xsd=\"urn:xsd\" "
+                + "xmlns:m=\"urn:m\"><m:y xsi:type=\"xsd:string\">v</m:y><m:o xmlns:m=\"urn:m\" xmlns:xsi=\"urn:xsi\" "
+                + "xmlns:a=\"urn:a\"/></m:x></s:Body></s:Envelope>").getBytes(StandardCharsets.UTF_8);
+        Axis2MessageContext before = message(null);
+        install(before.getAxis2MessageContext(), content, null, true);
+        before.getAxis2MessageContext().setProperty(Constants.Configuration.MESSAGE_TYPE, "text/xml");
+        String spent = new String(writeAsBefore(before.getAxis2MessageContext(), false), StandardCharsets.UTF_8);
+        Axis2MessageContext message = message(null);
+        install(message.getAxis2MessageContext(), content, null, true);
+        String name = "n" + names.incrementAndGet();
+        write(message, name, "text/xml", "Create New", false, false, true);
+        String kept = new String(Files.readAllBytes(directory.resolve(name)), StandardCharsets.UTF_8);
+        System.out.println("DECLARATIONS spent: " + spent);
+        System.out.println("DECLARATIONS kept:  " + kept);
+        Assert.assertEquals(kept.replaceAll(" xmlns:[a-z]+=\"[^\"]*\"", ""),
+                spent.replaceAll(" xmlns:[a-z]+=\"[^\"]*\"", ""));
+        for (String declaration : new String[]{"xmlns:xsi=\"urn:xsi\"", "xmlns:xsd=\"urn:xsd\"", "xmlns:m=\"urn:m\""}) {
+            Assert.assertTrue(kept.contains(declaration), kept);
+        }
+    }
+
+    // A plain data source that can be read only once, under a parsed envelope, is written twice in the same bytes.
+    @Test
+    public void plainSourceThatReadsOnceIsWrittenTwice() throws Exception {
+        Axis2MessageContext message = message(null);
+        MessageContext axis = message.getAxis2MessageContext();
+        install(axis, ("<s:Envelope xmlns:s=\"" + S11 + "\">\n <s:Body><old/></s:Body>\n</s:Envelope>")
+                .getBytes(StandardCharsets.UTF_8), null, true);
+        axis.getEnvelope().getBody().getFirstElement().detach();
+        OMDataSource once = new OMDataSource() {
+            private boolean read;
+
+            private void take() throws XMLStreamException {
+                if (read) {
+                    throw new XMLStreamException("The source was read before");
+                }
+                read = true;
+            }
+
+            @Override
+            public void serialize(OutputStream output, OMOutputFormat format) throws XMLStreamException {
+                serialize(XMLOutputFactory.newInstance().createXMLStreamWriter(output));
+            }
+
+            @Override
+            public void serialize(Writer writer, OMOutputFormat format) throws XMLStreamException {
+                serialize(XMLOutputFactory.newInstance().createXMLStreamWriter(writer));
+            }
+
+            @Override
+            public void serialize(XMLStreamWriter writer) throws XMLStreamException {
+                take();
+                writer.writeStartElement("once");
+                writer.writeCharacters("read once");
+                writer.writeEndElement();
+            }
+
+            @Override
+            public XMLStreamReader getReader() throws XMLStreamException {
+                take();
+                return XMLInputFactory.newInstance().createXMLStreamReader(new StringReader("<once>read once</once>"));
+            }
+        };
+        axis.getEnvelope().getBody().addChild(new OMSourcedElementImpl(new QName("once"),
+                OMAbstractFactory.getOMFactory(), once));
+        String first = "q" + names.incrementAndGet();
+        String second = "q" + names.incrementAndGet();
+        write(message, first, "text/xml", "Create New", false, false, true);
+        write(message, second, "text/xml", "Create New", false, false, true);
+        String written = new String(Files.readAllBytes(directory.resolve(first)), StandardCharsets.UTF_8);
+        Assert.assertTrue(written.contains("<once>read once</once>"), written);
+        Assert.assertEquals(new String(Files.readAllBytes(directory.resolve(second)), StandardCharsets.UTF_8),
+                written);
+    }
+
+    // A JSON payload put into a parsed envelope by a payload factory, partly read by an XPath, written as text/xml
+    // with the body kept: the payload is written from its tree, twice in the same bytes, with no second document.
+    @Test
+    public void jsonPayloadInAParsedEnvelopeIsWrittenTwice() throws Exception {
+        Axis2MessageContext message = message(null);
+        MessageContext axis = message.getAxis2MessageContext();
+        install(axis, ("<s:Envelope xmlns:s=\"" + S11 + "\">\n <s:Body><old/></s:Body>\n</s:Envelope>")
+                .getBytes(StandardCharsets.UTF_8), null, true);
+        JsonUtil.getNewJsonPayload(axis, JSON, true, true);
+        axis.getEnvelope().getBody().getFirstElement().getFirstElement();
+        String first = "j" + names.incrementAndGet();
+        String second = "j" + names.incrementAndGet();
+        write(message, first, "text/xml", "Create New", false, false, true);
+        write(message, second, "text/xml", "Create New", false, false, true);
+        String written = new String(Files.readAllBytes(directory.resolve(first)), StandardCharsets.UTF_8);
+        Assert.assertEquals(written.indexOf("<?xml", 1), -1, written);
+        Assert.assertTrue(written.contains("<jsonObject>") && written.contains("<flag>true</flag>"), written);
+        Assert.assertEquals(new String(Files.readAllBytes(directory.resolve(second)), StandardCharsets.UTF_8),
+                written);
+    }
+
+    // A parsed envelope whose body a payload factory replaced is written twice in the same bytes, and a message
+    // that asks for no declaration gets none.
+    @DataProvider(name = "declaration")
+    public Object[][] declaration() {
+        return new Object[][]{{true}, {false}};
+    }
+
+    @Test(dataProvider = "declaration")
+    public void replacedBodyOfAParsedEnvelopeIsWrittenTwice(boolean declaration) throws Exception {
+        Axis2MessageContext message = message(null);
+        MessageContext axis = message.getAxis2MessageContext();
+        install(axis, ("<s:Envelope xmlns:s=\"" + S11 + "\">\n <s:Header/>\n <s:Body><old/></s:Body>\n</s:Envelope>")
+                .getBytes(StandardCharsets.UTF_8), null, true);
+        if (!declaration) {
+            axis.setProperty("WRITE_XML_DECLARATION", "false");
+        }
+        axis.getEnvelope().getBody().getFirstElement().detach();
+        axis.getEnvelope().getBody().addChild(AXIOMUtil.stringToOM("<made><by>factory</by></made>"));
+        String first = "r" + names.incrementAndGet();
+        String second = "r" + names.incrementAndGet();
+        write(message, first, "text/xml", "Create New", false, false, true);
+        write(message, second, "text/xml", "Create New", false, false, true);
+        String written = new String(Files.readAllBytes(directory.resolve(first)), StandardCharsets.UTF_8);
+        Assert.assertEquals(written.startsWith("<?xml"), declaration, written);
+        Assert.assertTrue(written.contains("<s:Header />") && written.contains("<made><by>factory</by></made>"),
+                written);
+        Assert.assertEquals(new String(Files.readAllBytes(directory.resolve(second)), StandardCharsets.UTF_8),
+                written);
+    }
+
+    // An element of a SOAP body whose data source can be read only once is written twice in the same bytes.
+    @Test
+    public void sourceThatReadsOnceIsWrittenTwice() throws Exception {
+        Axis2MessageContext message = message(null);
+        MessageContext axis = message.getAxis2MessageContext();
+        install(axis, ("<s:Envelope xmlns:s=\"" + S11 + "\">\n <s:Body><old/></s:Body>\n</s:Envelope>")
+                .getBytes(StandardCharsets.UTF_8), null, true);
+        axis.getEnvelope().getBody().getFirstElement().detach();
+        OMFactory factory = OMAbstractFactory.getOMFactory();
+        QName wrapper = BaseConstants.DEFAULT_TEXT_WRAPPER;
+        axis.getEnvelope().getBody().addChild(new OMSourcedElementImpl(wrapper, factory,
+                new WrappedTextNodeOMDataSourceFromReader(wrapper, new StringReader(TEXT))));
+        String first = "o" + names.incrementAndGet();
+        String second = "o" + names.incrementAndGet();
+        write(message, first, "text/xml", "Create New", false, false, true);
+        write(message, second, "text/xml", "Create New", false, false, true);
+        String written = new String(Files.readAllBytes(directory.resolve(first)), StandardCharsets.UTF_8);
+        Assert.assertTrue(written.contains("line two"), written);
+        Assert.assertEquals(new String(Files.readAllBytes(directory.resolve(second)), StandardCharsets.UTF_8),
+                written);
     }
 
     @DataProvider(name = "atomic")
@@ -437,6 +606,8 @@ public class WriteBodyCrossTest {
     private static void touch(MessageContext axis, String state) {
         if ("logged".equals(state)) {
             axis.getEnvelope().toString();
+        } else if ("built".equals(state)) {
+            axis.getEnvelope().build();
         } else if ("touched".equals(state)) {
             axis.getEnvelope().getBody().getFirstElement();
         }
