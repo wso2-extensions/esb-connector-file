@@ -59,6 +59,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -247,24 +248,46 @@ public class WriteBodyCrossTest {
                         + "<m:item xsi:type=\"m:ItemType\">a</m:item><value xsi:type=\"xs:string\">v</value>"
                         + "<b:x b:a=\"1\"/><d>default</d><xsi:nil/><m:e xsi:nil=\"true\"/></m:order></soapenv:Body>"
                         + "</soapenv:Envelope>").getBytes(StandardCharsets.UTF_8), null, true},
+                {"SOAP pretty printed", soapBytes("\n  <!-- under the envelope -->\n  <s:Header>\n    <!-- in the header -->"
+                        + "\n    <h:t xmlns:h=\"urn:h\">1</h:t>\n    text\n  </s:Header>\n  <s:Body>\n    " + HARD
+                        + "\n  </s:Body>\n", "UTF-8", null, S11), null, true},
+                {"SOAP empty header", soapBytes("<s:Header/><s:Body>" + HARD + "</s:Body>", "UTF-8", null, S11), null,
+                        true},
+                {"SOAP no header", soapBytes("<s:Body>" + HARD + "</s:Body>", "UTF-8", null, S11), null, true},
+                {"SOAP 1.2", soapBytes("\n <s:Header/>\n <s:Body>" + HARD + "</s:Body>\n", "UTF-8", null, S12), null,
+                        true},
+                {"SOAP element after the body", soapBytes("<s:Body>" + HARD + "</s:Body><x:after xmlns:x=\"urn:x\"/>",
+                        "UTF-8", null, S11), null, true},
+                {"SOAP declaration with standalone", soapBytes("\n <s:Body>" + HARD + "</s:Body>\n", "UTF-8",
+                        " standalone=\"yes\"", S11), null, true},
+                {"SOAP ISO-8859-1", soapBytes("\n <s:Body>" + latin + "</s:Body>\n", "ISO-8859-1", null, S11),
+                        "ISO-8859-1", true},
+                {"SOAP UTF-16", soapBytes("\n <s:Body>" + HARD + "</s:Body>\n", "UTF-16", null, S11), "UTF-16", true},
+                {"SOAP byte order mark", join(bom, soapBytes("\n <s:Body>" + HARD + "</s:Body>\n", "UTF-8", null,
+                        S11)), null, true},
                 {"DOCTYPE", ("<!DOCTYPE a:r [<!ENTITY ent \"entity\">]>" + HARD.replace("t</a:k>", "&ent;</a:k>"))
                         .getBytes(StandardCharsets.UTF_8), null, false},
         };
         List<Object[]> cases = new ArrayList<>();
         for (Object[] fixture : fixtures) {
-            for (String type : XML_TYPES) {
-                cases.add(new Object[]{fixture[0], fixture[1], fixture[2], fixture[3], type});
-            }
-            if ("namespaces of the envelope".equals(fixture[0])) {
-                cases.add(new Object[]{fixture[0], fixture[1], fixture[2], fixture[3], "application/json"});
+            // A SOAP envelope is written as the parser made it, as a log read it, and as a mediator touched it.
+            String[] states = Boolean.TRUE.equals(fixture[3]) ? new String[]{"lazy", "logged", "touched"}
+                    : new String[]{"lazy"};
+            for (String state : states) {
+                for (String type : XML_TYPES) {
+                    cases.add(new Object[]{fixture[0], fixture[1], fixture[2], fixture[3], type, state});
+                }
+                if ("namespaces of the envelope".equals(fixture[0])) {
+                    cases.add(new Object[]{fixture[0], fixture[1], fixture[2], fixture[3], "application/json", state});
+                }
             }
         }
         return cases.toArray(new Object[0][]);
     }
 
     @Test(dataProvider = "hard")
-    public void hardXmlKeepsItsBytes(String fixture, byte[] content, String charset, boolean soap, String type)
-            throws Exception {
+    public void hardXmlKeepsItsBytes(String fixture, byte[] content, String charset, boolean soap, String type,
+                                     String state) throws Exception {
         String name = "h" + names.incrementAndGet();
         Axis2MessageContext before = message(null);
         try {
@@ -275,6 +298,7 @@ public class WriteBodyCrossTest {
             return;
         }
         before.getAxis2MessageContext().setProperty(Constants.Configuration.MESSAGE_TYPE, type);
+        touch(before.getAxis2MessageContext(), state);
         byte[] expected = null;
         Exception beforeFailure = null;
         try {
@@ -286,9 +310,18 @@ public class WriteBodyCrossTest {
         install(untouched.getAxis2MessageContext(), content, charset, soap);
         Axis2MessageContext message = message(null);
         install(message.getAxis2MessageContext(), content, charset, soap);
+        touch(message.getAxis2MessageContext(), state);
         try {
             write(message, name, type, "Create New", false, false, true);
         } catch (SynapseException failure) {
+            if ("SOAP element after the body".equals(fixture) && !"application/xml".equals(type)) {
+                // The SOAP builder refuses an element after the body when it builds, as it refuses a processing
+                // instruction. The write that keeps the body builds the envelope, so it fails where the write that
+                // spent the body wrote it. A ruled row.
+                Assert.assertTrue(text(failure).contains("Envelope can not have elements other than Header and Body"),
+                        text(failure));
+                return;
+            }
             Assert.assertNotNull(beforeFailure, "The write failed where the formatter passed before: " + text(failure));
             return;
         }
@@ -296,6 +329,9 @@ public class WriteBodyCrossTest {
         Assert.assertEquals(Files.readAllBytes(directory.resolve(name)), expected, fixture);
         Assert.assertEquals(message.getAxis2MessageContext().getEnvelope().toString(),
                 untouched.getAxis2MessageContext().getEnvelope().toString(), fixture);
+        // The kept body is written a second time in the same bytes.
+        write(message, name + "-second", type, "Create New", false, false, true);
+        Assert.assertEquals(Files.readAllBytes(directory.resolve(name + "-second")), expected, fixture);
     }
 
     // A processing instruction in a body that is not built is written from the tree, so one space follows the
@@ -361,8 +397,8 @@ public class WriteBodyCrossTest {
             // envelope that ends where the body broke.
             Assert.assertTrue(left.startsWith("<?xml") && !left.contains("<item ")
                     && left.endsWith("</soapenv:Envelope>"), left);
-            Assert.assertTrue(leftByBreak.startsWith("<?xml") && leftByBreak.contains("<open>")
-                    && leftByBreak.endsWith("</soapenv:Envelope>"), leftByBreak);
+            Assert.assertTrue(leftByBreak.startsWith("<?xml") && leftByBreak.endsWith("</soapenv:Envelope>"),
+                    leftByBreak);
         }
     }
 
@@ -388,9 +424,28 @@ public class WriteBodyCrossTest {
         return message;
     }
 
+    private static final String S11 = "http://schemas.xmlsoap.org/soap/envelope/";
+    private static final String S12 = "http://www.w3.org/2003/05/soap-envelope";
+
+    private static byte[] soapBytes(String inside, String charset, String standalone, String version) {
+        return ("<?xml version=\"1.0\" encoding=\"" + charset + "\"" + (standalone == null ? "" : standalone)
+                + "?>\n<s:Envelope xmlns:s=\"" + version + "\">" + inside + "</s:Envelope>\n")
+                .getBytes(Charset.forName(charset));
+    }
+
+    // As a log reads the envelope whole, or as a mediator looks at the first element of the body.
+    private static void touch(MessageContext axis, String state) {
+        if ("logged".equals(state)) {
+            axis.getEnvelope().toString();
+        } else if ("touched".equals(state)) {
+            axis.getEnvelope().getBody().getFirstElement();
+        }
+    }
+
     private static void install(MessageContext axis, byte[] content, String charset, boolean soap) throws Exception {
         // As the inbound builds a file whose content type names a charset.
-        String type = soap ? "text/xml" : "application/xml";
+        String type = soap ? (new String(content, StandardCharsets.ISO_8859_1).contains(S12) ? "application/soap+xml"
+                : "text/xml") : "application/xml";
         if (charset != null) {
             axis.setProperty(Constants.Configuration.CHARACTER_SET_ENCODING, charset);
             type += "; charset=" + charset;

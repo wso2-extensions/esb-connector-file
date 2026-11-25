@@ -19,19 +19,24 @@
 package org.wso2.carbon.connector.operations;
 
 import com.google.gson.JsonObject;
+import org.apache.axiom.om.OMConstants;
 import org.apache.axiom.om.OMContainer;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMNode;
 import org.apache.axiom.om.OMOutputFormat;
 import org.apache.axiom.om.OMSourcedElement;
+import org.apache.axiom.om.impl.MTOMXMLStreamWriter;
 import org.apache.axiom.om.impl.OMContainerEx;
 import org.apache.axiom.om.impl.OMNodeEx;
+import org.apache.axiom.om.impl.serialize.StreamingOMSerializer;
+import org.apache.axis2.AxisFault;
 import org.apache.axis2.format.BinaryFormatter;
 import org.apache.axis2.format.PlainTextFormatter;
 import org.apache.axis2.transport.MessageFormatter;
 import org.apache.axis2.transport.base.BaseConstants;
 import org.apache.axis2.transport.base.BaseTransportException;
 import org.apache.axis2.transport.base.BaseUtils;
+import org.apache.axis2.transport.http.SOAPMessageFormatter;
 import org.apache.axis2.util.MessageProcessorSelector;
 import org.apache.commons.io.output.CloseShieldOutputStream;
 import org.apache.commons.io.output.CountingOutputStream;
@@ -54,6 +59,7 @@ import org.wso2.carbon.connector.utils.Const;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.relay.ExpandingMessageFormatter;
+import org.wso2.carbon.relay.MessageBuilder;
 import org.wso2.integration.connector.core.ConnectException;
 import org.wso2.org.apache.commons.vfs2.Capability;
 import org.wso2.org.apache.commons.vfs2.FileObject;
@@ -71,6 +77,7 @@ import org.wso2.vfs.shared.log.NamedLog;
 import org.wso2.vfs.shared.log.UriMask;
 import org.wso2.vfs.shared.write.AtomicWriter;
 
+import javax.xml.stream.XMLStreamException;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FilterInputStream;
@@ -88,6 +95,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -96,6 +104,8 @@ import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
 
 public class WriteFile extends OperationFrame.Mediator {
     private static final int BUFFER_BYTES = 8192;
+    private static final String WRITE_XML_DECLARATION = "WRITE_XML_DECLARATION";
+    private static final String MESSAGE_AS_BYTES = "MESSAGE_AS_BYTES";
 
     @Override
     public void execute(MessageContext message, String responseVariable, Boolean overwriteBody) throws ConnectException {
@@ -595,7 +605,11 @@ public class WriteFile extends OperationFrame.Mediator {
                         original.insertSiblingBefore(copy);
                         original.detach();
                     }
-                    formatter.writeTo(axis, format, output, keep);
+                    if (keep && parsedEnvelope(axis, formatter, format)) {
+                        writeEnvelope(axis, format, output);
+                    } else {
+                        formatter.writeTo(axis, format, output, keep);
+                    }
                 } catch (IOException | RuntimeException failure) {
                     if (targetFailed) {
                         throw failure;
@@ -632,6 +646,26 @@ public class WriteFile extends OperationFrame.Mediator {
             return type != null && type.toString().toLowerCase(Locale.ROOT).contains("json")
                     && axis.getEnvelope().getBody().getFirstElement() != null && !JsonUtil.hasAJsonPayload(axis)
                     && !(formatter instanceof BinaryFormatter) && !(formatter instanceof PlainTextFormatter);
+        }
+
+        // True for a SOAP envelope that a parser made, kept, and written whole by the SOAP formatter or by the relay
+        // formatter that hands it to the SOAP formatter. With no SwA and no MTOM.
+        private boolean parsedEnvelope(org.apache.axis2.context.MessageContext axis, MessageFormatter formatter,
+                                       OMOutputFormat format) {
+            if (axis.getEnvelope().getBuilder() == null || format.isOptimized() || format.isDoingSWA()) {
+                return false;
+            }
+            if (formatter.getClass() == SOAPMessageFormatter.class) {
+                return true;
+            }
+            if (formatter.getClass() != ExpandingMessageFormatter.class || axis.getOperationContext() == null) {
+                return false;
+            }
+            Object relayed = axis.getProperty(MessageBuilder.RELAY_FORMATTERS_MAP);
+            return axis.getOperationContext().getProperty(MESSAGE_AS_BYTES) == null
+                    && axis.getProperty(MessageBuilder.FORCED_RELAY_FORMATTER) == null
+                    && !(relayed instanceof Map && ((Map<?, ?>) relayed).get(axis.getProperty(Const.MESSAGE_TYPE))
+                    != null);
         }
 
         private boolean binaryBody(org.apache.axis2.context.MessageContext axis) {
@@ -719,6 +753,40 @@ public class WriteFile extends OperationFrame.Mediator {
                 closeSpent((OMContainer) child, broken);
             }
             child = ((OMNodeEx) child).getNextOMSiblingIfAvailable();
+        }
+    }
+
+    // Writes a SOAP envelope that a parser made as the parser gives it, through a reader that keeps what it reads. The
+    // bytes are those of the file, as the transport sender writes them, and the envelope stays usable for a second
+    // write. From its tree Axiom writes only the header, when it has children, and the body, so whitespace and
+    // comments under the envelope and an empty header would be lost. The declaration is written as Axiom writes it.
+    private static void writeEnvelope(org.apache.axis2.context.MessageContext axis, OMOutputFormat format,
+                                      OutputStream output) throws AxisFault {
+        if ("false".equalsIgnoreCase((String) axis.getProperty(WRITE_XML_DECLARATION))) {
+            format.setIgnoreXMLDeclaration(true);
+        }
+        MTOMXMLStreamWriter writer = null;
+        try {
+            writer = new MTOMXMLStreamWriter(output, format);
+            if (!writer.isIgnoreXMLDeclaration()) {
+                String charset = writer.getCharSetEncoding();
+                String version = writer.getXmlVersion();
+                writer.getXmlStreamWriter().writeStartDocument(
+                        charset == null ? OMConstants.DEFAULT_CHAR_SET_ENCODING : charset,
+                        version == null ? OMConstants.DEFAULT_XML_VERSION : version);
+            }
+            new StreamingOMSerializer().serialize(axis.getEnvelope().getXMLStreamReader(true), writer);
+            writer.flush();
+        } catch (XMLStreamException failure) {
+            throw AxisFault.makeFault(failure);
+        } finally {
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (XMLStreamException ignored) {
+                    // The bytes are flushed already. A failure of the target shows at the flush.
+                }
+            }
         }
     }
 
