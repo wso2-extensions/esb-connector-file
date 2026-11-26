@@ -35,12 +35,19 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
 import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
 import org.wso2.org.apache.commons.vfs2.provider.UriParser;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder;
 import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileType;
+import org.wso2.org.apache.commons.vfs2.provider.ftps.FtpsFileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.ftps.FtpsFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileSystemConfigBuilder;
 
 import java.time.Duration;
@@ -332,6 +339,126 @@ public class ConnectionParametersTest {
             Assert.assertEquals(config.getSuspendInitialDuration(), 1000L);
             Assert.assertEquals(config.getSuspendProgressionFactor(), 1.0);
             Assert.assertEquals(config.getSuspendMaximumDuration(), 300000L);
+        }
+    }
+
+    // The passwords that break the server address when they stand in it as they are: a raw slash, a raw question mark
+    // and a percent sign that does not start an escape of two hex digits.
+    private static final String[] BREAKING = {"2024/Summer", "22?pa55", "pa%ss", "pa%", "a%2g"};
+    // Passwords that work in the address as they are today and must go on working with encodePassword off.
+    private static final String[] WORKING = {"plain", "pa+ss", "pa ss", "a#b", "pa%40ss"};
+    private static final String[] PROTOCOLS = {"SFTP", "FTP", "FTPS", "SMB2"};
+
+    private static String connection(String protocol, String password, String encode, StringBuilder lines)
+            throws Exception {
+        List<String> settings = new ArrayList<>(Arrays.asList("connectionType", protocol, "host", "host.example",
+                "port", "2222", "username", "someone7", "workingDir", protocol.equals("SMB2") ? "share/in" : "in"));
+        if (password != null) {
+            settings.addAll(Arrays.asList("password", password));
+        }
+        if (encode != null) {
+            settings.addAll(Arrays.asList("encodePassword", encode));
+        }
+        AppenderSkeleton appender = new AppenderSkeleton() {
+            protected void append(LoggingEvent event) {
+                lines.append(event.getRenderedMessage()).append('\n');
+                if (event.getThrowableInformation() != null) {
+                    lines.append(event.getThrowableInformation().getThrowable()).append('\n');
+                }
+            }
+
+            public void close() { }
+
+            public boolean requiresLayout() {
+                return false;
+            }
+        };
+        Logger.getRootLogger().addAppender(appender);
+        try {
+            return refusal(settings.toArray(new String[0]));
+        } finally {
+            Logger.getRootLogger().removeAppender(appender);
+        }
+    }
+
+    @Test
+    public void aPasswordThatBreaksTheAddressIsRefusedWithNoPartOfIt() throws Exception {
+        for (String protocol : PROTOCOLS) {
+            for (String password : BREAKING) {
+                for (String encode : new String[]{null, "false"}) {
+                    StringBuilder lines = new StringBuilder();
+                    String refused = connection(protocol, password, encode, lines);
+                    String row = protocol + " " + encode;
+                    Assert.assertEquals(refused, "Set the parameter 'encodePassword' to true. The password holds a "
+                            + "character that can not stand in the server address as it is.", row);
+                    String logged = lines.toString();
+                    Assert.assertTrue(logged.contains("encodePassword"), row + " " + logged);
+                    Assert.assertFalse(logged.contains(password) || logged.contains("someone7")
+                            || logged.contains("host.example"), row + " " + logged);
+                    for (String part : password.split("[/?%]")) {
+                        Assert.assertFalse(part.length() > 3 && logged.contains(part), row + " " + logged);
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void aPasswordThatWorksTodayIsNotRefused() throws Exception {
+        for (String protocol : PROTOCOLS) {
+            for (String password : BREAKING) {
+                Assert.assertNull(connection(protocol, password, "true", new StringBuilder()), protocol);
+            }
+            for (String password : WORKING) {
+                Assert.assertNull(connection(protocol, password, null, new StringBuilder()), protocol);
+                Assert.assertNull(connection(protocol, password, "false", new StringBuilder()), protocol);
+            }
+            Assert.assertNull(connection(protocol, "", null, new StringBuilder()), protocol);
+            Assert.assertNull(connection(protocol, null, null, new StringBuilder()), protocol);
+        }
+        Assert.assertNull(refusal("connectionType", "SFTP", "host", "host.example", "port", "2222", "username",
+                "someone7", "privateKeyFilePath", "/keys/id_rsa", "workingDir", "in"));
+    }
+
+    // The rule of the check: a breaking password never reads as the configured server today, on any protocol and with
+    // a domain in the SMB2 user, so the refusal breaks no flow. A working one reads with every field as configured.
+    @Test
+    public void aBreakingPasswordNeverReadsAsTheConfiguredServer() throws Exception {
+        DefaultFileSystemManager manager = new DefaultFileSystemManager();
+        manager.addProvider("sftp", new SftpFileProvider());
+        manager.addProvider("ftp", new FtpFileProvider());
+        manager.addProvider("ftps", new FtpsFileProvider());
+        manager.addProvider("smb2", new Smb2FileProvider());
+        manager.init();
+        try {
+            for (String scheme : new String[]{"sftp", "ftp", "ftps", "smb2"}) {
+                String[] users = scheme.equals("smb2") ? new String[]{"someone7", "CORP;someone7", "CORP\\someone7"}
+                        : new String[]{"someone7"};
+                for (String user : users) {
+                    for (String password : BREAKING) {
+                        Assert.assertFalse(readsAsConfigured(manager, scheme, user, password), scheme + " " + user);
+                    }
+                    for (String password : WORKING) {
+                        Assert.assertTrue(readsAsConfigured(manager, scheme, user, password),
+                                scheme + " " + user + " " + password);
+                    }
+                }
+            }
+        } finally {
+            manager.close();
+        }
+    }
+
+    private static boolean readsAsConfigured(DefaultFileSystemManager manager, String scheme, String user,
+                                             String password) {
+        String path = scheme.equals("smb2") ? "/share/in" : "/in";
+        try {
+            GenericFileName name = (GenericFileName) manager.resolveURI(
+                    scheme + "://" + user + ":" + password + "@host.example:2222" + path);
+            return user.equals(name.getUserName()) && "host.example".equals(name.getHostName())
+                    && name.getPort() == 2222 && name.getPath().endsWith("/in");
+        } catch (FileSystemException broken) {
+            return false;
         }
     }
 }

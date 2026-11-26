@@ -388,6 +388,10 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         try {
             if (Boolean.parseBoolean(passwordEncodingRequired)) {
                 password = encodePassword(password);
+            } else if (breaksAddress(password)) {
+                // The message names no part of the password and no address.
+                throw new InvalidConfigurationException("Set the parameter 'encodePassword' to true. The password "
+                        + "holds a character that can not stand in the server address as it is.");
             }
             remoteServerConfig.setPassword(password);
         } catch (UnsupportedEncodingException e) {
@@ -497,6 +501,26 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         } else {
             connectionLog.warn(message);
         }
+    }
+
+    // A raw slash or question mark, or a percent sign that does not start an escape of two hex digits, always breaks
+    // the server address that the password goes into as it is: the address is read with other fields or not at all.
+    // Every other character works as it does today.
+    static boolean breaksAddress(String password) {
+        if (StringUtils.isEmpty(password)) {
+            return false;
+        }
+        for (int i = 0; i < password.length(); i++) {
+            char c = password.charAt(i);
+            if (c == '/' || c == '?') {
+                return true;
+            }
+            if (c == '%' && (i + 2 >= password.length() || Character.digit(password.charAt(i + 1), 16) < 0
+                    || Character.digit(password.charAt(i + 2), 16) < 0)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static String encodePassword(String password) throws UnsupportedEncodingException {
