@@ -570,7 +570,8 @@ public class WriteFile extends OperationFrame.Mediator {
         private long payload(Attempt attempt, OutputStream destination) throws IOException {
             CountingOutputStream output = new CountingOutputStream(destination);
             if (hasContent()) {
-                if (!Const.CONTENT_TYPE_BINARY.equals(mime)) {
+                // An append writes its content as text under every type, as the earlier connector did.
+                if (!Const.CONTENT_TYPE_BINARY.equals(mime) || mode == FileWriteMode.APPEND) {
                     // The separator belongs to the same encoded value, including for encodings with a BOM.
                     try (OutputStreamWriter text = new OutputStreamWriter(new CloseShieldOutputStream(output), encoding)) {
                         text.write(content);

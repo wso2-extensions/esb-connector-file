@@ -194,6 +194,24 @@ public class WriteFileTest {
     }
 
     @Test
+    public void appendUnderTheBinaryTypeWritesTheContentAsText() throws Exception {
+        Path dir = directory();
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+            Axis2MessageContext message = message(files);
+            write(message, "log", "first", "writeMode", "Overwrite");
+            write(message, "log", " a plain line, not Base64", "writeMode", "Append", "mimeType", "application/binary");
+            write(message, "log", "QUJD", "writeMode", "Append", "mimeType", "application/binary",
+                    "appendNewLine", "true");
+            Assert.assertEquals(Files.readString(dir.resolve("log")), "first a plain line, not Base64QUJD\n");
+            // The other modes still write the bytes that the Base64 content holds.
+            write(message, "overwritten", "QUJD", "writeMode", "Overwrite", "mimeType", "application/binary");
+            Assert.assertEquals(Files.readString(dir.resolve("overwritten")), "ABC");
+            write(message, "created", "QUJD", "writeMode", "Create New", "mimeType", "application/binary");
+            Assert.assertEquals(Files.readString(dir.resolve("created")), "ABC");
+        }
+    }
+
+    @Test
     public void appliesExactRequestedModeToThePublishedLocalFile() throws Exception {
         Path dir = directory();
         try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
