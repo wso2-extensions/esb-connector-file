@@ -25,9 +25,14 @@ import org.apache.axis2.Constants;
 import org.apache.axis2.context.ConfigurationContext;
 import org.apache.axis2.context.MessageContext;
 import org.apache.axis2.engine.AxisConfiguration;
+import org.apache.axis2.format.BinaryFormatter;
 import org.apache.axis2.format.PlainTextFormatter;
 import org.apache.axis2.transport.base.BaseConstants;
 import org.apache.axis2.transport.http.ApplicationXMLFormatter;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.log4j.SimpleLayout;
+import org.apache.log4j.WriterAppender;
 import org.apache.synapse.SynapseException;
 import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
@@ -52,6 +57,7 @@ import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
@@ -209,6 +215,55 @@ public class WriteFileTest {
             write(message, "created", "QUJD", "writeMode", "Create New", "mimeType", "application/binary");
             Assert.assertEquals(Files.readString(dir.resolve("created")), "ABC");
         }
+    }
+
+    @Test
+    public void bodyThatItsTypeDoesNotWriteLeavesAnEmptyFileWithOneWarning() throws Exception {
+        StringWriter lines = new StringWriter();
+        WriterAppender capture = new WriterAppender(new SimpleLayout(), lines);
+        capture.setThreshold(Level.WARN);
+        Logger root = Logger.getRootLogger();
+        root.addAppender(capture);
+        Path dir = directory();
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+            Axis2MessageContext xml = typed(files, "text/plain",
+                    org.apache.axiom.om.util.AXIOMUtil.stringToOM("<order><id>7</id></order>"));
+            write(xml, "order.txt", "");
+            Assert.assertEquals(Files.size(dir.resolve("order.txt")), 0L);
+            Assert.assertTrue(lines.toString().contains("The message type text/plain does not fit the message body,"
+                    + " so no byte of the body was written and the file order.txt is empty."), lines.toString());
+
+            OMElement text = OMAbstractFactory.getOMFactory().createOMElement(BaseConstants.DEFAULT_TEXT_WRAPPER);
+            text.setText("a line");
+            write(typed(files, "application/binary", text), "line.bin", "");
+            Assert.assertEquals(Files.size(dir.resolve("line.bin")), 0L);
+            Assert.assertTrue(lines.toString().contains("the file line.bin is empty."), lines.toString());
+
+            // An empty text body is written as an empty file with no warning, and a text body of the text type is
+            // written as its text.
+            lines.getBuffer().setLength(0);
+            write(typed(files, "text/plain",
+                    OMAbstractFactory.getOMFactory().createOMElement(BaseConstants.DEFAULT_TEXT_WRAPPER)), "empty", "");
+            OMElement filled = OMAbstractFactory.getOMFactory().createOMElement(BaseConstants.DEFAULT_TEXT_WRAPPER);
+            filled.setText("a line");
+            write(typed(files, "text/plain", filled), "line.txt", "");
+            Assert.assertEquals(Files.size(dir.resolve("empty")), 0L);
+            Assert.assertEquals(Files.readString(dir.resolve("line.txt")), "a line");
+            Assert.assertFalse(lines.toString().contains("does not fit the message body"), lines.toString());
+        } finally {
+            root.removeAppender(capture);
+            capture.close();
+        }
+    }
+
+    private static Axis2MessageContext typed(FilePoolFixture files, String type, OMElement body) throws Exception {
+        Axis2MessageContext message = message(files);
+        AxisConfiguration config = message.getAxis2MessageContext().getConfigurationContext().getAxisConfiguration();
+        config.addMessageFormatter("text/plain", new PlainTextFormatter());
+        config.addMessageFormatter("application/binary", new BinaryFormatter());
+        message.getEnvelope().getBody().addChild(body);
+        message.getAxis2MessageContext().setProperty(Constants.Configuration.MESSAGE_TYPE, type);
+        return message;
     }
 
     @Test

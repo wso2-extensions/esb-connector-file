@@ -31,6 +31,8 @@ import org.apache.axiom.om.impl.OMContainerEx;
 import org.apache.axiom.om.impl.OMNodeEx;
 import org.apache.axiom.om.impl.serialize.StreamingOMSerializer;
 import org.apache.axis2.AxisFault;
+import org.apache.axis2.format.BinaryFormatter;
+import org.apache.axis2.format.PlainTextFormatter;
 import org.apache.axis2.transport.MessageFormatter;
 import org.apache.axis2.transport.base.BaseConstants;
 import org.apache.axis2.transport.base.BaseTransportException;
@@ -76,6 +78,7 @@ import org.wso2.vfs.shared.log.NamedLog;
 import org.wso2.vfs.shared.log.UriMask;
 import org.wso2.vfs.shared.write.AtomicWriter;
 
+import javax.xml.namespace.QName;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.util.StreamReaderDelegate;
 import java.io.BufferedReader;
@@ -642,6 +645,11 @@ public class WriteFile extends OperationFrame.Mediator {
                         closeSpent(axis.getEnvelope(), broken);
                     }
                 }
+                if (output.getByteCount() == 0 && misfit(formatter, first)) {
+                    operationLog.warn("The message type " + axis.getProperty(Const.MESSAGE_TYPE)
+                            + " does not fit the message body, so no byte of the body was written and the file "
+                            + filename + " is empty.");
+                }
             }
             if (newline && (hasContent() || !compress)) {
                 output.write(Const.NEW_LINE.toString().getBytes(encoding));
@@ -823,6 +831,27 @@ public class WriteFile extends OperationFrame.Mediator {
                 }
             }
         }
+    }
+
+    // True when the formatter of the message type writes nothing of a body that holds content: the text formatter
+    // writes only the text wrapper and the binary formatter only the binary wrapper. A wrapper that is not read yet is
+    // not read here, and an empty wrapper holds nothing.
+    private static boolean misfit(MessageFormatter formatter, OMElement first) {
+        QName written = formatter instanceof PlainTextFormatter ? BaseConstants.DEFAULT_TEXT_WRAPPER
+                : formatter instanceof BinaryFormatter ? BaseConstants.DEFAULT_BINARY_WRAPPER : null;
+        if (written == null || first == null || written.equals(first.getQName())) {
+            return false;
+        }
+        if (!BaseConstants.DEFAULT_TEXT_WRAPPER.equals(first.getQName())
+                && !BaseConstants.DEFAULT_BINARY_WRAPPER.equals(first.getQName())) {
+            return true;
+        }
+        if (first instanceof OMSourcedElement && !((OMSourcedElement) first).isExpanded()) {
+            return false;
+        }
+        OMNode child = first.getFirstOMChild();
+        return child != null && !(child instanceof OMText && !((OMText) child).isBinary()
+                && ((OMText) child).getText().isEmpty());
     }
 
     // The binary wrapper holds binary content or nothing. A wrapper whose first child is a text node that is not
