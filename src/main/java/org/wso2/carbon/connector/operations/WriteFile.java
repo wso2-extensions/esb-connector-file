@@ -834,8 +834,8 @@ public class WriteFile extends OperationFrame.Mediator {
     }
 
     // True when the formatter of the message type writes nothing of a body that holds content: the text formatter
-    // writes only the text wrapper and the binary formatter only the binary wrapper. A wrapper that is not read yet is
-    // not read here, and an empty wrapper holds nothing.
+    // writes only the text wrapper and the binary formatter only the binary wrapper. A wrapper of the other kind that
+    // is not read yet is not read here and counts as content, and an empty wrapper that is read holds nothing.
     private static boolean misfit(MessageFormatter formatter, OMElement first) {
         QName written = formatter instanceof PlainTextFormatter ? BaseConstants.DEFAULT_TEXT_WRAPPER
                 : formatter instanceof BinaryFormatter ? BaseConstants.DEFAULT_BINARY_WRAPPER : null;
@@ -847,7 +847,7 @@ public class WriteFile extends OperationFrame.Mediator {
             return true;
         }
         if (first instanceof OMSourcedElement && !((OMSourcedElement) first).isExpanded()) {
-            return false;
+            return true;
         }
         OMNode child = first.getFirstOMChild();
         return child != null && !(child instanceof OMText && !((OMText) child).isBinary()

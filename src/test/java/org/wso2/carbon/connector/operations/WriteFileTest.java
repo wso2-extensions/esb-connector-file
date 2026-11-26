@@ -256,6 +256,31 @@ public class WriteFileTest {
         }
     }
 
+    @Test
+    public void unreadTextBodyUnderTheBinaryTypeGetsTheWarningAndStaysUnread() throws Exception {
+        StringWriter lines = new StringWriter();
+        WriterAppender capture = new WriterAppender(new SimpleLayout(), lines);
+        capture.setThreshold(Level.WARN);
+        Logger root = Logger.getRootLogger();
+        root.addAppender(capture);
+        Path dir = directory();
+        try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
+            Axis2MessageContext probe = message(files);
+            OMElement text = new org.apache.axis2.format.PlainTextBuilder().processDocument(
+                    new java.io.ByteArrayInputStream("a line".getBytes(StandardCharsets.UTF_8)), "text/plain",
+                    probe.getAxis2MessageContext());
+            Axis2MessageContext message = typed(files, "application/binary", text);
+            write(message, "unread.bin", "");
+            Assert.assertEquals(Files.size(dir.resolve("unread.bin")), 0L);
+            Assert.assertTrue(lines.toString().contains("the file unread.bin is empty."), lines.toString());
+            Assert.assertFalse(((org.apache.axiom.om.OMSourcedElement) text).isExpanded(),
+                    "The text body is not read for the warning.");
+        } finally {
+            root.removeAppender(capture);
+            capture.close();
+        }
+    }
+
     private static Axis2MessageContext typed(FilePoolFixture files, String type, OMElement body) throws Exception {
         Axis2MessageContext message = message(files);
         AxisConfiguration config = message.getAxis2MessageContext().getConfigurationContext().getAxisConfiguration();
