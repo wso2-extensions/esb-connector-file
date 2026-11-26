@@ -16,7 +16,7 @@
    specific language governing permissions and limitations
    under the License.
 -->
-<template name="init" onError="fault" xmlns="http://ws.apache.org/ns/synapse">
+<template name="init" xmlns="http://ws.apache.org/ns/synapse">
 	<!--common params-->
 	<parameter name="name" description="Unique name the connection is identified by"/>
 	<parameter name="connectionType" description="Protocol to communicate with file system. Possible values 'LOCAL', 'SMB2', 'FTP', 'FTPS', 'SFTP'"/>
