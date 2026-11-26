@@ -123,7 +123,10 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
         } catch (InvalidConfigurationException e) {
 
             String errorDetail = "[" + connectionName + "]Failed to initiate file connector configuration.";
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, connectionLog);
+            // A password that breaks the address failed inside the operation before, which left the body alone. Its
+            // refusal keeps the body as it came, so a fault sequence still has the incoming message.
+            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, connectionLog,
+                    !(e instanceof PasswordInAddressException));
 
         }
     }
@@ -390,8 +393,7 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
                 password = encodePassword(password);
             } else if (breaksAddress(password)) {
                 // The message names no part of the password and no address.
-                throw new InvalidConfigurationException("Set the parameter 'encodePassword' to true. The password "
-                        + "holds a character that can not stand in the server address as it is.");
+                throw new PasswordInAddressException();
             }
             remoteServerConfig.setPassword(password);
         } catch (UnsupportedEncodingException e) {
@@ -477,10 +479,14 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
      * @param error       Error code
      * @param errorDetail Error detail
      */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail, NamedLog connectionLog) {
+    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail, NamedLog connectionLog,
+                             boolean setPayload) {
         errorDetail = Utils.maskURLPassword(errorDetail);
         FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
         JsonObject resultJSON = generateOperationResult(msgCtx, result);
+        if (!setPayload) {
+            handleException(errorDetail, new InvalidConfigurationException(UriMask.mask(e.getMessage())), msgCtx);
+        }
         try {
             JsonUtil.getNewJsonPayload(((Axis2MessageContext)msgCtx).getAxis2MessageContext(), resultJSON.toString(),
                     false, false);
@@ -500,6 +506,16 @@ public class FileConfig extends AbstractConnectorOperation implements ManagedLif
             log.warn(UriMask.mask(message));
         } else {
             connectionLog.warn(message);
+        }
+    }
+
+    // The refusal of a password that breaks the server address. Its message names no part of the password and no
+    // address.
+    private static final class PasswordInAddressException extends InvalidConfigurationException {
+
+        PasswordInAddressException() {
+            super("Set the parameter 'encodePassword' to true. The password holds a character that can not stand in "
+                    + "the server address as it is.");
         }
     }
 

@@ -15,18 +15,26 @@
  */
 package org.wso2.carbon.connector.operations;
 
+import org.apache.axiom.om.OMElement;
+import org.apache.axiom.om.OMSourcedElement;
+import org.apache.axiom.om.util.AXIOMUtil;
+import org.apache.axis2.format.PlainTextBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.Logger;
 import org.apache.log4j.spi.LoggingEvent;
 import org.apache.synapse.SynapseException;
+import org.apache.synapse.commons.json.Constants;
+import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.mediators.template.TemplateContext;
 import org.wso2.carbon.connector.pojo.FileSorter;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.vfs.shared.log.NamedLog;
 import org.wso2.vfs.shared.log.RepeatLimiter;
+import java.io.ByteArrayInputStream;
 import java.lang.reflect.Proxy;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -459,6 +467,56 @@ public class ConnectionParametersTest {
                     && name.getPort() == 2222 && name.getPath().endsWith("/in");
         } catch (FileSystemException broken) {
             return false;
+        }
+    }
+
+    // The refusal leaves the incoming body as it came, as the failure inside the operation did before, so a fault
+    // sequence still has the message. A body that was not read yet stays unread.
+    @Test
+    public void aRefusedPasswordLeavesTheIncomingBodyAsItCame() throws Exception {
+        String text = "line one\nline two";
+        for (boolean read : new boolean[]{true, false}) {
+            try (FilePoolFixture files = new FilePoolFixture("LOCAL")) {
+                Map<String, String> values = new HashMap<>();
+                values.put("connectionType", "SFTP");
+                values.put("name", files.name);
+                values.put("fileLockScheme", "Local");
+                values.put("host", "host.example");
+                values.put("port", "2222");
+                values.put("username", "someone7");
+                values.put("password", "2024/Summer");
+                values.put("workingDir", "in");
+                TemplateContext template = new TemplateContext("file.init", Collections.emptyList());
+                template.setMappedValues(values);
+                Stack<TemplateContext> stack = new Stack<>();
+                stack.push(template);
+                Axis2MessageContext message = WriteFileTest.message(files);
+                message.setProperty("_SYNAPSE_FUNCTION_STACK", stack);
+                OMElement body = read ? AXIOMUtil.stringToOM("<order><id>7</id></order>")
+                        : new PlainTextBuilder().processDocument(new ByteArrayInputStream(
+                                text.getBytes(StandardCharsets.UTF_8)), "text/plain", message.getAxis2MessageContext());
+                String before = read ? body.toString() : null;
+                message.getEnvelope().getBody().addChild(body);
+                try {
+                    new FileConfig().connect(message);
+                    Assert.fail("The password was not refused.");
+                } catch (SynapseException refused) {
+                    Assert.assertTrue(refused.getCause().getMessage().contains("'encodePassword'"));
+                }
+                Assert.assertEquals(String.valueOf(message.getProperty("ERROR_CODE")), "700107");
+                // No result of the operation is put on the message, not even as a JSON stream beside the body.
+                Assert.assertFalse(JsonUtil.hasAJsonPayload(message.getAxis2MessageContext()));
+                Assert.assertNull(message.getAxis2MessageContext()
+                        .getProperty(Constants.ORG_APACHE_SYNAPSE_COMMONS_JSON_JSON_INPUT_STREAM));
+                OMElement after = message.getEnvelope().getBody().getFirstElement();
+                Assert.assertSame(after, body);
+                if (read) {
+                    Assert.assertEquals(after.toString(), before);
+                } else {
+                    Assert.assertFalse(((OMSourcedElement) after).isExpanded(), "The body was read.");
+                    Assert.assertEquals(after.getText(), text);
+                }
+            }
         }
     }
 }
