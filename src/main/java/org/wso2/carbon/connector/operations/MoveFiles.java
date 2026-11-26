@@ -15,416 +15,154 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.wso2.carbon.connector.operations;
 
-import com.google.gson.JsonObject;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
-import org.wso2.org.apache.commons.vfs2.FileObject;
-import org.wso2.org.apache.commons.vfs2.FileSystemException;
-import org.wso2.org.apache.commons.vfs2.FileSystemManager;
-import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
-import org.wso2.org.apache.commons.vfs2.FileType;
 import org.apache.synapse.MessageContext;
-import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.integration.connector.core.AbstractConnectorOperation;
-import org.wso2.integration.connector.core.ConnectException;
-import org.wso2.integration.connector.core.connection.ConnectionHandler;
-import org.wso2.integration.connector.core.util.ConnectorUtils;
-import org.wso2.carbon.connector.exception.FileAlreadyExistsException;
-import org.wso2.carbon.connector.exception.FileOperationException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
-import org.wso2.carbon.connector.pojo.FileOperationResult;
-import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.frame.Attempt;
+import org.wso2.carbon.connector.frame.OperationFrame;
+import org.wso2.carbon.connector.frame.StreamLease;
 import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.FilePatternMatcher;
-import org.wso2.carbon.connector.utils.Utils;
-import org.wso2.carbon.connector.utils.AdvancedFileSelector;
-import org.wso2.org.apache.commons.vfs2.FileSelector;
-import org.wso2.org.apache.commons.vfs2.Selectors;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.NameScope;
+import org.wso2.org.apache.commons.vfs2.provider.AbstractFileObject;
+import org.wso2.org.apache.commons.vfs2.provider.AbstractFileObject.EntryRelation;
+import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
+import org.wso2.org.apache.commons.vfs2.provider.MoveOptions;
+import org.wso2.org.apache.commons.vfs2.provider.StatNow;
+import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
+import org.wso2.vfs.shared.lock.LockIo;
+import org.wso2.vfs.shared.log.UriMask;
+import org.wso2.vfs.shared.write.AtomicWriter;
+import org.wso2.vfs.shared.write.TempName;
+import org.wso2.vfs.shared.write.TempNames;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-
-import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
-
-/**
- * Implements move files operation.
- */
-public class MoveFiles extends AbstractConnectorOperation {
-
-    private static final String SOURCE_PATH_PARAM = "sourcePath";
-    private static final String TARGET_PATH_PARAM = "targetPath";
-    private static final String CREATE_PARENT_DIRECTORIES_PARAM = "createParentDirectories";
-    private static final String INCLUDE_PARENT_PARAM = "includeParent";
-    private static final String OVERWRITE_PARAM = "overwrite";
-    private static final String RENAME_TO_PARAM = "renameTo";
-    private static final String FILE_PATTERN_PARAM = "filePattern";
-    private static final String FILE_FILTER_TYPE = "fileFilterType";
-    private static final String INCLUDE_FILES = "includeFiles";
-    private static final String EXCLUDE_FILES = "excludeFiles";
-    private static final String MAX_FILE_AGE = "maxFileAge";
-    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
-    private static final String OPERATION_NAME = "moveFiles";
-    private static final String IS_SOURCE_MOUNTED = "isSourceMounted";
-    private static final String IS_TARGET_MOUNTED = "isTargetMounted";
-
-    private static final String ERROR_MESSAGE = "Error while performing file:move for file/folder ";
-
-    private FileSystemOptions fso;
-    private FileSystemManager fsManager;
-
+public class MoveFiles extends FileTreeOperation {
     @Override
-    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
-            throws ConnectException {
+    Walk operation(MessageContext message) throws InvalidConfigurationException {
+        return new Move(message, false);
+    }
 
-        String sourcePath = null;
-        String targetPath = null;
-        boolean createNonExistingParents;
-        boolean includeParent;
-        boolean overwrite;
-        String renameTo;
-        String filePattern;
-        boolean isSourceMounted = false;
-        boolean isTargetMounted = false;
-        FileObject sourceFile = null;
-        FileSystemHandler fileSystemHandlerConnection = null;
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
-        String connectionName = Utils.getConnectionName(messageContext);
-        String connectorName = Const.CONNECTOR_NAME;
-        try {
-            String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
-                    (messageContext, Const.DISK_SHARE_ACCESS_MASK);
-            fileSystemHandlerConnection = (FileSystemHandler) handler
-                    .getConnection(Const.CONNECTOR_NAME, connectionName);
-            fsManager = fileSystemHandlerConnection.getFsManager();
-            fso = fileSystemHandlerConnection.getFsOptions();
-            Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
+    static class Move extends Walk {
+        final boolean rename;
+        final boolean createParents;
+        final boolean sourceMounted;
+        final boolean targetMounted;
+        final boolean updateTime;
+        private AtomicWriter.Temp staging;
 
-            //read inputs
-            sourcePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, SOURCE_PATH_PARAM);
-            targetPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, TARGET_PATH_PARAM);
-            createNonExistingParents = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, CREATE_PARENT_DIRECTORIES_PARAM));
-            includeParent = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, INCLUDE_PARENT_PARAM));
-            overwrite = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, OVERWRITE_PARAM));
-            renameTo = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, RENAME_TO_PARAM);
-            filePattern = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, FILE_PATTERN_PARAM);
-            
-            // Read new filtering parameters
-            String fileFilterType = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, FILE_FILTER_TYPE);
-            String includeFiles = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, INCLUDE_FILES);
-            String excludeFiles = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, EXCLUDE_FILES);
-            String maxFileAge = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, MAX_FILE_AGE);
-            String timeBetweenSizeCheck = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, TIME_BETWEEN_SIZE_CHECK);
-                    
-            sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourcePath;
-            targetPath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetPath;
-
-            // check if the source and target files are mounted.
-            isSourceMounted = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, IS_SOURCE_MOUNTED));
-            isTargetMounted = Boolean.parseBoolean((String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, IS_TARGET_MOUNTED));
-
-            // Determine which selector to use based on available parameters
-            FileSelector fileSelector = null;
-            boolean useAdvancedFilter = !StringUtils.isEmpty(includeFiles) || !StringUtils.isEmpty(excludeFiles) 
-                                      || !StringUtils.isEmpty(maxFileAge) || !StringUtils.isEmpty(timeBetweenSizeCheck);
-            
-            if (useAdvancedFilter) {
-                // Use advanced selector for include/exclude/age/stability filtering
-                fileSelector = new AdvancedFileSelector(fileFilterType, includeFiles, excludeFiles, 
-                                                       maxFileAge, timeBetweenSizeCheck);
-            } else if (StringUtils.isNotEmpty(filePattern)) {
-                // Legacy pattern handling will be done in moveFolder method
-                fileSelector = null;
-            } else {
-                fileSelector = Selectors.SELECT_ALL;
+        Move(MessageContext message, boolean rename) throws InvalidConfigurationException {
+            super(message, rename ? "renameFile" : "moveFiles", rename ? "path" : "sourcePath", "filePattern");
+            this.rename = rename;
+            createParents = flag(message, "createParentDirectories", false);
+            sourceMounted = flag(message, "isSourceMounted", false);
+            targetMounted = flag(message, "isTargetMounted", false);
+            updateTime = flag(message, "updateLastModified", true);
+            if (rename && newName == null) {
+                throw new InvalidConfigurationException("The new name is required");
             }
+        }
 
-            //execute move
-            sourceFile = fileSystemHandlerConnection.resolveFileWithSuspension(sourcePath);
+        @Override public OperationFrame.Retry retry() {
+            return overwrite ? OperationFrame.Retry.MOVE : OperationFrame.Retry.MOVE_NO_REPLACE;
+        }
 
-            if (sourceFile.exists()) {
+        @Override boolean walksFolder() { return !rename; }
+        @Override boolean removesSource() { return true; }
+        @Override boolean canCreateParent() { return createParents; }
 
-                if (sourceFile.isFile()) {
-
-                    String targetFilePath;
-
-                    //check if we have given a new name
-                    if (StringUtils.isNotEmpty(renameTo)) {
-                        targetFilePath = targetPath + Const.FILE_SEPARATOR
-                                + renameTo;
-                    } else {
-                        targetFilePath = targetPath + Const.FILE_SEPARATOR
-                                + sourceFile.getName().getBaseName();
-                    }
-
-                    FileObject targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetFilePath);
-
-                    // Set the isMounted flag to to avoid errors in mounted volumes.
-                    try {
-                        targetFile.setIsMounted(isTargetMounted);
-                        sourceFile.setIsMounted(isSourceMounted);
-                    } catch (NoSuchMethodError e) {
-                        log.debug("The method setIsMounted is not available in the current version of VFS library. "
-                                + "Please upgrade the VFS library");
-                    }
-
-                    boolean success = moveFile(sourceFile, createNonExistingParents, targetFile, overwrite);
-                    if (success) {
-                        JsonObject resultJSON = generateOperationResult(messageContext,
-                                new FileOperationResult(OPERATION_NAME, true));
-                        handleConnectorResponse(messageContext, responseVariable, overwriteBody,
-                                resultJSON, null, null);
-                    } else {
-                        throw new FileAlreadyExistsException("Destination file already exists and overwrite not allowed");
-                    }
-
-                } else {
-                    //in case of folder
-                    FileObject targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetPath);
-
-                    if (!targetFile.exists() && !createNonExistingParents) {
-                        throw new FileOperationException("Target folder does not exist and not configured to create");
-                    }
-
-                    if (includeParent) {
-                        if (StringUtils.isNotEmpty(renameTo)) {
-                            targetPath = targetPath + Const.FILE_SEPARATOR + renameTo;
-                        } else {
-                            String sourceParentFolderName = sourceFile.getName().getBaseName();
-                            targetPath = targetPath + Const.FILE_SEPARATOR + sourceParentFolderName;
-                        }
-                        targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetPath);
-                    }
-
-                    boolean success = moveFolder(sourceFile, targetFile, overwrite, filePattern, fileSelector, true, fileSystemHandlerConnection);
-                    if (success) {
-                        JsonObject resultJSON = generateOperationResult(messageContext,
-                                new FileOperationResult(OPERATION_NAME, true));
-                        handleConnectorResponse(messageContext, responseVariable, overwriteBody,
-                                resultJSON, null, null);
-                    } else {
-                        throw new FileOperationException("Error occurred while moving one or more File(s)/Folder.");
-                    }
-                }
-
-            } else {
-                throw new FileOperationException("File/Folder does not exist.");
+        @Override void noteSource(Attempt attempt, FileObject source) throws Exception {
+            if (source.isFile()) {
+                attempt.source(source.getContent().getSize(), source.getContent().getLastModifiedTime());
             }
+        }
 
-        } catch (InvalidConfigurationException e) {
-
-            String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
-
-        } catch (FileSystemException | FileOperationException e) {
-
-            String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail, responseVariable, overwriteBody);
-
-        } catch (FileAlreadyExistsException e) {
-
-            String errorDetail = ERROR_MESSAGE + sourcePath;
-            handleError(messageContext, e, Error.FILE_ALREADY_EXISTS, errorDetail, responseVariable, overwriteBody);
-
-        } finally {
-
-            if (sourceFile != null) {
-                try {
-                    sourceFile.close();
-                } catch (FileSystemException e) {
-                    log.error(Const.CONNECTOR_NAME
-                            + ":Error while closing file object"
-                            + sourcePath);
-                }
+        @Override void change(Attempt attempt, FileObject source, FileObject target, String path, String targetPath)
+                throws Exception {
+            if (source.isFolder()) {
+                RenameFiles.checkDescendants(attempt, source);
             }
-            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
-                if (fileSystemHandlerConnection != null) {
-                    Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
-                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+            observe("move.after-source-lock", path);
+            LockIo io = StreamLease.io(attempt.handler());
+            if (staging != null) {
+                discardTemp(attempt, staging);
+                staging.close();
+                staging = null;
+            }
+            String suffix = attempt.handler().getContext().getConfiguration().getTempFileSuffix();
+            staging = attempt.handler().getContext().getWriter().prepare(io, targetPath);
+            attempt.tempPath(staging.uri);
+            TempName probe = TempNames.begin("vfsprobe", suffix);
+            TempName first = TempNames.begin("vfsprobe", suffix);
+            TempName second = TempNames.begin("vfsprobe", suffix);
+            try {
+                FileObject temp = io.resolve(staging.uri);
+                FileObject parent = temp.getParent();
+                MoveOptions options = new MoveOptions(overwrite, temp, probe.name(),
+                        parent.resolveFile(first.name(), NameScope.CHILD),
+                        parent.resolveFile(second.name(), NameScope.CHILD));
+                if (!overwrite && options.needsTargetLock(source, target)) {
+                    attempt.lockTarget(targetPath, OperationFrame.Lock.OWN);
+                    observe("move.after-target-lock", targetPath);
+                } else if (!source.getName().equals(target.getName())) {
+                    attempt.lockTarget(targetPath, OperationFrame.Lock.NONE);
                 }
+                source.setIsMounted(sourceMounted);
+                target.setIsMounted(targetMounted);
+                target.setUpdateLastModified(updateTime);
+                boolean differentName = !source.getName().equals(target.getName());
+                EntryRelation relation = EntryRelation.DISTINCT;
+                if (differentName && overwrite && attempt.hasLentLease(path)) {
+                    relation = AbstractFileObject.compareEntries(source, target);
+                }
+                attempt.moving(path, targetPath);
+                attempt.progress().reset("move");
+                FileObjectUtils.getAbstractFileObject(source).moveTo(target, options);
+                if (differentName && (relation == EntryRelation.DISTINCT
+                        || relation == EntryRelation.UNKNOWN && !AtomicOps.existsNow(source))) {
+                    attempt.removed(path);
+                }
+                staging.close();
+                staging = null;
+            } finally {
+                second.end();
+                first.end();
+                probe.end();
+            }
+        }
+
+        @Override void settle(Attempt attempt) throws Exception {
+            String path = attempt.previous.path();
+            observe("retry.before-decision", path);
+            // A test can stop the retry here, before its looks decide the outcome.
+            hold("retry.before-decision", path);
+            if (AtomicOps.existsNow(attempt.handler().resolveFile(path))) {
+                throw failure(Error.OUTCOME_UNCLEAR, "A file remains at the source", path);
+            }
+            if (attempt.previous.request() == Attempt.Request.RENAME) {
+                if (attempt.previous.sourceSize() == null) {
+                    throw failure(Error.OUTCOME_UNCLEAR, "The directory rename is unclear", path);
+                }
+                FileObject target = attempt.handler().resolveFile(inFlightTarget);
+                AtomicOps ops = AtomicOps.of(target);
+                StatNow stat = ops == null ? null : ops.statNow();
+                if (stat == null || !stat.isThere() || stat.getSize() != attempt.previous.sourceSize()
+                        || stat.getLastModifiedMillis() != attempt.previous.sourceModified()) {
+                    throw failure(Error.OPERATION_ERROR, "The target does not match the missing source", path);
+                }
+                inferred = true;
+                attempt.handler().getContext().getHealth().inferredMove();
+                attempt.handler().getContext().getHealth().namedLog().warn("Inferred move from " + UriMask.mask(path)
+                        + " to " + UriMask.mask(inFlightTarget));
+            }
+            attempt.removed(path);
+        }
+
+        @Override void finishTemp() {
+            if (staging != null) {
+                staging.close();
+                staging = null;
             }
         }
     }
-
-
-    /**
-     * Moves srcFile, to destinationFile file.
-     * If destination folder does not exist, it is created if
-     * createNonExistingParents=true.  If this file destination
-     * exist, and overWrite = true, it is deleted first,
-     * otherwise this method returns false.
-     *
-     * @param srcFile                  source file object
-     * @param createNonExistingParents true if to create parent directories when they do not exist
-     * @param destinationFile          destination file object
-     * @return True if operation is done. False if overwrite is not allowed
-     * @throws FileSystemException If this file is read-only,
-     *                             or if the source file does
-     *                             not exist, or on error copying the file.
-     */
-    private boolean moveFile(FileObject srcFile, boolean createNonExistingParents,
-                             FileObject destinationFile, boolean overWrite) throws FileSystemException {
-
-        if (!overWrite && destinationFile.exists()) {
-            return false;
-        }
-
-        FileObject parent = destinationFile.getParent();
-        if (parent != null && !parent.exists()) {
-            if (createNonExistingParents) {
-                // calling createFolder on destinationFile creates all the non-existing
-                // parent directories as well.
-                destinationFile.createFolder();
-            } else {
-                throw new FileSystemException("Parent directory: " + parent.getName()
-                    + " does not exist and createParentDirectories is set to false");
-            }
-        } else if (log.isDebugEnabled()) {
-            log.debug("Parent directory creation is skipped.");
-        }
-        srcFile.moveTo(destinationFile);
-        return true;
-    }
-
-    /**
-     * Moves src directory and all its descendants, , to destinationFile folder.
-     * If destination folder does not exist, it is created if
-     * createNonExistingParents=true. If it exists, operation scans only
-     * first level of children to determine move can be done without overwriting
-     * any file.
-     *
-     * @param srcFile                  Src directory to move
-     * @param destinationFile          Destination folder
-     * @param overWrite                True if to overwrite any existing file when moving
-     * @param filePattern              The pattern (regex) of the files to be moved (legacy)
-     * @param fileSelector             Advanced file selector for filtering
-     * @param isSuccessful             Flag to keep track of something goes wrong while moving a file.
-     * @return True if operation is performed fine
-     * @throws FileSystemException In case of I/O error
-     */
-    private boolean moveFolder(FileObject srcFile, FileObject destinationFile, boolean overWrite,
-                               String filePattern, FileSelector fileSelector, boolean isSuccessful,
-                               FileSystemHandler fileSystemHandlerConnection) throws FileSystemException {
-
-        if (destinationFile.exists()) {
-            if (!overWrite) {
-                //we check only one level
-                FileObject[] sourceFileChildren = srcFile.getChildren();
-                FileObject[] destinationFileChildren = destinationFile.getChildren();
-                ArrayList<String> sourceChildrenNames = new ArrayList<>(sourceFileChildren.length);
-                ArrayList<String> destinationChildrenNames = new ArrayList<>(destinationFileChildren.length);
-                for (FileObject child : sourceFileChildren) {
-                    if (child.getType() == FileType.FILE) {
-                        sourceChildrenNames.add(child.getName().getBaseName());
-                    }
-                }
-                for (FileObject child : destinationFileChildren) {
-                    if (child.getType() == FileType.FILE) {
-                        destinationChildrenNames.add(child.getName().getBaseName());
-                    }
-                }
-
-                Collection commonFiles = CollectionUtils.intersection(sourceChildrenNames, destinationChildrenNames);
-                if (!commonFiles.isEmpty()) {
-                    log.error("Folder or one or more sub-directories already exists and overwrite not allowed");
-                    return false;
-                }
-            }
-        }
-
-        if (fileSelector != null) {
-            // Use advanced file selector or SELECT_ALL
-            destinationFile.copyFrom(srcFile, fileSelector);
-            // Delete source after successful copy (completing the move operation)
-            srcFile.deleteAll();
-        } else if (StringUtils.isNotEmpty(filePattern)) {
-            // Legacy pattern handling
-            FileObject[] children = srcFile.getChildren();
-            for (FileObject child : children) {
-                boolean result;
-                if (child.getType() == FileType.FILE) {
-                    result = moveFileWithPattern(child, destinationFile, filePattern, fileSystemHandlerConnection);
-                } else if (child.getType() == FileType.FOLDER) {
-                    FileObject newDestination = destinationFile.resolveFile(child.getName().getBaseName());
-                    result = moveFolder(child, newDestination,
-                            overWrite, filePattern, fileSelector, isSuccessful, fileSystemHandlerConnection);
-                } else {
-                    log.error("Could not move the file: " + child.getName() + "Unsupported file type: "
-                            + child.getType() + " for move operation.");
-                    result = false;
-                }
-
-                if (!result) {
-                    // if any error happens while moving a file/folder, mark the whole move operation as a failure.
-                    // But keep moving whatever the remaining files/folders.
-                    isSuccessful = false;
-                }
-            }
-        } else {
-            // Simple move without filtering
-            srcFile.moveTo(destinationFile);
-        }
-        return isSuccessful;
-    }
-
-    /**
-     * @param remoteFile  Location of the file
-     * @param target      New file location
-     * @param filePattern Pattern of the file
-     * @return True if operation is performed fine
-     */
-    private boolean moveFileWithPattern(FileObject remoteFile, FileObject target, String filePattern,
-                                        FileSystemHandler fileSystemHandlerConnection) {
-        FilePatternMatcher patternMatcher = new FilePatternMatcher(filePattern);
-        try {
-            if (patternMatcher.validate(remoteFile.getName().getBaseName())) {
-                if (!target.exists()) {
-                    target.createFolder();
-                }
-                FileObject newTarget = target.resolveFile(remoteFile.getName().getBaseName());
-                remoteFile.moveTo(newTarget);
-            }
-        } catch (IOException e) {
-            log.error("Error occurred while moving a file. " + e.getMessage(), e);
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Sets error to context and handle.
-     *
-     * @param msgCtx      Message Context to set info
-     * @param e           Exception associated
-     * @param error       Error code
-     * @param errorDetail Error detail
-     * @param responseVariable Response variable name
-     * @param overwriteBody Overwrite body
-     */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
-                             String responseVariable, boolean overwriteBody) {
-        errorDetail = Utils.maskURLPassword(errorDetail);
-        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
-        JsonObject resultJSON = generateOperationResult(msgCtx, result);
-        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
-        handleException(errorDetail, e, msgCtx);
-    }
-
 }

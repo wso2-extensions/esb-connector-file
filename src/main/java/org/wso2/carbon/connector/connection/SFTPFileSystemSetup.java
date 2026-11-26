@@ -22,6 +22,7 @@ import java.time.Duration;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.provider.UriParser;
 import org.wso2.org.apache.commons.vfs2.provider.sftp.IdentityInfo;
 import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 import org.wso2.carbon.connector.exception.FileServerConnectionException;
@@ -42,10 +43,17 @@ public class SFTPFileSystemSetup implements ProtocolBasedFileSystemSetup {
 
         SFTPConnectionConfig sftpConnectionConfig = (SFTPConnectionConfig) fsConfig.getRemoteServerConfig();
         SftpFileSystemConfigBuilder sftpConfigBuilder = SftpFileSystemConfigBuilder.getInstance();
+        String baseUri = Const.SFTP_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);
         try {
-            sftpConfigBuilder.setAvoidPermissionCheck(fso, sftpConnectionConfig.getAvoidPermissionCheck());
-            sftpConfigBuilder.setSessionTimeout(fso,
-                Duration.ofMillis(sftpConnectionConfig.getSessionTimeout()));
+            if (sftpConnectionConfig.getSessionTimeout() != null) {
+                sftpConfigBuilder.setSessionTimeout(fso, Duration.ofMillis(sftpConnectionConfig.getSessionTimeout()));
+            }
+            if (sftpConnectionConfig.getConnectionTimeout() != null) {
+                sftpConfigBuilder.setConnectTimeout(fso, Duration.ofMillis(sftpConnectionConfig.getConnectionTimeout()));
+            }
+            if (sftpConnectionConfig.getKeepAliveCount() != null) {
+                sftpConfigBuilder.setKeepAliveCountMax(fso, sftpConnectionConfig.getKeepAliveCount());
+            }
             sftpConfigBuilder.setUserDirIsRoot(fso, sftpConnectionConfig.isUserDirIsRoot());
             
             // Set SFTP path from root if enabled (overrides userDirIsRoot for absolute path access)
@@ -73,12 +81,17 @@ public class SFTPFileSystemSetup implements ProtocolBasedFileSystemSetup {
                 sftpConfigBuilder.setIdentityInfo(fso, identityInfo);
             }
 
+            String permission = sftpConnectionConfig.getAvoidPermissionCheck();
+            if (permission == null) {
+                permission = UriParser.extractQueryParams(baseUri).get("transport.vfs.AvoidPermissionCheck");
+            }
+            sftpConfigBuilder.setAvoidPermissionCheck(fso, permission == null ? "true" : permission);
         } catch (FileSystemException e) {
             throw new FileServerConnectionException("[" + fsConfig.getConnectionName()
                     + "] Error while setting fso options", e);
         }
 
-        return Const.SFTP_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);
+        return baseUri;
 
     }
 }

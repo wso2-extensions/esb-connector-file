@@ -15,472 +15,117 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.wso2.carbon.connector.operations;
 
 import com.google.gson.JsonObject;
-import org.apache.commons.lang.StringUtils;
-import org.wso2.org.apache.commons.vfs2.FileObject;
-import org.wso2.org.apache.commons.vfs2.FileSystemException;
-import org.wso2.org.apache.commons.vfs2.FileSystemManager;
-import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.synapse.MessageContext;
-import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.integration.connector.core.AbstractConnectorOperation;
-import org.wso2.integration.connector.core.ConnectException;
-import org.wso2.integration.connector.core.connection.ConnectionHandler;
-import org.wso2.integration.connector.core.util.ConnectorUtils;
-import org.wso2.carbon.connector.exception.FileOperationException;
-import org.wso2.carbon.connector.exception.IllegalPathException;
-import org.wso2.carbon.connector.exception.InvalidConfigurationException;
-import org.wso2.carbon.connector.pojo.FileOperationResult;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+import org.wso2.carbon.connector.frame.Attempt;
+import org.wso2.carbon.connector.frame.OperationFrame;
 import org.wso2.carbon.connector.pojo.FileSorter;
 import org.wso2.carbon.connector.pojo.MergeFileResult;
-import org.wso2.carbon.connector.utils.Error;
-import org.wso2.carbon.connector.utils.Const;
-import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.AdvancedFileFilter;
-import org.wso2.org.apache.commons.vfs2.FileSelectInfo;
-import org.wso2.org.apache.commons.vfs2.FileSelector;
-import org.wso2.org.apache.commons.vfs2.Selectors;
+import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.SourceGuard;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
 
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-
-import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
-
-/**
- * Implements Merge Files operation.
- */
-public class MergeFiles extends AbstractConnectorOperation {
-
-    private static final String SOURCE_DIRECTORY_PATH_PARAM = "sourceDirectoryPath";
-    private static final String TARGET_FILE_PATH_PARAM = "targetFilePath";
-    private static final String FILE_PATTERN_PARAM = "filePattern";
-    private static final String FILE_FILTER_TYPE = "fileFilterType";
-    private static final String INCLUDE_FILES = "includeFiles";
-    private static final String EXCLUDE_FILES = "excludeFiles";
-    private static final String MAX_FILE_AGE = "maxFileAge";
-    private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
-    private static final String WRITE_MODE_PARAM = "writeMode";
-    private static final String SORT_ATTRIB_PARAM = "sortingAttribute";
-    private static final String SORT_ORDER_PARAM = "sortingOrder";
-    private static final String DETAIL_ELE_NAME = "detail";
-    private static final String NUMBER_OF_MERGED_FILES_ELE_NAME = "numberOfMergedFiles";
-    private static final String TOTAL_WRITTEN_BYTES_ELE_NAME = "totalWrittenBytes";
-    private static final String OPERATION_NAME = "mergeFiles";
-    private static final String ERROR_MESSAGE = "Error while performing file:merge for directory ";
+public class MergeFiles extends FileOperation {
+    public MergeFiles() {
+        super("mergeFiles", "sourceDirectoryPath", "targetFilePath");
+    }
 
     @Override
-    public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
-            throws ConnectException {
+    void configure(Call call) {
+        call.prepareGuard("filePattern");
+        call.knownOutput = true;
+        call.prepareParentBeforeLock = !Const.OVERWRITE.equals(call.option("writeMode"));
+        call.retry = call.prepareParentBeforeLock ? OperationFrame.Retry.APPEND : OperationFrame.Retry.SAFE;
+    }
 
-        String sourceDirectoryPath = null;
-        FileObject sourceDir = null;
-        String targetFilePath;
-        FileObject targetFile;
-        FileOperationResult result;
-        int numberOfMergedFiles = 0;
-        long numberOfTotalBytesWritten = 0;
-        FileSystemHandler fileSystemHandlerConnection = null;
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
-        String connectionName = Utils.getConnectionName(messageContext);
-        String connectorName = Const.CONNECTOR_NAME;
-
-        try {
-            String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
-                    (messageContext, Const.DISK_SHARE_ACCESS_MASK);
-
-            sourceDirectoryPath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, SOURCE_DIRECTORY_PATH_PARAM);
-            targetFilePath = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, TARGET_FILE_PATH_PARAM);
-            String filePattern = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, FILE_PATTERN_PARAM);
-            
-            // Read new filtering parameters
-            String fileFilterType = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, FILE_FILTER_TYPE);
-            String includeFiles = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, INCLUDE_FILES);
-            String excludeFiles = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, EXCLUDE_FILES);
-            String maxFileAge = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, MAX_FILE_AGE);
-            String timeBetweenSizeCheck = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, TIME_BETWEEN_SIZE_CHECK);
-                    
-            String writeMode = (String) ConnectorUtils.
-                    lookupTemplateParamater(messageContext, WRITE_MODE_PARAM);
-            FileSorter fileSorter = new FileSorter(
-                    Utils.lookUpStringParam(messageContext, SORT_ATTRIB_PARAM, FileSorter.SORT_ATTRIB_NAME),
-                    Utils.lookUpStringParam(messageContext, SORT_ORDER_PARAM, FileSorter.SORT_ORDER_ASCENDING));
-
-            fileSystemHandlerConnection = (FileSystemHandler) handler
-                    .getConnection(Const.CONNECTOR_NAME, connectionName);
-            sourceDirectoryPath = fileSystemHandlerConnection.getBaseDirectoryPath() + sourceDirectoryPath;
-            targetFilePath = fileSystemHandlerConnection.getBaseDirectoryPath() + targetFilePath;
-
-            FileSystemManager fsManager = fileSystemHandlerConnection.getFsManager();
-            FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
-            Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-            sourceDir = fileSystemHandlerConnection.resolveFileWithSuspension(sourceDirectoryPath);
-            targetFile = fileSystemHandlerConnection.resolveFileWithSuspension(targetFilePath);
-
-            if (!sourceDir.exists()) {
-                throw new IllegalPathException("Directory not found: " + sourceDirectoryPath);
-            } else {
-                if (!sourceDir.isFolder()) {
-                    throw new IllegalPathException("Source Path does not point to a directory: " + sourceDirectoryPath);
+    @Override
+    void perform(Call call, Attempt attempt, FileObject folder, JsonObject result) throws Exception {
+        call.requireFolder(folder);
+        try (FileObject target = attempt.handler().resolveFile(call.target)) {
+            SourceGuard guard = call.guard();
+            FileObject[] children = folder.getChildren();
+            call.sorter().sort(children);
+            List<FileObject> selected = new ArrayList<>();
+            for (FileObject child : children) {
+                if (!child.getName().equals(target.getName()) && guard.accepts(child)
+                        && attempt.guardMember(FileTreeOperation.Walk.uri(child)) == OperationFrame.Member.READY) {
+                    selected.add(child);
                 }
             }
-
-            // Only an existing target in Append mode is opened with the append flag. A new or re-created target is
-            // empty, so it is written from the start: this avoids the append flag on file systems that do not support it.
-            boolean appendToTarget = false;
-            if (!targetFile.exists()) {
-                targetFile.createFile();
-            } else {
-                if (Const.OVERWRITE.equals(writeMode)) {
-                    boolean deleteDone = targetFile.delete();
-                    if (!deleteDone) {
-                        throw new FileOperationException("Error while overwriting existing file " + targetFilePath);
-                    }
-                    targetFile.createFile();
-                } else {
-                    appendToTarget = true;
+            boolean appendMode = !Const.OVERWRITE.equals(call.option("writeMode"));
+            if (appendMode) {
+                if (!attempt.hasShare(call.target)) {
+                    call.beforeWholeLock(attempt, call.target);
                 }
+                attempt.lockTarget(call.target, OperationFrame.Lock.WHOLE);
             }
-
-
-            // Determine which filtering to use
-            boolean useAdvancedFilter = !StringUtils.isEmpty(includeFiles) || !StringUtils.isEmpty(excludeFiles) 
-                                      || !StringUtils.isEmpty(maxFileAge);
-            
-            FileObject[] children = sourceDir.getChildren();
-
-            if (children != null && children.length != 0) {
-                MergeFileResult mergeFileResult;
-                if (useAdvancedFilter) {
-                    // Use advanced filtering
-                    AdvancedFileFilter advancedFilter = new AdvancedFileFilter(fileFilterType, includeFiles, excludeFiles, maxFileAge);
-                    mergeFileResult = mergeFilesWithAdvancedFilter(targetFile, advancedFilter, timeBetweenSizeCheck,
-                            children, appendToTarget, fileSorter);
-                } else {
-                    // Use legacy pattern filtering
-                    mergeFileResult = mergeFiles(targetFile, filePattern, timeBetweenSizeCheck, children, appendToTarget,
-                            fileSorter);
-                }
-                numberOfMergedFiles = mergeFileResult.getNumberOfMergedFiles();
-                numberOfTotalBytesWritten = mergeFileResult.getNumberOfTotalWrittenBytes();
+            boolean appendExisting = appendMode && AtomicOps.existsNow(target);
+            boolean writesDirectly = appendMode && (appendExisting || !call.flag("atomicWrite", true));
+            if (appendMode) {
+                // A retry after the first publication would now append the same source bytes.
+                call.retry = writesDirectly ? OperationFrame.Retry.APPEND : OperationFrame.Retry.CREATE_NEW;
             }
-
-            JsonObject fileMergeDetailEle = new JsonObject();
-            fileMergeDetailEle.addProperty(NUMBER_OF_MERGED_FILES_ELE_NAME, numberOfMergedFiles);
-            fileMergeDetailEle.addProperty(TOTAL_WRITTEN_BYTES_ELE_NAME, numberOfTotalBytesWritten);
-            JsonObject resultJSON = generateOperationResult(messageContext,
-                    new FileOperationResult(OPERATION_NAME, true));
-            resultJSON.add(DETAIL_ELE_NAME, fileMergeDetailEle);
-            handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, null);
-
-        } catch (InvalidConfigurationException e) {
-
-            String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
-            handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
-
-        } catch (FileOperationException | IOException e) {     //FileSystemException also handled here
-
-            String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
-            handleError(messageContext, e, Error.OPERATION_ERROR, errorDetail, responseVariable, overwriteBody);
-
-        } catch (IllegalPathException e) {
-
-            String errorDetail = ERROR_MESSAGE + sourceDirectoryPath;
-            handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
-
-        } finally {
-
-            if (sourceDir != null) {
-                try {
-                    sourceDir.close();
-                } catch (FileSystemException e) {
-                    log.error(Const.CONNECTOR_NAME
-                            + ":Error while closing folder object while merging files in "
-                            + sourceDir);
-                }
-            }
-            if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
-                if (fileSystemHandlerConnection != null) {
-                    Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
-                    handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
-                }
-            }
+            JsonObject detail = new JsonObject();
+            call.write(attempt, call.target, appendExisting, output -> {
+                MergeFileResult merged = merge(output, selected, attempt, writesDirectly);
+                detail.addProperty("numberOfMergedFiles", merged.getNumberOfMergedFiles());
+                detail.addProperty("totalWrittenBytes", merged.getNumberOfTotalWrittenBytes());
+            });
+            result.add("detail", detail);
         }
     }
 
-    /**
-     * Perform File merging.
-     *
-     * @param targetFile  Target file to create after merge
-     * @param filePattern Specific pattern of files to merge
-     * @param timeBetweenSizeCheck Time to wait between size checks for stability
-     * @param children    Files to merge
-     * @param append      True to keep the existing content of the target and write after it; false to write the
-     *                    target from the start (the target is new or was re-created for this merge)
-     * @param fileSorter  Defines the order in which the files are merged
-     * @return Info object with result of the operation
-     * @throws IOException In case of file operation issue
-     */
-    MergeFileResult mergeFiles(FileObject targetFile, String filePattern, String timeBetweenSizeCheck,
-                               FileObject[] children, boolean append, FileSorter fileSorter) throws IOException {
-
-        int numberOfMergedFiles = 0;
-        long numberOfTotalBytesWritten = 0;
-        OutputStream outputStream = null;
-        BufferedOutputStream bufferedOutputStream = null;
-
-        try {
-            // The append flag is only requested when there is existing content to keep: VFS rejects it on file
-            // systems without the APPEND_CONTENT capability
-            outputStream = targetFile.getContent().getOutputStream(append);
-            bufferedOutputStream = new BufferedOutputStream(outputStream);
-
-            for (FileObject child : sorted(children, fileSorter)) {
-                long numberOfBytesWritten = 0;
-                
-                // Check file stability if parameter is provided
-                if (!StringUtils.isEmpty(timeBetweenSizeCheck) && child.isFile()) {
-                    if (!isFileStable(child, timeBetweenSizeCheck)) {
-                        log.warn("File is not stable (still being written), skipping: " + child.getName().getBaseName());
-                        continue;
-                    }
-                }
-                
-                if (StringUtils.isNotEmpty(filePattern)) {
-                    if (child.getName().getBaseName().matches(filePattern)) {
-                        numberOfBytesWritten = child.getContent().write(bufferedOutputStream);
-                    }
-                } else {
-                    numberOfBytesWritten = child.getContent().write(bufferedOutputStream);
-                }
-                if (numberOfBytesWritten != 0) {
-                    bufferedOutputStream.flush();
-                    outputStream.flush();
-                    numberOfMergedFiles = numberOfMergedFiles + 1;
-                    numberOfTotalBytesWritten = numberOfTotalBytesWritten + numberOfBytesWritten;
-                }
-
-                try {
-                    child.close();
-                } catch (IOException e) {
-                    log.warn("Error while closing a file in the source folder: " + e.getMessage(), e);
-                }
-            }
-
-            return new MergeFileResult(numberOfMergedFiles, numberOfTotalBytesWritten);
-
-        } finally {
-
-            if (bufferedOutputStream != null) {
-                try {
-                    bufferedOutputStream.close();
-                } catch (IOException e) {
-                    log.error("FileConnector: MergeFiles - Error while "
-                            + "closing buffered outputStream for file " + targetFile.getURL());
-                }
-            }
-
-            if (outputStream != null) {
-                try {
-                    outputStream.close();
-                } catch (IOException e) {
-                    log.error("FileConnector: MergeFiles - Error while"
-                            + " closing outputStream for file " + targetFile.getURL());
+    private MergeFileResult merge(OutputStream output, List<FileObject> selected, Attempt attempt, boolean append)
+            throws IOException {
+        int files = 0;
+        long total = 0;
+        for (FileObject file : selected) {
+            try (InputStream input = file.getContent().getInputStream()) {
+                long bytes = copy(input, output, attempt, append);
+                if (bytes != 0) {
+                    files++;
+                    total += bytes;
                 }
             }
         }
+        return new MergeFileResult(files, total);
     }
 
-    /**
-     * Perform File merging with advanced filtering.
-     *
-     * @param targetFile           Target file to create after merge
-     * @param advancedFilter       Advanced filter for file selection
-     * @param timeBetweenSizeCheck Time to wait between size checks for stability
-     * @param children             Files to merge
-     * @param append               True to keep the existing content of the target and write after it; false to write
-     *                             the target from the start (the target is new or was re-created for this merge)
-     * @param fileSorter           Defines the order in which the files are merged
-     * @return Info object with result of the operation
-     * @throws IOException In case of file operation issue
-     */
-    MergeFileResult mergeFilesWithAdvancedFilter(FileObject targetFile, AdvancedFileFilter advancedFilter,
-                                                 String timeBetweenSizeCheck, FileObject[] children, boolean append,
-                                                 FileSorter fileSorter) throws IOException {
-        int numberOfMergedFiles = 0;
-        long numberOfTotalBytesWritten = 0;
-        OutputStream outputStream = null;
-        BufferedOutputStream bufferedOutputStream = null;
+    MergeFileResult mergeFiles(FileObject target, String pattern, String interval, FileObject[] children,
+                               boolean append, FileSorter sorter) throws IOException {
+        return mergeSelected(target, pattern == null ? null : Pattern.compile(pattern),
+                new AdvancedFileFilter(null, null, null, null), interval, children, append, sorter);
+    }
 
-        try {
-            // The append flag is only requested when there is existing content to keep: VFS rejects it on file
-            // systems without the APPEND_CONTENT capability
-            outputStream = targetFile.getContent().getOutputStream(append);
-            bufferedOutputStream = new BufferedOutputStream(outputStream);
+    MergeFileResult mergeFilesWithAdvancedFilter(FileObject target, AdvancedFileFilter filter, String interval,
+                                                FileObject[] children, boolean append, FileSorter sorter)
+            throws IOException {
+        return mergeSelected(target, null, filter, interval, children, append, sorter);
+    }
 
-            for (FileObject child : sorted(children, fileSorter)) {
-                long numberOfBytesWritten = 0;
-                
-                // Check file stability if parameter is provided
-                if (!StringUtils.isEmpty(timeBetweenSizeCheck) && child.isFile()) {
-                    if (!isFileStable(child, timeBetweenSizeCheck)) {
-                        log.warn("File is not stable (still being written), skipping: " + child.getName().getBaseName());
-                        continue;
-                    }
-                }
-                
-                // Use advanced filter to check if file should be included
-                try {
-                    FileSelectInfo fileSelectInfo = new FileSelectInfo() {
-                        @Override
-                        public FileObject getFile() {
-                            return child;
-                        }
-
-                        @Override
-                        public int getDepth() {
-                            return 1; // Files in source directory are at depth 1
-                        }
-
-                        @Override
-                        public FileObject getBaseFolder() {
-                            try {
-                                return child.getParent();
-                            } catch (Exception e) {
-                                return null;
-                            }
-                        }
-                    };
-                    
-                    if (advancedFilter.accept(fileSelectInfo)) {
-                        numberOfBytesWritten = child.getContent().write(bufferedOutputStream);
-                    }
-                } catch (Exception e) {
-                    log.warn("Error applying advanced filter to file " + child.getName().getBaseName() + ": " + e.getMessage());
-                    continue;
-                }
-                
-                if (numberOfBytesWritten != 0) {
-                    bufferedOutputStream.flush();
-                    outputStream.flush();
-                    numberOfMergedFiles = numberOfMergedFiles + 1;
-                    numberOfTotalBytesWritten = numberOfTotalBytesWritten + numberOfBytesWritten;
-                }
-
-                try {
-                    child.close();
-                } catch (IOException e) {
-                    log.warn("Error while closing a file in the source folder: " + e.getMessage(), e);
-                }
-            }
-
-            return new MergeFileResult(numberOfMergedFiles, numberOfTotalBytesWritten);
-
-        } finally {
-
-            if (bufferedOutputStream != null) {
-                try {
-                    bufferedOutputStream.close();
-                } catch (IOException e) {
-                    log.error("FileConnector: MergeFiles - Error while "
-                            + "closing buffered outputStream for file " + targetFile.getURL());
-                }
-            }
-
-            if (outputStream != null) {
-                try {
-                    outputStream.close();
-                } catch (IOException e) {
-                    log.error("FileConnector: MergeFiles - Error while"
-                            + " closing outputStream for file " + targetFile.getURL());
-                }
+    private MergeFileResult mergeSelected(FileObject target, Pattern pattern, AdvancedFileFilter filter, String interval,
+                                          FileObject[] children, boolean append, FileSorter sorter) throws IOException {
+        SourceGuard guard = new SourceGuard(pattern, filter, interval == null ? 0 : Long.parseLong(interval),
+                ".part", ".part", null);
+        FileObject[] sorted = children.clone();
+        sorter.sort(sorted);
+        List<FileObject> selected = new ArrayList<>();
+        for (FileObject child : sorted) {
+            if (!child.getName().equals(target.getName()) && guard.accepts(child)) {
+                selected.add(child);
             }
         }
-    }
-
-    /**
-     * FileObject#getChildren() has no defined order: sort a copy of the files so the result does not depend on the
-     * file system.
-     *
-     * @param children   Files to merge
-     * @param fileSorter Defines the order in which the files are merged
-     * @return A copy of the files, in the order to merge them
-     */
-    private static FileObject[] sorted(FileObject[] children, FileSorter fileSorter) {
-        FileObject[] ordered = children.clone();
-        fileSorter.sort(ordered);
-        return ordered;
-    }
-
-    /**
-     * Check if file is stable (not being written to) by comparing file sizes
-     * over a specified interval.
-     * 
-     * @param file File to check for stability
-     * @param sizeCheckInterval Time in milliseconds to wait between size checks
-     * @return true if file is stable, false if still being written
-     */
-    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
-        try {
-            long interval = Long.parseLong(sizeCheckInterval);
-            if (interval <= 0) {
-                return true; // No stability check if interval is 0 or negative
-            }
-            
-            long initialSize = file.getContent().getSize();
-            
-            // Wait for the specified interval
-            Thread.sleep(interval);
-            
-            // Re-read file size and compare
-            long finalSize = file.getContent().getSize();
-            
-            // File is stable if size hasn't changed
-            return initialSize == finalSize;
-            
-        } catch (NumberFormatException e) {
-            // If we can't parse the interval, assume file is stable
-            log.warn("Invalid timeBetweenSizeCheck value: " + sizeCheckInterval + ". Skipping stability check.");
-            return true;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            // If interrupted, assume file is stable
-            return true;
-        } catch (Exception e) {
-            // If we can't check stability, assume file is stable
-            log.warn("Error checking file stability: " + e.getMessage() + ". Assuming file is stable.");
-            return true;
+        try (OutputStream output = target.getContent().getOutputStream(append)) {
+            return merge(output, selected, null, append);
         }
     }
-
-    /**
-     * Sets error to context and handle.
-     *
-     * @param msgCtx      Message Context to set info
-     * @param e           Exception associated
-     * @param error       Error code
-     * @param errorDetail Error detail
-     * @param responseVariable Response variable name
-     * @param overwriteBody Overwrite body
-     */
-    private void handleError(MessageContext msgCtx, Exception e, Error error, String errorDetail,
-                             String responseVariable, boolean overwriteBody) {
-        errorDetail = Utils.maskURLPassword(errorDetail);
-        FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
-        JsonObject resultJSON = generateOperationResult(msgCtx, result);
-        handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
-        handleException(errorDetail, e, msgCtx);
-    }
-
 }

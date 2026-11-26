@@ -26,8 +26,10 @@
     <parameter name="appendPosition" description="Position to append the content"/>
     <parameter name="enableStreaming" description="Write the file in streaming manner"/>
     <parameter name="appendNewLine" description="Whether to add a new line character at the end"/>
-    <parameter name="enableLock" description="Whether to lock the file when reading"/>
-    <parameter name="updateLastModified" description="Whether to update the last modified timestamp."/>
+    <parameter name="enableLock" description="Whether to lock the file when writing"/>
+    <parameter name="atomicWrite" description="Publish the completed file by rename"/>
+    <parameter name="updateLastModified" description="Carry the source timestamp to the output file"/>
+    <parameter name="lastModified" description="Source timestamp in epoch milliseconds"/>
     <parameter name="maxRetries" description="The maximum number of retry attempts in case of a failure."/>
     <parameter name="retryDelay" description="The delay between retry attempts in milliseconds."/>
     <parameter name="timeBetweenSizeCheck" description="Time to wait between file size checks for stability (in milliseconds)"/>

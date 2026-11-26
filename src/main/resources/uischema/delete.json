@@ -106,9 +106,9 @@
                                         "name": "maxRetries",
                                         "displayName": "Max Retries",
                                         "inputType": "integerOrExpression",
-                                        "defaultValue": "0",
+                                        "defaultValue": "1",
                                         "required": "false",
-                                        "helpTip": "The maximum number of retries to be done in case of a failure."
+                                        "helpTip": "Number of retries after a fast transport failure."
                                     }
                                 },
                                 {
@@ -130,6 +130,28 @@
                       "value": {
                         "groupName": "Advanced",
                         "elements": [
+                          {
+                              "type": "attribute",
+                              "value": {
+                                  "name": "enableLock",
+                                  "displayName": "Enable Lock",
+                                  "inputType": "booleanOrExpression",
+                                  "defaultValue": "false",
+                                  "required": "false",
+                                  "helpTip": "Acquire a lock on the source file."
+                              }
+                          },
+                          {
+                              "type": "attribute",
+                              "value": {
+                                  "name": "minFileAge",
+                                  "displayName": "Min File Age",
+                                  "inputType": "stringOrExpression",
+                                  "defaultValue": "",
+                                  "required": "false",
+                                  "helpTip": "Minimum file age in the same units as maxFileAge."
+                              }
+                          },
                           {
                             "type": "attribute",
                             "value": {

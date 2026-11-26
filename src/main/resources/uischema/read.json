@@ -189,7 +189,7 @@
                                         "name": "encoding",
                                         "displayName": "Encoding",
                                         "inputType": "stringOrExpression",
-                                        "defaultValue": "UTF-8",
+                                        "defaultValue": "",
                                         "required": "false",
                                         "enableCondition": [
                                             "NOT",
@@ -197,7 +197,7 @@
                                                 "readMode": "Metadata Only"
                                             }
                                         ],
-                                        "helpTip": "Encoding of the message generated."
+                                        "helpTip": "Encoding of the message generated. Empty means the charset of the content type, and UTF-8 when the type names none."
                                     }
                                 },
                                 {
@@ -228,9 +228,9 @@
                                         "name": "maxRetries",
                                         "displayName": "Max Retries",
                                         "inputType": "integerOrExpression",
-                                        "defaultValue": "0",
+                                        "defaultValue": "1",
                                         "required": "false",
-                                        "helpTip": "The maximum number of retries to be done in case of a failure."
+                                        "helpTip": "Number of retries after a fast transport failure."
                                     }
                                 },
                                 {
@@ -287,6 +287,17 @@
                                         "defaultValue": "",
                                         "required": "false",
                                         "helpTip": "Maximum age of files to consider for reading (e.g., '7d', '2h', '30m', '60s'). Files older than this will be excluded. Supports units: s (seconds), m (minutes), h (hours), d (days). Only applicable when reading from directories."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "minFileAge",
+                                        "displayName": "Min File Age",
+                                        "inputType": "stringOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Read files older than this age. Use milliseconds or a value such as 30s, 5m, 2h or 7d."
                                     }
                                 },
                                 {

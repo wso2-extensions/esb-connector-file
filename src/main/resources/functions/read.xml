@@ -34,6 +34,7 @@
     <parameter name="includeFiles" description="Comma-separated patterns for files to include"/>
     <parameter name="excludeFiles" description="Comma-separated patterns for files to exclude"/>
     <parameter name="maxFileAge" description="Maximum age of files to consider for reading (e.g., '7d', '2h', '30m')"/>
+    <parameter name="minFileAge" description="Minimum age of files to read, in the same units as maxFileAge"/>
     <parameter name="timeBetweenSizeCheck" description="Time to wait between file size checks for stability (in milliseconds)"/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
     <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>

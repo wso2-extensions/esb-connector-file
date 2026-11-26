@@ -77,6 +77,28 @@
                                 {
                                     "type": "attribute",
                                     "value": {
+                                        "name": "maxRetries",
+                                        "displayName": "Max Retries",
+                                        "inputType": "integerOrExpression",
+                                        "defaultValue": "1",
+                                        "required": "false",
+                                        "helpTip": "Number of retries after a fast transport failure."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "atomicWrite",
+                                        "displayName": "Atomic Write",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "true",
+                                        "required": "false",
+                                        "helpTip": "Write to a temporary file before committing the target."
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
                                         "name": "diskShareAccessMask",
                                         "displayName": "Access mask values for disk share",
                                         "inputType": "stringOrExpression",

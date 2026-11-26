@@ -31,17 +31,15 @@ public class FTPConnectionConfig extends RemoteServerConfig {
     private boolean isPassive;
 
     //timeout for the initial control connection
-    private int connectionTimeout;
+    private Integer connectionTimeout;
 
     //the socket timeout for the FTP client
-    private int socketTimeout;
+    private Integer socketTimeout;
 
     public FTPConnectionConfig() {
         super();
         //https://winscp.net/eng/docs/ftp_modes : default = true as it is popular
         isPassive = true;
-        connectionTimeout = 100000;
-        socketTimeout = 150000;
     }
 
     public boolean isPassive() {
@@ -54,7 +52,7 @@ public class FTPConnectionConfig extends RemoteServerConfig {
         }
     }
 
-    public int getConnectionTimeout() {
+    public Integer getConnectionTimeout() {
         return connectionTimeout;
     }
 
@@ -69,7 +67,7 @@ public class FTPConnectionConfig extends RemoteServerConfig {
         }
     }
 
-    public int getSocketTimeout() {
+    public Integer getSocketTimeout() {
         return socketTimeout;
     }
 

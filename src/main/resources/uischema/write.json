@@ -72,6 +72,7 @@
                                             "text/plain",
                                             "application/xml",
                                             "application/binary",
+                                            "application/octet-stream",
                                             "application/json",
                                             "text/xml"
                                         ],
@@ -83,7 +84,7 @@
                                             }
                                         ],
                                         "required": "true",
-                                        "helpTip": "MIME Type of the message. When formatting message for writing this will be used."
+                                        "helpTip": "MIME Type of the message. When formatting message for writing this will be used. application/binary takes a base64 content and writes the decoded bytes, application/octet-stream writes the content as it is given."
                                     }
                                 },
                                 {
@@ -108,7 +109,7 @@
                                         "name": "appendPosition",
                                         "displayName": "Position",
                                         "inputType": "stringOrExpression",
-                                        "defaultValue": "0",
+                                        "defaultValue": "",
                                         "required": "false",
                                         "enableCondition": [
                                             {
@@ -182,7 +183,7 @@
                                         "inputType": "booleanOrExpression",
                                         "defaultValue": "false",
                                         "required": "true",
-                                        "helpTip": "Write to the file in streaming manner."
+                                        "helpTip": "Write to the file in streaming manner. With true a binary body under application/octet-stream is read once and written with no copy in memory, and no body is kept, also when overwriteBody is false. Under another type the formatter of the type writes the body as with false. A body from a streamed read under application/binary is written as it is read, with no copy in memory."
                                     }
                                 },
                                 {
@@ -191,9 +192,31 @@
                                         "name": "enableLock",
                                         "displayName": "Enable Locking",
                                         "inputType": "booleanOrExpression",
-                                        "defaultValue": "false",
+                                        "defaultValue": "true",
                                         "required": "true",
                                         "helpTip": "Whether to lock the file when writing"
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "atomicWrite",
+                                        "displayName": "Atomic Write",
+                                        "inputType": "booleanOrExpression",
+                                        "defaultValue": "true",
+                                        "required": "false",
+                                        "helpTip": "Publish the completed file by rename"
+                                    }
+                                },
+                                {
+                                    "type": "attribute",
+                                    "value": {
+                                        "name": "lastModified",
+                                        "displayName": "Source Timestamp",
+                                        "inputType": "integerOrExpression",
+                                        "defaultValue": "",
+                                        "required": "false",
+                                        "helpTip": "Source timestamp in epoch milliseconds"
                                     }
                                 },
                                 {
@@ -213,9 +236,9 @@
                                         "name": "maxRetries",
                                         "displayName": "Max Retries",
                                         "inputType": "integerOrExpression",
-                                        "defaultValue": "0",
+                                        "defaultValue": "1",
                                         "required": "false",
-                                        "helpTip": "The maximum number of retries to be done in case of a failure."
+                                        "helpTip": "Number of retries after a fast transport failure."
                                     }
                                 },
                                 {
@@ -226,7 +249,7 @@
                                         "inputType": "integerOrExpression",
                                         "defaultValue": "0",
                                         "required": "false",
-                                        "helpTip": "The time interval between retries in milliseconds."
+                                        "helpTip": "Deprecated. Retries use the operation frame."
                                     }
                                 },
                                 {
@@ -248,7 +271,7 @@
                                         "inputType": "stringOrExpression",
                                         "defaultValue": "",
                                         "required": "false",
-                                        "helpTip": "File permission to set after writing (e.g., '755', '644'). Only supported for local file systems."
+                                        "helpTip": "File permission to set after writing (e.g., '755', '644'). Supported for local and SFTP files."
                                     }
                                 },
                                 {
@@ -290,8 +313,8 @@
                             "name": "overwriteBody",
                             "displayName": "Overwrite Message Body",
                             "inputType": "checkbox",
-                            "defaultValue": "false",
-                            "helpTip": "Replace the Message Body in Message Context with the output of the operation (This will remove the payload from the above variable).",
+                            "defaultValue": "true",
+                            "helpTip": "The designer sets true for a new write. A write must name a value. With true the result of the write replaces the message body, so a step after the write no longer has the content, and the response variable holds no result payload. Set false on every write whose body is needed after it, the body is then held in memory. A streamed write keeps no body either way.",
                             "required": "false"
                         }
                     }

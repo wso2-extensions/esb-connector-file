@@ -16,13 +16,13 @@
    specific language governing permissions and limitations
    under the License.
 -->
-<template name="init" onError="fault" xmlns="http://ws.apache.org/ns/synapse">
+<template name="init" xmlns="http://ws.apache.org/ns/synapse">
 	<!--common params-->
 	<parameter name="name" description="Unique name the connection is identified by"/>
 	<parameter name="connectionType" description="Protocol to communicate with file system. Possible values 'LOCAL', 'SMB2', 'FTP', 'FTPS', 'SFTP'"/>
 	<parameter name="workingDir" description="Working directory. File paths in operations should be given w.r.t this folder"/>
-	<parameter name="fileLockScheme" description="File locking behaviour to use. Local or Cluster" />
-	<parameter name="maxFailureRetryCount" description="Max retry count upon file operation failure"/>
+	<parameter name="fileLockScheme" description="Deprecated. Both Local and Cluster use the share lock." />
+	<parameter name="maxFailureRetryCount" description="Deprecated. This setting has no effect."/>
 	<!--remote server params-->
 	<parameter name="host" description="Host name of the file server"/>
 	<parameter name="port" description="The port number of the file server"/>
@@ -47,6 +47,7 @@
 	<parameter name="channelProtectionLevel" description="FTP Data Channel protection level"/>
 	<!--SFTP params-->
 	<parameter name="sftpConnectionTimeout" description="Jsch connection timeout in milliSec"/>
+	<parameter name="sftpKeepAliveCount" description="SFTP keep alive count"/>
 	<parameter name="sftpSessionTimeout" description="Jsch session timeout in millisec"/>
 	<parameter name="strictHostKeyChecking" description="Host key checking to use. If true it will use 'yes'"/>
 	<parameter name="privateKeyFilePath" description="path to private key file"/>
@@ -61,12 +62,31 @@
 	<parameter name="minEvictionTime" description="The minimum amount of time an object must sit idle in the pool before it is eligible for eviction by the idle object evictor "/>
 	<parameter name="exhaustedAction" description="Determines the action to take when the borrowObject() method is called, but the pool is exhausted"/>
 	<!--Connection suspension params-->
+	<parameter name="autoLockRelease" description="Enables stale lock release"/>
+	<parameter name="lockStaleAge" description="Stale lock age in milliseconds"/>
+	<parameter name="useTempFolder" description="Uses a temporary folder for writes"/>
+	<parameter name="tempFolderName" description="Name of the temporary folder"/>
+	<parameter name="tempFileSuffix" description="Suffix of temporary files"/>
 	<parameter name="fileCacheEnabled" description="Enable file caching for better performance"/>
 	<parameter name="suspendOnConnectionFailure" description="Suspend connection on failure"/>
 	<parameter name="retriesBeforeSuspension" description="Number of retries before suspending the connection"/>
 	<parameter name="suspendInitialDuration" description="Initial duration in milliseconds to suspend the connection"/>
 	<parameter name="suspendProgressionFactor" description="Progression factor for suspension duration"/>
 	<parameter name="suspendMaximumDuration" description="Maximum duration in milliseconds to suspend the connection"/>
+	<parameter name="streamIdleTimeout" description="Idle time for a stream or its retained lock in milliseconds."/>
+	<parameter name="ftpDataTimeout" description="FTP data timeout in milliseconds."/>
+	<parameter name="ftpTransferType" description="FTP transfer type. Use BINARY or ASCII."/>
+	<parameter name="writeStallTimeout" description="Socket write stall timeout in milliseconds. Set to zero to disable it."/>
+	<parameter name="sftpKeyExchangeAlgorithms" description="SSH key exchange algorithms."/>
+	<parameter name="sftpHostKeyAlgorithms" description="SSH host key algorithms."/>
+	<parameter name="sftpCiphers" description="SSH ciphers."/>
+	<parameter name="sftpMacs" description="SSH message authentication algorithms."/>
+	<parameter name="sftpPubkeyAcceptedAlgorithms" description="SSH public key algorithms accepted for authentication."/>
+	<parameter name="sftpFileNameEncoding" description="Character set of SFTP file names. Leave empty to use UTF-8."/>
+	<parameter name="smb2ReadTimeout" description="SMB2 read timeout in milliseconds."/>
+	<parameter name="smb2WriteTimeout" description="SMB2 write timeout in milliseconds."/>
+	<parameter name="smb2TransactTimeout" description="SMB2 transaction timeout in milliseconds."/>
+	<parameter name="smb2DfsEnabled" description="Whether the SMB2 client resolves DFS paths. The default is true."/>
 	<sequence>
 		<property name="name" expression="$func:name"/>
 		<class name="org.wso2.carbon.connector.operations.FileConfig" />

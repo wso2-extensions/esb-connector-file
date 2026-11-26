@@ -19,18 +19,28 @@
 package org.wso2.carbon.connector.pojo;
 
 import org.apache.commons.lang.StringUtils;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.synapse.MessageContext;
 import org.wso2.carbon.connector.connection.FileServerProtocol;
 import org.wso2.integration.connector.core.pool.Configuration;
 import org.wso2.integration.connector.core.util.ConnectorUtils;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
 import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.Utils;
 
 /**
  * Configuration parameters used to
  * establish a connection to the file server
  */
 public class ConnectionConfiguration {
+
+    private final FileSystemOptions providerOptions = new FileSystemOptions();
+    private final long streamIdleTimeout;
+    private final boolean autoLockRelease;
+    private final long lockStaleAge;
+    private final boolean useTempFolder;
+    private final String tempFolderName;
+    private final String tempFileSuffix;
 
     private String connectionName;
 
@@ -59,19 +69,87 @@ public class ConnectionConfiguration {
 
     private boolean isEncryptionEnabled =  false;
     
-    private boolean fileCacheEnabled = true;
+    private boolean fileCacheEnabled;
     private boolean suspendOnConnectionFailure = true;
     private int retriesBeforeSuspension = 0;
     private long suspendInitialDuration = 1000;
     private double suspendProgressionFactor = 1.0;
     private long suspendMaximumDuration = 300000;
 
-    public ConnectionConfiguration(MessageContext messageContext) {
+    public ConnectionConfiguration(MessageContext messageContext) throws InvalidConfigurationException {
 
+        try {
+            streamIdleTimeout = Long.parseLong(Utils.lookUpStringParam(messageContext, "streamIdleTimeout", "60000"));
+        } catch (NumberFormatException e) {
+            throw new InvalidConfigurationException("Parameter 'streamIdleTimeout' must be a number.");
+        }
+        if (streamIdleTimeout <= 0) {
+            throw new InvalidConfigurationException("Parameter 'streamIdleTimeout' must be more than 0.");
+        }
+        autoLockRelease = Utils.lookUpBooleanParam(messageContext, "autoLockRelease", true);
+        useTempFolder = Utils.lookUpBooleanParam(messageContext, "useTempFolder", true);
+        tempFolderName = Utils.lookUpStringParam(messageContext, "tempFolderName", ".part");
+        tempFileSuffix = Utils.lookUpStringParam(messageContext, "tempFileSuffix", ".part");
+        if (tempFolderName.equals(".") || tempFolderName.equals("..") || tempFolderName.contains("/")
+                || tempFolderName.contains("\\")) {
+            throw new InvalidConfigurationException("Parameter 'tempFolderName' must be a folder name with no path "
+                    + "separator.");
+        }
+        if (tempFileSuffix.length() < 2 || !tempFileSuffix.startsWith(".") || tempFileSuffix.contains("/")
+                || tempFileSuffix.contains("\\")) {
+            throw new InvalidConfigurationException("Parameter 'tempFileSuffix' must start with a dot, have at least "
+                    + "one character after it and hold no path separator.");
+        }
+        try {
+            lockStaleAge = Long.parseLong(Utils.lookUpStringParam(messageContext, "lockStaleAge", "900000"));
+        } catch (NumberFormatException e) {
+            throw new InvalidConfigurationException("Parameter 'lockStaleAge' must be a number.");
+        }
+        if (lockStaleAge < -1) {
+            throw new InvalidConfigurationException("Parameter 'lockStaleAge' must be at least -1.");
+        }
         this.configuration = ConnectorUtils.getPoolConfiguration(messageContext);
-        // Set default values
+        if (configuration.getMaxWaitTime() == null) {
+            configuration.setMaxWaitTime(10000L);
+        }
+        if (configuration.getEvictionCheckInterval() == null) {
+            configuration.setEvictionCheckInterval(60000L);
+        }
+        if (configuration.getMinEvictionTime() == null) {
+            configuration.setMinEvictionTime(300000L);
+        }
+        configuration.setNumTestsPerEvictionRun(-1);
+        configuration.setTestWhileIdle(true);
         this.configuration.setExhaustedAction("WHEN_EXHAUSTED_BLOCK");
         this.configuration.setTestOnBorrow(true);
+    }
+
+    public FileSystemOptions getProviderOptions() {
+        return providerOptions;
+    }
+
+    public long getStreamIdleTimeout() {
+        return streamIdleTimeout;
+    }
+
+    public boolean isAutoLockRelease() {
+        return autoLockRelease;
+    }
+
+    public long getLockStaleAge() {
+        return lockStaleAge;
+    }
+
+    public boolean isUseTempFolder() {
+        return useTempFolder;
+    }
+
+    public String getTempFolderName() {
+        return tempFolderName;
+    }
+
+    public String getTempFileSuffix() {
+        return tempFileSuffix;
     }
 
     public String getConnectionName() {

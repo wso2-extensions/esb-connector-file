@@ -6,7 +6,41 @@
     "properties": {
         "payload": {
             "type": "object",
-            "description": "The main response payload from the rename operation."
+            "description": "The main response payload from the rename operation.",
+            "properties": {
+                "success": {
+                    "type": "boolean",
+                    "description": "Indicates whether the operation was successful."
+                },
+                "inferred": {
+                    "type": "boolean",
+                    "description": "True when a retry after a lost reply found the source gone and the target matching, so the operation is reported as done by inference."
+                },
+                "targetComplete": {
+                    "type": "boolean",
+                    "description": "True when the operation failed but the target is complete, for example when the source could not be deleted after the copy."
+                },
+                "error": {
+                    "type": "object",
+                    "description": "Error information if the operation was unsuccessful.",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "description": "Error code"
+                        },
+                        "message": {
+                            "type": "string",
+                            "description": "Error message"
+                        },
+                        "detail": {
+                            "type": "string",
+                            "description": "Additional error detail"
+                        }
+                    },
+                    "required": ["code", "message"]
+                }
+            },
+            "required": ["success"]
         },
         "attributes": {
             "type": "object",

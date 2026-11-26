@@ -53,6 +53,17 @@
                         "groupName": "Advanced",
                         "elements": [
                           {
+                              "type": "attribute",
+                              "value": {
+                                  "name": "maxRetries",
+                                  "displayName": "Max Retries",
+                                  "inputType": "integerOrExpression",
+                                  "defaultValue": "1",
+                                  "required": "false",
+                                  "helpTip": "Number of retries after a fast transport failure."
+                              }
+                          },
+                          {
                             "type": "attribute",
                             "value": {
                               "name": "diskShareAccessMask",

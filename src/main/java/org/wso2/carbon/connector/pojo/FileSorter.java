@@ -18,6 +18,8 @@
 
 package org.wso2.carbon.connector.pojo;
 
+import org.wso2.vfs.shared.log.NamedLog;
+import org.wso2.vfs.shared.log.UriMask;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.org.apache.commons.vfs2.FileObject;
@@ -47,26 +49,40 @@ public class FileSorter {
             Comparator.comparing((FileObject file) -> file.getName().getBaseName())
                     .thenComparing(FileObject::getName);
 
+    private final NamedLog connectionLog;
     private final String sortAttribute;
     private final boolean isAscending;
 
     public FileSorter(String sortAttribute, String sortOrder) {
+        this(sortAttribute, sortOrder, null);
+    }
+
+    public FileSorter(String sortAttribute, String sortOrder, NamedLog connectionLog) {
+        this.connectionLog = connectionLog;
 
         if (SORT_ATTRIB_NAME.equals(sortAttribute) || SORT_ATTRIB_SIZE.equals(sortAttribute)
                 || SORT_ATTRIB_MODIFIED_TIME.equals(sortAttribute)) {
             this.sortAttribute = sortAttribute;
         } else {
-            log.warn(LOG_PREFIX + "Unknown sort attribute " + sortAttribute + ". Sorting by " + SORT_ATTRIB_NAME);
+            warn("Unknown sort attribute " + sortAttribute + ". Sorting by " + SORT_ATTRIB_NAME);
             this.sortAttribute = SORT_ATTRIB_NAME;
         }
         if (SORT_ORDER_DESCENDING.equals(sortOrder)) {
             this.isAscending = false;
         } else {
             if (!SORT_ORDER_ASCENDING.equals(sortOrder)) {
-                log.warn(LOG_PREFIX + "Unknown sort order " + sortOrder + ". Sorting in " + SORT_ORDER_ASCENDING
+                warn("Unknown sort order " + sortOrder + ". Sorting in " + SORT_ORDER_ASCENDING
                         + " order");
             }
             this.isAscending = true;
+        }
+    }
+
+    private void warn(String message) {
+        if (connectionLog == null) {
+            log.warn(LOG_PREFIX + UriMask.mask(message));
+        } else {
+            connectionLog.warn(message);
         }
     }
 
@@ -96,7 +112,7 @@ public class FileSorter {
      * Reads the attribute of each file once, so the comparison stays consistent during the sort. A file whose
      * attribute cannot be read (e.g. a folder has no size) is treated as having the smallest value.
      */
-    private static Comparator<FileObject> byAttribute(FileObject[] input, AttributeReader reader) {
+    private Comparator<FileObject> byAttribute(FileObject[] input, AttributeReader reader) {
 
         Map<FileObject, Long> values = new IdentityHashMap<>();
         for (FileObject file : input) {
@@ -104,8 +120,11 @@ public class FileSorter {
             try {
                 value = reader.read(file);
             } catch (FileSystemException e) {
-                if (log.isDebugEnabled()) {
-                    log.debug(LOG_PREFIX + "Unable to read the sort attribute of " + file.getName().getBaseName(), e);
+                String message = "Unable to read the sort attribute of " + file.getName().getBaseName() + ": " + e.getMessage();
+                if (connectionLog == null) {
+                    log.debug(LOG_PREFIX + UriMask.mask(message));
+                } else {
+                    connectionLog.debug(message);
                 }
                 value = Long.MIN_VALUE;
             }

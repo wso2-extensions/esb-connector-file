@@ -24,6 +24,7 @@
     <parameter name="sortingOrder" description="File sorting order"/>
     <parameter name="resultPropertyName" description="Name of property to add the list of base64 encoded files operation result."/>
     <parameter name="diskShareAccessMask" description="Access mask for disk share"/>
+    <parameter name="maxRetries" description="Number of retries after a fast transport failure."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.FetchContentToList" />
     </sequence>

@@ -18,6 +18,8 @@
 
 package org.wso2.carbon.connector.utils;
 
+import org.wso2.vfs.shared.log.NamedLog;
+import java.util.function.Consumer;
 import com.google.gson.JsonObject;
 import com.hierynomus.msdtyp.AccessMask;
 import org.apache.commons.lang.StringUtils;
@@ -46,10 +48,8 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.regex.Matcher;
+import org.wso2.vfs.shared.log.UriMask;
 
-import static org.apache.synapse.SynapseConstants.PASSWORD_PATTERN;
-import static org.apache.synapse.SynapseConstants.URL_PATTERN;
 
 /**
  * Util methods related to file connector operations
@@ -105,12 +105,33 @@ public class Utils {
     }
 
     /**
+     * Gives the name that health, metrics and logs show for a connection. Under the super tenant it is the configured
+     * name. Under another tenant it is the tenant specific key, so two tenants never share one health entry. The pool
+     * of the connection keeps the tenant specific key in every case.
+     *
+     * @param connectionName the configured connection name
+     * @param messageContext the message context that holds the tenant domain
+     * @return the name to show
+     */
+    public static String getDisplayConnectionName(String connectionName, MessageContext messageContext) {
+        Object tenantDomain = messageContext.getProperty(Const.TENANT_INFO_DOMAIN);
+        if (tenantDomain == null || Const.SUPER_TENANT_DOMAIN.equals(tenantDomain)) {
+            return connectionName;
+        }
+        return getTenantSpecificConnectionName(connectionName, messageContext);
+    }
+
+    /**
      * Validate and get the disk share access mask.
      *
      * @param diskShareAccessMask Disk share access mask
      * @return Validated disk share access mask
      */
     public static ArrayList<String> validateAndGetDiskShareAccessMask(String diskShareAccessMask) {
+        return validateAndGetDiskShareAccessMask(diskShareAccessMask, null);
+    }
+
+    private static ArrayList<String> validateAndGetDiskShareAccessMask(String diskShareAccessMask, NamedLog connectionLog) {
         // Prepare the set of allowed access mask values
         Set<String> allowedValues = new HashSet<String>();
         for (AccessMask mask : AccessMask.values()) {
@@ -127,15 +148,23 @@ public class Utils {
                 if (allowedValues.contains(accessMask)) {
                     outDiskShareAccessMasks.add(accessMask);
                 } else {
-                    log.warn("Access mask is not valid and was ignored: " + mask);
+                    String message = "Access mask is not valid and was ignored: " + mask;
+                    if (connectionLog == null) {
+                        log.warn(UriMask.mask(message));
+                    } else {
+                        connectionLog.warn(message);
+                    }
                 }
             }
         }
 
         // Fallback to default if nothing is valid or input was null
         if (outDiskShareAccessMasks.isEmpty()) {
-            if (log.isDebugEnabled()) {
-                log.debug("Set the access mask to default MAXIMUM_ALLOWED since the access mask is not defined or the defined values are not valid.");
+            String message = "Using the default access mask MAXIMUM_ALLOWED.";
+            if (connectionLog == null) {
+                log.debug(message);
+            } else {
+                connectionLog.debug(message);
             }
             outDiskShareAccessMasks.add(Const.DISK_SHARE_ACCESS_MASK_MAX_ALLOWED);
         }
@@ -150,6 +179,10 @@ public class Utils {
      * @param diskShareAccessMask Disk share access mask
      */
     public static void addDiskShareAccessMaskToFSO(FileSystemOptions fso, String diskShareAccessMask) {
+        addDiskShareAccessMaskToFSO(fso, diskShareAccessMask, null);
+    }
+
+    public static void addDiskShareAccessMaskToFSO(FileSystemOptions fso, String diskShareAccessMask, NamedLog connectionLog) {
         if (StringUtils.isEmpty(diskShareAccessMask)) {
             try {
                 //set disk share access mask to max allowed to keep default behaviour
@@ -164,7 +197,7 @@ public class Utils {
             try {
                 Smb2FileSystemConfigBuilder smb2ConfigBuilder = Smb2FileSystemConfigBuilder.getInstance();
                 smb2ConfigBuilder.setDiskShareAccessMask(fso,
-                        Utils.validateAndGetDiskShareAccessMask(diskShareAccessMask));
+                        validateAndGetDiskShareAccessMask(diskShareAccessMask, connectionLog));
             } catch (NoClassDefFoundError | NoSuchMethodError e) {
                 //ignore since using an older server version
             }
@@ -214,7 +247,7 @@ public class Utils {
             errorJson.addProperty("message", result.getError().getErrorDetail());
             // Add error detail if available
             if (StringUtils.isNotEmpty(result.getErrorMessage())) {
-                errorJson.addProperty("detail", result.getErrorMessage());
+                errorJson.addProperty("detail", UriMask.mask(result.getErrorMessage()));
             }
             resultJson.add("error", errorJson);
         }
@@ -286,6 +319,10 @@ public class Utils {
      * @return A valid encoding name, either the provided one or the UTF-8 default
      */
     public static String validateEncoding(String encoding, Log log) {
+        return validateArchiveEncoding(encoding, message -> log.warn(UriMask.mask(message)));
+    }
+
+    public static String validateArchiveEncoding(String encoding, Consumer<String> warning) {
         if (StringUtils.isBlank(encoding)) {
             return Const.DEFAULT_ENCODING;
         }
@@ -293,7 +330,7 @@ public class Utils {
             Charset.forName(encoding);
             return encoding;
         } catch (UnsupportedCharsetException | IllegalCharsetNameException e) {
-            log.warn("Invalid encoding '" + encoding + "', falling back to default: " + Const.DEFAULT_ENCODING);
+            warning.accept("Invalid encoding '" + encoding + "', falling back to default: " + Const.DEFAULT_ENCODING);
             return Const.DEFAULT_ENCODING;
         }
     }
@@ -327,11 +364,7 @@ public class Utils {
         FileSystemHandler fileSystemHandler = (FileSystemHandler) handler
                 .getConnection(Const.CONNECTOR_NAME, connectionName);
 
-        // Initialize VFS wrapper for suspension support if not already done
-        if (fileSystemHandler.getVfsWrapper() == null) {
-            fileSystemHandler.initializeVFSWrapper(connectionName);
-        }
-
+        fileSystemHandler.afterLocalCheck();
         return fileSystemHandler;
     }
 
@@ -343,14 +376,7 @@ public class Utils {
      */
     public static String maskURLPassword(String url) {
 
-        final Matcher urlMatcher = URL_PATTERN.matcher(url);
-        String maskUrl;
-        if (urlMatcher.find()) {
-            final Matcher pwdMatcher = PASSWORD_PATTERN.matcher(url);
-            maskUrl = pwdMatcher.replaceFirst(":***@");
-            return maskUrl;
-        }
-        return url;
+        return UriMask.mask(url);
     }
 
     public static void closeFileSystem(FileObject fileObject) {
@@ -365,7 +391,7 @@ public class Utils {
             }
         } catch (FileSystemException warn) {
             String message = "Error on closing the file: " + fileObject.getName().getPath();
-            log.warn(message, warn);
+            log.warn(UriMask.mask(message + ": " + warn.getMessage()));
         }
     }
 
@@ -378,6 +404,11 @@ public class Utils {
      * @throws FileSystemException if setting permissions fails
      */
     public static void setFilePermissions(FileObject fileObject, int permissions) throws FileSystemException {
+        setFilePermissions(fileObject, permissions, message -> log.debug(UriMask.mask(message)));
+    }
+
+    public static void setFilePermissions(FileObject fileObject, int permissions, Consumer<String> debug)
+            throws FileSystemException {
         try {
             // This is primarily supported for local file systems
             // For remote file systems like SFTP, permission setting may not be supported
@@ -392,18 +423,18 @@ public class Utils {
                         java.util.Set<java.nio.file.attribute.PosixFilePermission> perms = 
                             convertOctalToPermissions(permissions);
                         java.nio.file.Files.setPosixFilePermissions(path, perms);
-                        log.debug("Successfully set permissions " + Integer.toOctalString(permissions) + 
+                        debug.accept("Successfully set permissions " + Integer.toOctalString(permissions) +
                                  " on " + fileObject.getName().getPath());
                     }
                 } catch (Exception e) {
-                    log.debug("Could not set POSIX permissions, trying alternative method: " + e.getMessage());
+                    debug.accept("Could not set POSIX permissions, trying alternative method: " + e.getMessage());
                     // Fallback: could implement other permission setting methods here
                 }
             } else {
-                log.debug("Permission setting not implemented for scheme: " + scheme);
+                debug.accept("Permission setting not implemented for scheme: " + scheme);
             }
         } catch (Exception e) {
-            throw new FileSystemException("Failed to set permissions on " + fileObject.getName().getPath(), e);
+            throw new FileSystemException(UriMask.mask("Failed to set permissions on " + fileObject.getName().getPath()), e);
         }
     }
     

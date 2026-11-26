@@ -36,11 +36,13 @@ public class FTPFileSystemSetup implements ProtocolBasedFileSystemSetup {
         FTPConnectionConfig ftpConnectionConfig = (FTPConnectionConfig) fsConfig.getRemoteServerConfig();
         FtpFileSystemConfigBuilder ftpConfigBuilder = FtpFileSystemConfigBuilder.getInstance();
         ftpConfigBuilder.setPassiveMode(fso, ftpConnectionConfig.isPassive());
-        ftpConfigBuilder.setConnectTimeout(fso,
-            Duration.ofMillis(ftpConnectionConfig.getConnectionTimeout()));
+        if (ftpConnectionConfig.getConnectionTimeout() != null) {
+            ftpConfigBuilder.setConnectTimeout(fso, Duration.ofMillis(ftpConnectionConfig.getConnectionTimeout()));
+        }
         ftpConfigBuilder.setRetryCount(fso, fsConfig.getRetryCount());
-        ftpConfigBuilder.setSoTimeout(fso,
-            Duration.ofMillis(ftpConnectionConfig.getSocketTimeout()));
+        if (ftpConnectionConfig.getSocketTimeout() != null) {
+            ftpConfigBuilder.setSoTimeout(fso, Duration.ofMillis(ftpConnectionConfig.getSocketTimeout()));
+        }
         ftpConfigBuilder.setUserDirIsRoot(fso, ftpConnectionConfig.isUserDirIsRoot());
 
         return Const.FTP_PROTOCOL_PREFIX + constructVfsUrl(fsConfig);

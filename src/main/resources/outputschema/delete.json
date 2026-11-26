@@ -16,6 +16,24 @@
                     "type": "integer",
                     "description": "The number of deleted files."
                 },
+                "filesLeft": {
+                    "type": "array",
+                    "description": "The members of the folder that the operation left in place.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "The member, relative to the folder."
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "Why the member was left: FILTERED, RESERVED, LOCKED, REMOVED, APPLICATION_ERROR, UNCLEAR, or the name of the error of the member."
+                            }
+                        },
+                        "required": ["name", "reason"]
+                    }
+                },
                 "error": {
                     "type": "object",
                     "description": "Error information if the operation was unsuccessful.",

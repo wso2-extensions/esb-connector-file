@@ -23,6 +23,7 @@
     <parameter name="permissions" description="Permissions to set on the new directory (octal format, e.g., 755)"/>
     <parameter name="responseVariable" description="The name of the variable to which the output should be stored."/>
     <parameter name="overwriteBody" description="Replace the Message Body in Message Context with the response of the operation."/>
+    <parameter name="maxRetries" description="Number of retries after a fast transport failure."/>
     <sequence>
         <class name="org.wso2.carbon.connector.operations.CreateDirectory" />
     </sequence>

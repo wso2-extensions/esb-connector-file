@@ -87,7 +87,7 @@
                     "name": "userDirIsRoot",
                     "displayName": "User Directory Is Root",
                     "inputType": "booleanOrExpression",
-                    "defaultValue": "",
+                    "defaultValue": "false",
                     "required": "true",
                     "helpTip": "True if user directory is considered as root directory"
                   }
@@ -195,7 +195,7 @@
               "name": "ftpConnectionTimeout",
               "displayName": "FTP Connection Timeout",
               "inputType": "stringOrExpression",
-              "defaultValue": "100000",
+              "defaultValue": "",
               "required": "no",
               "helpTip":"Timeout in milisec for initial control connection"
             }
@@ -206,7 +206,7 @@
               "name": "ftpSocketTimeout",
               "displayName": "FTP Socket Timeout",
               "inputType": "stringOrExpression",
-              "defaultValue": "150000",
+              "defaultValue": "",
               "required": "false",
               "helpTip":"Socket timeout for FTP client"
             }
@@ -236,13 +236,204 @@
           {
             "type": "attribute",
             "value": {
+              "name": "maxActiveConnections",
+              "displayName": "Max Active Connections",
+              "inputType": "integerOrExpression",
+              "defaultValue": "8",
+              "required": "false",
+              "helpTip": "Maximum number of handlers in the pool."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "maxIdleConnections",
+              "displayName": "Max Idle Connections",
+              "inputType": "integerOrExpression",
+              "defaultValue": "8",
+              "required": "false",
+              "helpTip": "Maximum number of idle handlers."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "maxWaitTime",
+              "displayName": "Max Wait Time",
+              "inputType": "integerOrExpression",
+              "defaultValue": "10000",
+              "required": "false",
+              "helpTip": "Maximum pool borrow wait in milliseconds."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "exhaustedAction",
+              "displayName": "Exhausted Action",
+              "inputType": "stringOrExpression",
+              "defaultValue": "WHEN_EXHAUSTED_BLOCK",
+              "required": "false",
+              "helpTip": "Wait for a handler up to the pool borrow timeout."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "evictionCheckInterval",
+              "displayName": "Eviction Check Interval",
+              "inputType": "integerOrExpression",
+              "defaultValue": "60000",
+              "required": "false",
+              "helpTip": "Time between idle handler checks in milliseconds."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "minEvictionTime",
+              "displayName": "Min Eviction Time",
+              "inputType": "integerOrExpression",
+              "defaultValue": "300000",
+              "required": "false",
+              "helpTip": "Minimum idle time before eviction in milliseconds."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "streamIdleTimeout",
+              "displayName": "Stream Idle Timeout",
+              "inputType": "integerOrExpression",
+              "defaultValue": "60000",
+              "required": "false",
+              "helpTip": "Idle time for a stream or its retained lock in milliseconds."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "autoLockRelease",
+              "displayName": "Auto Lock Release",
+              "inputType": "booleanOrExpression",
+              "defaultValue": "true",
+              "required": "false",
+              "helpTip": "Allow stale locks to be released."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "lockStaleAge",
+              "displayName": "Lock Stale Age",
+              "inputType": "integerOrExpression",
+              "defaultValue": "900000",
+              "required": "false",
+              "helpTip": "Stale lock age in milliseconds. Use -1 to disable stale age expiry."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "useTempFolder",
+              "displayName": "Use Temp Folder",
+              "inputType": "booleanOrExpression",
+              "defaultValue": "true",
+              "required": "false",
+              "helpTip": "Write temporary files in a subfolder."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "tempFolderName",
+              "displayName": "Temp Folder Name",
+              "inputType": "stringOrExpression",
+              "defaultValue": ".part",
+              "required": "false",
+              "helpTip": "Name of the temporary subfolder."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "tempFileSuffix",
+              "displayName": "Temp File Suffix",
+              "inputType": "stringOrExpression",
+              "defaultValue": ".part",
+              "required": "false",
+              "helpTip": "Suffix of temporary files."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "maxFailureRetryCount",
+              "displayName": "Max Failure Retry Count",
+              "inputType": "integerOrExpression",
+              "defaultValue": "",
+              "required": "false",
+              "helpTip": "Deprecated. This setting has no effect."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "ftpDataTimeout",
+              "displayName": "Ftp Data Timeout",
+              "inputType": "integerOrExpression",
+              "defaultValue": "",
+              "required": "false",
+              "helpTip": "FTP data timeout in milliseconds."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "ftpTransferType",
+              "displayName": "Ftp Transfer Type",
+              "inputType": "comboOrExpression",
+              "defaultValue": "BINARY",
+              "required": "false",
+              "helpTip": "FTP transfer type. Use BINARY or ASCII.",
+              "comboValues": [
+                "BINARY",
+                "ASCII"
+              ]
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "retryCount",
+              "displayName": "Retry Count",
+              "inputType": "integerOrExpression",
+              "defaultValue": "5",
+              "required": "false",
+              "helpTip": "Maximum number of FTP connection retries."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
+              "name": "writeStallTimeout",
+              "displayName": "Write Stall Timeout",
+              "inputType": "integerOrExpression",
+              "defaultValue": "",
+              "required": "false",
+              "helpTip": "Socket write stall timeout in milliseconds. Set to zero to disable it."
+            }
+          },
+          {
+            "type": "attribute",
+            "value": {
               "name": "fileLockScheme",
               "displayName": "File Locking Behaviour",
               "inputType": "comboOrExpression",
               "comboValues": ["Local", "Cluster"],
               "defaultValue": "Local",
-              "required": "true",
-              "helpTip":"File Locking Behaviour to use in operations associated with this connection."
+              "required": "false",
+              "helpTip":"Deprecated. Both Local and Cluster use the share lock."
             }
           },
           {
@@ -251,9 +442,9 @@
               "name": "fileCacheEnabled",
               "displayName": "File Cache Enabled",
               "inputType": "booleanOrExpression",
-              "defaultValue": "true",
+              "defaultValue": "false",
               "required": "false",
-              "helpTip":"Enable file caching for better performance"
+              "helpTip":"Enable the bounded file object cache."
             }
           },
           {

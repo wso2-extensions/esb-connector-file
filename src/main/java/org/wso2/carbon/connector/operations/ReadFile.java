@@ -18,10 +18,15 @@
 
 package org.wso2.carbon.connector.operations;
 
+import org.wso2.vfs.shared.log.UriMask;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMException;
+import org.apache.axiom.om.OMSourcedElement;
+import org.apache.axiom.soap.SOAPEnvelope;
 import org.apache.axis2.AxisFault;
 import org.apache.axis2.Constants;
 import org.apache.axis2.builder.Builder;
@@ -29,14 +34,16 @@ import org.apache.axis2.builder.BuilderUtil;
 import org.apache.axis2.format.DataSourceMessageBuilder;
 import org.apache.axis2.format.ManagedDataSource;
 import org.apache.axis2.format.ManagedDataSourceFactory;
+import org.apache.axis2.format.TextMessageBuilder;
 import org.apache.axis2.transport.TransportUtils;
-import org.apache.commons.io.input.AutoCloseInputStream;
 import org.apache.commons.lang.StringUtils;
+import org.wso2.vfs.shared.log.NamedLog;
 import org.wso2.org.apache.commons.vfs2.FileObject;
-import org.wso2.org.apache.commons.vfs2.FileSelectInfo;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
-import org.wso2.org.apache.commons.vfs2.FileSystemManager;
-import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
+import org.wso2.org.apache.commons.vfs2.provider.local.LocalFile;
+import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
+import org.wso2.vfs.shared.error.ErrorClassifier;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
@@ -45,36 +52,44 @@ import org.apache.synapse.data.connector.DefaultConnectorResponse;
 import org.apache.synapse.transport.passthru.PassThroughConstants;
 import org.apache.synapse.transport.passthru.util.BinaryRelayBuilder;
 import org.wso2.carbon.connector.connection.FileSystemHandler;
-import org.wso2.integration.connector.core.AbstractConnectorOperation;
+import org.wso2.carbon.connector.frame.Attempt;
+import org.wso2.carbon.connector.frame.OperationFrame;
+import org.wso2.carbon.connector.frame.ProgressClock;
+import org.wso2.carbon.connector.frame.StreamLease;
+import org.wso2.carbon.connector.pojo.ConnectionConfiguration;
+import org.wso2.carbon.connector.utils.SourceGuard;
 import org.wso2.integration.connector.core.ConnectException;
-import org.wso2.integration.connector.core.connection.ConnectionHandler;
-import org.wso2.integration.connector.core.util.ConnectorUtils;
-import org.wso2.carbon.connector.exception.FileLockException;
+import org.wso2.integration.connector.core.util.PayloadUtils;
 import org.wso2.carbon.connector.exception.FileOperationException;
-import org.wso2.carbon.connector.exception.IllegalPathException;
 import org.wso2.carbon.connector.exception.InvalidConfigurationException;
-import org.wso2.carbon.connector.exception.ConnectionSuspendedException;
-import org.wso2.carbon.connector.filelock.FileLockManager;
 import org.wso2.carbon.connector.pojo.FileOperationResult;
 import org.wso2.carbon.connector.pojo.FileReadMode;
 import org.wso2.carbon.connector.utils.Error;
 import org.wso2.carbon.connector.utils.Const;
+import org.wso2.carbon.connector.utils.ContentFailure;
 import org.wso2.carbon.connector.utils.Utils;
 import org.wso2.carbon.connector.utils.AdvancedFileFilter;
-import org.wso2.carbon.connector.utils.FileObjectDataSource;
 
 import javax.mail.internet.ContentType;
 import javax.mail.internet.ParseException;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PushbackReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -83,227 +98,161 @@ import static org.wso2.carbon.connector.utils.Utils.generateOperationResult;
 /**
  * Implements Read File operation
  */
-public class ReadFile extends AbstractConnectorOperation {
+public class ReadFile extends OperationFrame.Mediator {
 
     private static final String PATH_PARAM = "path";
     private static final String FILE_PATTERN_PARAM = "filePattern";
     private static final String ENABLE_LOCK_PARAM = "enableLock";
     private static final String READ_MODE_PARAM = "readMode";
     private static final String CONTENT_TYPE_PARAM = "contentType";
+    // The type of the relay builder, which reads any content as bytes.
+    private static final String RELAY_TYPE = "application/octet-stream";
     private static final String ENCODING_PARAM = "encoding";
     private static final String ENABLE_STREAMING_PARAM = "enableStreaming";
     private static final String START_LINE_NUM_PARAM = "startLineNum";
     private static final String END_LINE_NUM_PARAM = "endLineNum";
     private static final String LINE_NUM_PARAM = "lineNum";
+    private static final String JSON_OBJECT = "org.apache.synapse.commons.json.JsonInputStream.IsJsonObject";
+    // What the read and its builder set on the message: the charset, the message type, the XML declaration and
+    // processing instructions, and the JSON stream with its kind.
+    private static final String[] BUILD_PROPERTIES = {Constants.Configuration.CHARACTER_SET_ENCODING,
+            Const.SET_CHARACTER_ENCODING, Constants.Configuration.MESSAGE_TYPE,
+            Constants.Configuration.XML_DECLARATION_ENCODING,
+            Constants.Configuration.XML_PROCESSING_INSTRUCTION_ELEMENTS,
+            org.apache.synapse.commons.json.Constants.ORG_APACHE_SYNAPSE_COMMONS_JSON_JSON_INPUT_STREAM, JSON_OBJECT};
     private static final String CHARSET_PARAM = "charset";
     private static final String FILE_FILTER_TYPE = "fileFilterType";
     private static final String INCLUDE_FILES = "includeFiles";
     private static final String EXCLUDE_FILES = "excludeFiles";
+    private static final String MIN_FILE_AGE = "minFileAge";
     private static final String MAX_FILE_AGE = "maxFileAge";
     private static final String TIME_BETWEEN_SIZE_CHECK = "timeBetweenSizeCheck";
     private static final String METADATA_OUTPUT_FORMAT = "metadataOutputFormat";
     private static final String OPERATION_NAME = "read";
-    private static final String ERROR_MESSAGE = "Error while performing file:read for file/directory ";
 
     @Override
     public void execute(MessageContext messageContext, String responseVariable, Boolean overwriteBody)
             throws ConnectException {
 
-        String sourcePath = null;
-        FileObject fileObject = null;
-        FileLockManager fileLockManager = null;
-        boolean lockAcquired = false;
-        FileSystemHandler fileSystemHandlerConnection = null;
-        ConnectionHandler handler = ConnectionHandler.getConnectionHandler();
-        String connectionName = Utils.getConnectionName(messageContext);
-        String connectorName = Const.CONNECTOR_NAME;
-        int maxRetries;
-        int retryDelay;
-        int attempt = 0;
-        boolean successOperation = false;
-        String diskShareAccessMask = (String) ConnectorUtils.lookupTemplateParamater
-                (messageContext, Const.DISK_SHARE_ACCESS_MASK);
-        //read max retries and retry delay
+        Config config;
+        String connection;
         try {
-            maxRetries = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                    Const.MAX_RETRY_PARAM));
-            retryDelay = Integer.parseInt((String) ConnectorUtils.lookupTemplateParamater(messageContext,
-                    Const.RETRY_DELAY_PARAM));
-            if (log.isDebugEnabled()) {
-                log.debug("Max retries: " + maxRetries + " Retry delay: " + retryDelay);
-            }
-        } catch (Exception e) {
-            maxRetries = 0;
-            retryDelay = 0;
+            config = readAndValidateInputs(messageContext);
+            connection = Utils.getConnectionName(messageContext);
+        } catch (InvalidConfigurationException | IllegalArgumentException invalid) {
+            handleError(messageContext, invalid, Error.INVALID_CONFIGURATION, invalid.getMessage(),
+                    responseVariable, Boolean.TRUE.equals(overwriteBody));
+            return;
         }
-        while (attempt <= maxRetries && !successOperation) {
-            try {
-                if (log.isDebugEnabled()) {
-                    log.debug("FileConnector:read  - reading file from " + connectionName);
+        runFrame(messageContext, connection, config.retries, new OperationFrame.Operation<Void>() {
+            private String selected;
+            private String relative;
+            private SourceGuard guard;
+
+            public LinkedHashMap<String, OperationFrame.Lock> paths() {
+                LinkedHashMap<String, OperationFrame.Lock> paths = new LinkedHashMap<>();
+                paths.put(config.path, OperationFrame.Lock.READ_INPUT);
+                return paths;
+            }
+
+            public OperationFrame.Use use(String path) {
+                return OperationFrame.Use.READ;
+            }
+
+            public OperationFrame.Retry retry() {
+                return OperationFrame.Retry.READ;
+            }
+
+            public Void removed(String path) {
+                throw new IllegalStateException("A read starts a new delivery");
+            }
+
+            public void options(FileSystemHandler handler) {
+                Utils.addDiskShareAccessMaskToFSO(handler.getFsOptions(), config.accessMask, handler.getContext().getHealth().namedLog());
+                ConnectionConfiguration connection = handler.getContext().getConfiguration();
+                guard = new SourceGuard(config.pattern, config.filter, config.interval,
+                        connection.getTempFolderName(), connection.getTempFileSuffix(),
+                        new ErrorClassifier(handler.getContext().getHealth().namedLog()));
+            }
+
+            public Void steps(Attempt attempt) throws Exception {
+                String input = attempt.readInput();
+                attempt.progress().reset("resolve");
+                FileObject source = attempt.handler().resolveFile(selected == null ? input : selected);
+                attempt.progress().reset("stat");
+                if (!AtomicOps.existsNow(source)) {
+                    throw new OperationFrame.Failure(Error.ILLEGAL_PATH, "File or folder not found: " + input);
                 }
-                Config config = readAndValidateInputs(messageContext);
-
-                fileSystemHandlerConnection = Utils.getFileSystemHandler(connectionName);
-                String workingDirRelativePAth = config.path;
-                sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + config.path;
-
-                FileSystemOptions fso = fileSystemHandlerConnection.getFsOptions();
-                Utils.addDiskShareAccessMaskToFSO(fso, diskShareAccessMask);
-
-                // Use suspension-enabled file resolution for FTP/FTPS
-                fileObject = fileSystemHandlerConnection.resolveFileWithSuspension(sourcePath);
-
-                fileLockManager = fileSystemHandlerConnection.getFileLockManager();
-
-                if (!fileObject.exists()) {
-                    throw new IllegalPathException("File or folder not found: " + sourcePath);
-                }
-
-                if (fileObject.isFolder()) {
-                    //select file to read with advanced filtering if provided
-                    if (StringUtils.isNotEmpty(config.fileFilterType) || StringUtils.isNotEmpty(config.includeFiles) ||
-                        StringUtils.isNotEmpty(config.excludeFiles) || StringUtils.isNotEmpty(config.maxFileAge)) {
-                        fileObject = selectFileToReadWithAdvancedFilter(fileObject, config);
-                    } else {
-                        fileObject = selectFileToRead(fileObject, config.filePattern);
+                if (selected == null && source.isFolder()) {
+                    if (guard.reservedDirectory(source)) {
+                        throw new OperationFrame.Failure(Error.OPERATION_ERROR, "The directory name is reserved");
                     }
-                    workingDirRelativePAth = workingDirRelativePAth + Const.FILE_SEPARATOR
-                            + fileObject.getName().getBaseName();
-                    sourcePath = fileSystemHandlerConnection.getBaseDirectoryPath() + workingDirRelativePAth;
-                }
-
-                // Check file stability if timeBetweenSizeCheck is provided
-                if (StringUtils.isNotEmpty(config.timeBetweenSizeCheck) && !isFileStable(fileObject, config.timeBetweenSizeCheck)) {
-                    throw new FileOperationException("File is not stable (still being written). Cannot read at this time: " + sourcePath);
-                }
-
-                //lock the file if enabled
-                if (config.enableLock) {
-                    lockAcquired = fileLockManager.tryAndAcquireLock(sourcePath, Const.DEFAULT_LOCK_TIMEOUT);
-                    if (!lockAcquired) {
-                        throw new FileLockException("Failed to acquire lock for file "
-                                + sourcePath + ". Another process maybe processing it. ");
+                    FileObject directory = source;
+                    source = null;
+                    attempt.progress().reset("list");
+                    for (FileObject child : directory.getChildren()) {
+                        if (!guard.accepts(child)) {
+                            continue;
+                        }
+                        String name = directory.getName().getRelativeName(child.getName());
+                        String path = childPath(input, escapedPath(name));
+                        if (attempt.guardRead(path, lockPath(child, path), config.enableLock, true)) {
+                            selected = path;
+                            relative = childPath(config.path, name);
+                            source = child;
+                            break;
+                        }
                     }
-                }
-
-                Map<String, Object> fileAttributes = getFileProperties(workingDirRelativePAth, fileObject, config);
-
-                //if we need to read metadata only, no need to touch content
-                if (Objects.equals(config.readMode, FileReadMode.METADATA_ONLY)) {
-                    JsonObject resultJSON = generateOperationResult(messageContext,
-                            new FileOperationResult(OPERATION_NAME, true));
-                    handleConnectorResponse(messageContext, responseVariable, overwriteBody, resultJSON, null, fileAttributes);
-                    return;
-                }
-
-                if (log.isDebugEnabled()) {
-                    log.debug("FileConnector:read  - preparing to read file content " + sourcePath
-                            + " of Content-type : " + config.contentType);
-                }
-
-                readFileContent(fileObject, messageContext, config, fileAttributes, responseVariable, overwriteBody);
-                successOperation = true;
-                //TODO:MTOM Support?
-
-
-            } catch (InvalidConfigurationException e) {
-
-                String errorDetail = ERROR_MESSAGE + sourcePath;
-                handleError(messageContext, e, Error.INVALID_CONFIGURATION, errorDetail, responseVariable, overwriteBody);
-
-            } catch (IllegalPathException e) {
-
-                String errorDetail = ERROR_MESSAGE + sourcePath;
-                handleError(messageContext, e, Error.ILLEGAL_PATH, errorDetail, responseVariable, overwriteBody);
-
-            } catch (ConnectionSuspendedException e) {
-                // Clean logging for suspended connections - no stack trace needed
-                log.warn("Connection suspended: " + e.getMessage());
-                String errorDetail = ERROR_MESSAGE + sourcePath;
-                handleError(messageContext, e, Error.CONNECTION_ERROR, errorDetail, responseVariable, overwriteBody);
-
-            } catch (FileOperationException | IOException e) { //FileSystemException also handled here
-                log.error(e);
-                Utils.closeFileSystem(fileObject);
-                if (attempt >= maxRetries - 1) {
-                    String errorDetail = ERROR_MESSAGE + sourcePath;
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
-                }
-                // Log the retry attempt
-                log.warn(Const.CONNECTOR_NAME + ":Error while read "
-                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
-                        + " out of " + maxRetries);
-                attempt++;
-                try {
-                    Thread.sleep(retryDelay); // Wait before retrying
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath,
-                            responseVariable, overwriteBody);
-                }
-
-            } catch (FileLockException e) {
-                String errorDetail = ERROR_MESSAGE + sourcePath;
-                handleError(messageContext, e, Error.FILE_LOCKING_ERROR, errorDetail, responseVariable, overwriteBody);
-
-            } catch (Exception e) {
-                String errorDetail = ERROR_MESSAGE + sourcePath;
-
-                // Clean logging for connection pool errors
-                if (e.getMessage() != null && e.getMessage().contains("Could not create a validated object")) {
-                    log.warn("Connection pool validation failed: " + e.getMessage());
-                } else if (e.getCause() instanceof java.util.NoSuchElementException) {
-                    log.warn("Unable to obtain connection from pool (server may be down)");
+                    if (source == null) {
+                        throw new OperationFrame.Failure(Error.OPERATION_ERROR, "No file matches the read guards in " + input);
+                    }
                 } else {
-                    log.error(errorDetail, e);
-                }
-
-                Utils.closeFileSystem(fileObject);
-                if (attempt >= maxRetries - 1) {
-                    handleError(messageContext, e, Error.RETRY_EXHAUSTED, errorDetail, responseVariable, overwriteBody);
-                }
-                // Log the retry attempt
-                log.warn(Const.CONNECTOR_NAME + ":Error while read "
-                        + sourcePath + ". Retrying after " + retryDelay + " milliseconds retry attempt " + (attempt + 1)
-                        + " out of " + maxRetries);
-                attempt++;
-                try {
-                    Thread.sleep(retryDelay); // Wait before retrying
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt(); // Restore interrupted status
-                    handleError(messageContext, ie, Error.OPERATION_ERROR, ERROR_MESSAGE + sourcePath,
-                            responseVariable, overwriteBody);
-                }
-            } finally {
-                if (fileObject != null) {
-                    try {
-                        fileObject.close();
-                    } catch (FileSystemException e) {
-                        log.error(Const.CONNECTOR_NAME
-                                + ":Error while closing folder object while reading files in "
-                                + fileObject);
+                    if (!guard.accepts(source)) {
+                        throw new OperationFrame.Failure(Error.OPERATION_ERROR, "The file did not pass the read guards");
                     }
-                }
-                if (handler.getStatusOfConnection(Const.CONNECTOR_NAME, connectionName)) {
-                    if (fileSystemHandlerConnection != null) {
-                        Utils.addMaxAccessMaskToFSO(fileSystemHandlerConnection.getFsOptions());
-                        handler.returnConnection(connectorName, connectionName, fileSystemHandlerConnection);
+                    if (selected == null) {
+                        selected = input;
+                        relative = config.path;
                     }
+                    attempt.guardRead(selected, lockPath(source, selected), config.enableLock, false);
                 }
-                if (fileLockManager != null && lockAcquired) {
-                    fileLockManager.releaseLock(sourcePath);
-                }
+                deliver(attempt, selected, relative, source, messageContext, config, responseVariable, overwriteBody);
+                return null;
             }
-        }
+        }, OPERATION_NAME, responseVariable, overwriteBody);
+    }
+
+    private static String escapedPath(String providerPath) {
+        // VFS has already escaped literal percent signs. A filename delimiter must survive a second resolution.
+        return providerPath.replace("?", "%3F").replace("#", "%23");
+    }
+
+    private static String lockPath(FileObject file, String operand) {
+        String path = file.getName().getPath();
+        String canonical = file.getName().getRootURI() + escapedPath(path.substring(1));
+        int query = operand.indexOf('?');
+        return query < 0 ? canonical : canonical + operand.substring(query);
+    }
+
+    private static String childPath(String parent, String name) {
+        int query = parent.indexOf('?');
+        String path = query < 0 ? parent : parent.substring(0, query);
+        return path + (path.endsWith("/") ? "" : "/") + name + (query < 0 ? "" : parent.substring(query));
     }
 
     private class Config {
         String path;
-        String filePattern;
+        Pattern pattern;
+        AdvancedFileFilter filter;
+        long interval;
+        int retries;
+        String accessMask;
         boolean enableLock;
         FileReadMode readMode = FileReadMode.COMPLETE_FILE;
         String contentType;
         String encoding;
+        // The encoding parameter as given, or null when the read names none.
+        String givenEncoding;
         boolean enableStreaming;
         int startLineNum;
         int endLineNum;
@@ -321,8 +270,11 @@ public class ReadFile extends AbstractConnectorOperation {
         Config config = new Config();
         config.path = Utils.
                 lookUpStringParam(msgCtx, PATH_PARAM);
-        config.filePattern = Utils.
-                lookUpStringParam(msgCtx, FILE_PATTERN_PARAM, Const.MATCH_ALL_REGEX);
+        String pattern = Utils.lookUpStringParam(msgCtx, FILE_PATTERN_PARAM, null);
+        config.pattern = pattern == null ? null : Pattern.compile(pattern);
+        config.retries = Integer.parseInt(Utils.lookUpStringParam(msgCtx, Const.MAX_RETRY_PARAM, "1"));
+        config.accessMask = Utils.lookUpStringParam(msgCtx, Const.DISK_SHARE_ACCESS_MASK, null);
+
         config.enableLock = Utils.
                 lookUpBooleanParam(msgCtx, ENABLE_LOCK_PARAM, false);
         config.readMode = FileReadMode.fromString(Utils.
@@ -331,6 +283,7 @@ public class ReadFile extends AbstractConnectorOperation {
                 lookUpStringParam(msgCtx, CONTENT_TYPE_PARAM, Const.EMPTY_STRING);
         config.encoding = Utils.
                 lookUpStringParam(msgCtx, ENCODING_PARAM, Const.DEFAULT_ENCODING);
+        config.givenEncoding = Utils.lookUpStringParam(msgCtx, ENCODING_PARAM, null);
         config.enableStreaming = Utils.
                 lookUpBooleanParam(msgCtx, ENABLE_STREAMING_PARAM, false);
         config.startLineNum = Integer.
@@ -351,6 +304,9 @@ public class ReadFile extends AbstractConnectorOperation {
                 lookUpStringParam(msgCtx, MAX_FILE_AGE, Const.EMPTY_STRING);
         config.timeBetweenSizeCheck = Utils.
                 lookUpStringParam(msgCtx, TIME_BETWEEN_SIZE_CHECK, Const.EMPTY_STRING);
+        config.filter = new AdvancedFileFilter(config.fileFilterType, config.includeFiles, config.excludeFiles,
+                config.maxFileAge, Utils.lookUpStringParam(msgCtx, MIN_FILE_AGE, null));
+        config.interval = StringUtils.isEmpty(config.timeBetweenSizeCheck) ? 0 : Long.parseLong(config.timeBetweenSizeCheck);
         config.metadataOutputFormat = Utils.
                 lookUpStringParam(msgCtx, METADATA_OUTPUT_FORMAT, "default");
 
@@ -407,46 +363,267 @@ public class ReadFile extends AbstractConnectorOperation {
         return config;
     }
 
-    private void readFileContent(FileObject file, MessageContext msgCtx, Config config, Map<String, Object> attributes,
-                                 String responseVariable, Boolean overwriteBody)
-            throws IOException, FileOperationException {
-
-        if (StringUtils.isEmpty(config.contentType)) {
-            config.contentType = getContentType(file);
-        }
-        setCharsetEncoding(config.encoding, config.contentType, msgCtx);
-        //read and build file content
-        if (config.enableStreaming) {
-            if (overwriteBody != null && overwriteBody) {
-                //here underlying stream to the file content is not closed. We keep it open
-                setStreamToSynapse(file, msgCtx, config.contentType);
-            } else {
-                handleError(msgCtx, new AxisFault("The content cannot be stored in a variable while streaming is enabled"),
-                        Error.OPERATION_ERROR, "The content cannot be stored in a variable while streaming is enabled",
-                        responseVariable, false);
-            }
+    private void deliver(Attempt attempt, String path, String relative, FileObject file, MessageContext msgCtx,
+                         Config config, String responseVariable, Boolean overwriteBody) throws Exception {
+        attempt.progress().reset("stat");
+        long size = file.getContent().getSize();
+        long modified = file.getContent().getLastModifiedTime();
+        NamedLog readLog = attempt.handler().getContext().getHealth().namedLog();
+        Map<String, Object> attributes = getFileProperties(relative, file, config, size, modified, readLog);
+        if (config.readMode == FileReadMode.METADATA_ONLY) {
+            JsonObject result = generateOperationResult(msgCtx, new FileOperationResult(OPERATION_NAME, true));
+            handleConnectorResponse(msgCtx, responseVariable, overwriteBody, result, null, attributes);
         } else {
-            //this will close input stream automatically after building message
-            try (InputStream inputStream = readFile(file, config)) {
-                OMElement documentElement =
-                        buildSynapseMessage(inputStream, msgCtx, config.contentType);
-                ConnectorResponse response = new DefaultConnectorResponse();
-                if (overwriteBody != null && overwriteBody) {
-                    msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
-                    ((Axis2MessageContext) msgCtx).getAxis2MessageContext().
-                            removeProperty(PassThroughConstants.NO_ENTITY_BODY);
-                } else {
-                    if (Const.CONTENT_TYPE_JSON.equalsIgnoreCase(config.contentType)) {
-                        org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
-                                Axis2MessageContext) msgCtx).getAxis2MessageContext();
-                        response.setPayload(JsonParser.parseString(
-                                JsonUtil.jsonPayloadToString(axis2MsgCtx)));
-                    } else {
-                        response.setPayload(documentElement.toString());
+            String type = StringUtils.isEmpty(config.contentType) ? getContentType(file) : config.contentType;
+            if (config.enableStreaming) {
+                if (!Boolean.TRUE.equals(overwriteBody)) {
+                    throw new OperationFrame.Failure(Error.OPERATION_ERROR,
+                            "The content cannot be stored in a variable while streaming is enabled");
+                }
+                setCharsetEncoding(markCharset(config, type), type, msgCtx, readLog);
+                Builder builder = selectSynapseMessageBuilder(msgCtx, type, readLog);
+                if (!(builder instanceof DataSourceMessageBuilder)) {
+                    throw new FileOperationException("Required builder for streaming not found");
+                }
+                StreamLease lease = attempt.publishRead(msgCtx, path, file, type, size, modified);
+                try {
+                    lease.checkDelivery();
+                    ManagedDataSource data = ManagedDataSourceFactory.create(lease);
+                    OMElement element = ((DataSourceMessageBuilder) builder).processDocument(data,
+                            withCharset(type, builder, config.givenEncoding),
+                            ((Axis2MessageContext) msgCtx).getAxis2MessageContext());
+                    SOAPEnvelope envelope = TransportUtils.createSOAPEnvelope(element);
+                    lease.checkDelivery();
+                    msgCtx.setEnvelope(envelope);
+                    ((Axis2MessageContext) msgCtx).getAxis2MessageContext()
+                            .removeProperty(PassThroughConstants.NO_ENTITY_BODY);
+                    carryBuiltType(msgCtx);
+                } catch (Exception failure) {
+                    // The builder only wraps the stream here and reads nothing of the file.
+                    Exception reported = failure instanceof OperationFrame.Failure ? failure : content(failure, type);
+                    lease.rejectDelivery(reported);
+                    throw reported;
+                }
+                return;
+            }
+            // With the body kept, what the read sets on the message serves the build of the file only. The message
+            // keeps its own, also when the read fails.
+            org.apache.axis2.context.MessageContext axis = ((Axis2MessageContext) msgCtx).getAxis2MessageContext();
+            boolean keep = !Boolean.TRUE.equals(overwriteBody);
+            Map<String, Object> own = new HashMap<>();
+            for (String name : BUILD_PROPERTIES) {
+                own.put(name, axis.getLocalProperty(name));
+            }
+            setCharsetEncoding(markCharset(config, type), type, msgCtx, readLog);
+            ConnectorResponse response = new DefaultConnectorResponse();
+            try {
+                readContent(attempt, file, msgCtx, config, type, readLog, keep, response);
+            } finally {
+                if (keep) {
+                    for (Map.Entry<String, Object> property : own.entrySet()) {
+                        restore(axis, property.getKey(), property.getValue());
                     }
                 }
-                response.setAttributes(attributes);
-                msgCtx.setVariable(responseVariable, response);
+            }
+            response.setAttributes(attributes);
+            msgCtx.setVariable(responseVariable, response);
+        }
+        if (config.enableLock || attempt.lock(path) != null) {
+            attempt.publishRead(msgCtx, path, null, null, size, modified);
+        }
+    }
+
+    private static void restore(org.apache.axis2.context.MessageContext axis, String name, Object value) {
+        if (value == null) {
+            axis.removeProperty(name);
+        } else {
+            axis.setProperty(name, value);
+        }
+    }
+
+    private void readContent(Attempt attempt, FileObject file, MessageContext msgCtx, Config config, String type,
+                             NamedLog readLog, boolean keep, ConnectorResponse response) throws Exception {
+        OMElement documentElement;
+        attempt.progress().reset("open");
+        ReadStream raw = new ReadStream(file.getContent().getInputStream(), attempt.progress());
+        try {
+            try {
+                documentElement = buildSynapseMessage(readFile(raw, config, type), msgCtx, type,
+                        config.givenEncoding, keep, readLog);
+            } catch (StackOverflowError deep) {
+                // A builder ran out of stack on the content. It fails this read alone, so the flow gets a reply.
+                throw new FileOperationException("Error while building message from Stream", deep);
+            }
+        } catch (Exception built) {
+            boolean content = raw.failure == null && !declared(built);
+            boolean ended = raw.ended;
+            Exception failed;
+            if (raw.failure != null) {
+                // The stream of the file failed. A builder can drop that cause, so the failure of the stream decides.
+                failed = raw.failure;
+                if (!inChain(built, failed)) {
+                    failed.addSuppressed(built);
+                }
+            } else {
+                failed = content ? content(built, type) : built;
+            }
+            ErrorClassifier classifier = new ErrorClassifier(attempt.handler().getContext().getHealth().namedLog());
+            boolean transport = classifier.classify(failed, attempt.progress().elapsedMillis(),
+                    ErrorClassifier.CallType.READ).getKind().isTransport();
+            if (!transport || FileObjectUtils.isInstanceOf(file, LocalFile.class)) {
+                try {
+                    raw.close();
+                } catch (IOException cleanup) {
+                    if (!transport && classifier.classify(cleanup, attempt.progress().elapsedMillis(),
+                            ErrorClassifier.CallType.READ).getKind().isTransport()) {
+                        attempt.discardHandler();
+                    }
+                    if (content && ended) {
+                        // A stream that was cut can read as a clean end, and its failure shows only at the close,
+                        // as the final reply of an FTP transfer does. The file then only looked broken, so the
+                        // close decides by its own kind. A close before the end, after a broken byte, does not.
+                        cleanup.addSuppressed(built);
+                        throw cleanup;
+                    }
+                    if (failed != cleanup) {
+                        failed.addSuppressed(cleanup);
+                    }
+                }
+            }
+            throw failed;
+        }
+        attempt.progress().reset("close");
+        if (config.readMode != FileReadMode.COMPLETE_FILE && !raw.ended) {
+            // A read by lines stops before the end by its own choice and has its lines. A server can refuse the
+            // close of a transfer that was not read to its end, as an FTP server answers 426. That does not fail
+            // the read, but the state of the connection is then not known, so it is not used again.
+            try {
+                raw.close();
+            } catch (IOException refused) {
+                attempt.discardHandler();
+                readLog.debug("The close of a file read in part failed, so its connection is not used again. "
+                        + refused);
+            }
+        } else {
+            raw.close();
+        }
+        if (!keep) {
+            msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
+            ((Axis2MessageContext) msgCtx).getAxis2MessageContext().
+                    removeProperty(PassThroughConstants.NO_ENTITY_BODY);
+            carryBuiltType(msgCtx);
+        } else {
+            try {
+                if (Const.CONTENT_TYPE_JSON.equalsIgnoreCase(type) || (documentElement instanceof OMSourcedElement
+                        && !((OMSourcedElement) documentElement).isExpanded())) {
+                    org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
+                            Axis2MessageContext) msgCtx).getAxis2MessageContext();
+                    response.setPayload(JsonParser.parseString(
+                            JsonUtil.jsonPayloadToString(axis2MsgCtx)));
+                } else {
+                    response.setPayload(documentElement.toString());
+                }
+            } catch (RuntimeException failed) {
+                throw content(failed, type);
+            }
+        }
+    }
+
+    private static boolean inChain(Throwable failure, Throwable member) {
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Throwable link = failure; link != null && seen.add(link); link = link.getCause()) {
+            if (link == member) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // True when a file system exception in the chain names its fault, so the provider has said what failed.
+    private static boolean declared(Throwable failure) {
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Throwable link = failure; link != null && seen.add(link); link = link.getCause()) {
+            if (link instanceof FileSystemException && ((FileSystemException) link).getFault() != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // A failure of the build or of the variable when the stream of the file did not fail is a failure of the
+    // content. It fails this read alone and is no fault of the connection.
+    private static FileSystemException content(Exception failure, String type) {
+        return new ContentFailure("The file content could not be read" + (type == null ? "" : " as " + type), failure);
+    }
+
+    // Keeps the failure of the stream of the file, so that a failure of the build can be told from it.
+    private static final class ReadStream extends FilterInputStream {
+        private final ProgressClock progress;
+        private boolean closed;
+        IOException failure;
+        boolean ended;
+
+        ReadStream(InputStream source, ProgressClock progress) {
+            super(source);
+            this.progress = progress;
+        }
+
+        @Override
+        public int read() throws IOException {
+            progress.reset("read");
+            try {
+                int value = in.read();
+                ended |= value < 0;
+                return value;
+            } catch (IOException error) {
+                failure = error;
+                throw error;
+            }
+        }
+
+        @Override
+        public int read(byte[] data, int offset, int length) throws IOException {
+            progress.reset("read");
+            try {
+                int count = in.read(data, offset, length);
+                ended |= count < 0;
+                return count;
+            } catch (IOException error) {
+                failure = error;
+                throw error;
+            }
+        }
+
+        @Override
+        public long skip(long count) throws IOException {
+            try {
+                return in.skip(count);
+            } catch (IOException error) {
+                failure = error;
+                throw error;
+            }
+        }
+
+        @Override
+        public int available() throws IOException {
+            try {
+                return in.available();
+            } catch (IOException error) {
+                failure = error;
+                throw error;
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (!closed) {
+                closed = true;
+                try {
+                    super.close();
+                } catch (IOException error) {
+                    failure = error;
+                    throw error;
+                }
             }
         }
     }
@@ -468,160 +645,7 @@ public class ReadFile extends AbstractConnectorOperation {
         FileOperationResult result = new FileOperationResult(OPERATION_NAME, false, error, e.getMessage());
         JsonObject resultJSON = generateOperationResult(msgCtx, result);
         handleConnectorResponse(msgCtx, responseVariable, overwriteBody, resultJSON, null, null);
-        handleException(errorDetail, e, msgCtx);
-    }
-
-    /**
-     * Select file to read from the directory provided.
-     *
-     * @param directory   directory to scan
-     * @param filePattern file pattern to search files
-     * @return File selected
-     * @throws FileSystemException    in case of file related issue
-     * @throws FileOperationException if no file can be selected
-     */
-    private FileObject selectFileToRead(FileObject directory, String filePattern)
-            throws FileSystemException, FileOperationException {
-
-        FileObject fileToRead = null;
-        FileObject[] children = directory.getChildren();
-
-        if (children == null || children.length == 0) {
-
-            throw new FileOperationException("There is no immediate files to read in the folder " + directory.getURL());
-
-        } else if (StringUtils.isNotEmpty(filePattern)) {
-
-            boolean bFound = false;
-            for (FileObject child : children) {
-                if (child.getName().getBaseName().matches(filePattern)) {
-                    fileToRead = child;
-                    bFound = true;
-                    break;
-                }
-            }
-            if (!bFound) {
-                throw new FileOperationException("There is no immediate files to "
-                        + "read that matches with given pattern in the folder "
-                        + directory.getURL());
-            }
-
-        } else {
-
-            fileToRead = children[0];
-
-        }
-
-        return fileToRead;
-    }
-
-    /**
-     * Select file to read from the directory provided using advanced filtering.
-     *
-     * @param directory directory to scan
-     * @param config    configuration containing filter parameters
-     * @return File selected
-     * @throws FileSystemException    in case of file related issue
-     * @throws FileOperationException if no file can be selected
-     */
-    private FileObject selectFileToReadWithAdvancedFilter(FileObject directory, Config config)
-            throws FileSystemException, FileOperationException {
-
-        FileObject[] children = directory.getChildren();
-
-        if (children == null || children.length == 0) {
-            throw new FileOperationException("There is no immediate files to read in the folder " + directory.getURL());
-        }
-
-        // Create advanced file filter
-        AdvancedFileFilter filter = new AdvancedFileFilter(config.fileFilterType, config.includeFiles, 
-                                                          config.excludeFiles, config.maxFileAge);
-
-        // Find first file that matches advanced filtering criteria
-        for (FileObject child : children) {
-            if (child.isFile()) {
-                // Check file stability if required
-                if (StringUtils.isNotEmpty(config.timeBetweenSizeCheck) && !isFileStable(child, config.timeBetweenSizeCheck)) {
-                    log.warn("File is not stable (still being written), skipping: " + child.getName().getBaseName());
-                    continue;
-                }
-                
-                // Apply advanced filtering
-                if (acceptFile(filter, child)) {
-                    return child;
-                }
-            }
-        }
-
-        throw new FileOperationException("No files found that match the advanced filtering criteria in folder " + directory.getURL());
-    }
-
-    /**
-     * Checks if a file is stable by comparing its size over time.
-     *
-     * @param file The file to check for stability
-     * @param sizeCheckInterval Time to wait between size checks in milliseconds
-     * @return true if file size is stable, false otherwise
-     */
-    private boolean isFileStable(FileObject file, String sizeCheckInterval) {
-        try {
-            long interval = Long.parseLong(sizeCheckInterval);
-            if (interval <= 0) {
-                return true; // No stability check if interval is 0 or negative
-            }
-            
-            long initialSize = file.getContent().getSize();
-            
-            // Wait for the specified interval
-            Thread.sleep(interval);
-            
-            // Refresh and check size again
-            file.refresh();
-            long finalSize = file.getContent().getSize();
-            
-            return initialSize == finalSize;
-        } catch (Exception e) {
-            log.warn("Error checking file stability for " + file + ": " + e.getMessage());
-            return true; // Assume stable if we can't check
-        }
-    }
-
-    /**
-     * Helper method to check if a file object matches the advanced filter criteria.
-     *
-     * @param filter The advanced file filter
-     * @param file   The file object to check
-     * @return true if the file matches the filter criteria, false otherwise
-     */
-    private boolean acceptFile(AdvancedFileFilter filter, FileObject file) {
-        try {
-            // Create a simple FileSelectInfo wrapper for the FileObject
-            FileSelectInfo fileSelectInfo = new FileSelectInfo() {
-                @Override
-                public FileObject getFile() {
-                    return file;
-                }
-
-                @Override
-                public int getDepth() {
-                    return 0; // Not used in our filtering logic
-                }
-
-                @Override
-                public FileObject getBaseFolder() {
-                    try {
-                        return file.getParent();
-                    } catch (Exception e) {
-                        return null;
-                    }
-                }
-            };
-            
-            return filter.accept(fileSelectInfo);
-        } catch (Exception e) {
-            log.warn("Error checking file filter for " + file + ": " + e.getMessage());
-            return false;
-        }
+        handleException(errorDetail, new InvalidConfigurationException(UriMask.mask(e.getMessage())), msgCtx);
     }
 
     /**
@@ -632,7 +656,8 @@ public class ReadFile extends AbstractConnectorOperation {
      * @param config     Configuration with metadata format settings
      * @throws FileSystemException If relevant information cannot be read from file
      */
-    private Map<String, Object> getFileProperties(String filePath, FileObject file, Config config) throws FileSystemException {
+    private Map<String, Object> getFileProperties(String filePath, FileObject file, Config config, long size,
+                                                  long modified, NamedLog readLog) throws FileSystemException {
 
         Map<String, Object> fileProperties = new HashMap<>();
         
@@ -644,7 +669,7 @@ public class ReadFile extends AbstractConnectorOperation {
                 break;
             case "unix":
                 // For Unix timestamp, we'll store the raw long value
-                fileProperties.put(Const.FILE_LAST_MODIFIED_TIME, String.valueOf(file.getContent().getLastModifiedTime()));
+                fileProperties.put(Const.FILE_LAST_MODIFIED_TIME, String.valueOf(modified));
                 break;
             case "detailed":
                 sdf = new SimpleDateFormat("EEEE, MMMM dd, yyyy HH:mm:ss z");
@@ -659,7 +684,7 @@ public class ReadFile extends AbstractConnectorOperation {
         
         // Format last modified time if not using Unix timestamp
         if (!config.metadataOutputFormat.equalsIgnoreCase("unix") && sdf != null) {
-            String lastModifiedTime = sdf.format(file.getContent().getLastModifiedTime());
+            String lastModifiedTime = sdf.format(modified);
             fileProperties.put(Const.FILE_LAST_MODIFIED_TIME, lastModifiedTime);
         }
         
@@ -671,7 +696,7 @@ public class ReadFile extends AbstractConnectorOperation {
         fileProperties.put(Const.FILE_NAME_WITHOUT_EXTENSION, file.getName().
                 getBaseName().split("\\.")[0]);
         //The size of the file, in bytes
-        fileProperties.put(Const.FILE_SIZE, String.valueOf(file.getContent().getSize()));
+        fileProperties.put(Const.FILE_SIZE, String.valueOf(size));
         
         // Add extended properties for "detailed" format
         if (config.metadataOutputFormat.equalsIgnoreCase("detailed")) {
@@ -685,7 +710,7 @@ public class ReadFile extends AbstractConnectorOperation {
             }
             
             // Add readable file size (e.g., "1.5 MB", "256 KB")
-            long sizeInBytes = file.getContent().getSize();
+            long sizeInBytes = size;
             String readableSize = getReadableFileSize(sizeInBytes);
             fileProperties.put("fileSizeReadable", readableSize);
             
@@ -705,7 +730,7 @@ public class ReadFile extends AbstractConnectorOperation {
                 }
             } catch (Exception e) {
                 // Permissions might not be available for all file systems
-                log.debug("Could not retrieve all file permissions: " + e.getMessage());
+                readLog.debug("Could not retrieve all file permissions: " + e.getMessage());
             }
             
             // Add content type
@@ -715,7 +740,7 @@ public class ReadFile extends AbstractConnectorOperation {
                     fileProperties.put("contentType", contentType);
                 }
             } catch (Exception e) {
-                log.debug("Could not retrieve content type: " + e.getMessage());
+                readLog.debug("Could not retrieve content type: " + e.getMessage());
             }
             
             // Add parent directory
@@ -725,7 +750,7 @@ public class ReadFile extends AbstractConnectorOperation {
                     fileProperties.put("parentPath", parent.getName().getPath());
                 }
             } catch (Exception e) {
-                log.debug("Could not retrieve parent path: " + e.getMessage());
+                readLog.debug("Could not retrieve parent path: " + e.getMessage());
             }
         }
         
@@ -770,12 +795,12 @@ public class ReadFile extends AbstractConnectorOperation {
      * @param contentType Content-type of the message
      * @param msgContext  Synapse message context involved
      */
-    private void setCharsetEncoding(String charSetEnc, String contentType, MessageContext msgContext) {
+    private void setCharsetEncoding(String charSetEnc, String contentType, MessageContext msgContext, NamedLog readLog) {
         if (StringUtils.isEmpty(charSetEnc)) {
             try {
                 charSetEnc = new ContentType(contentType).getParameter(CHARSET_PARAM);
             } catch (ParseException ex) {
-                log.warn("FileConnector:read - Invalid encoding type.", ex);
+                readLog.warn("FileConnector:read - Invalid encoding type. " + ex.getMessage());
             }
         }
         ((Axis2MessageContext) msgContext).getAxis2MessageContext().
@@ -794,11 +819,11 @@ public class ReadFile extends AbstractConnectorOperation {
      * @return Processed stream
      * @throws FileOperationException in case of input error
      */
-    private InputStream processStream(InputStream in, int startLine, int endLine)
+    private InputStream processStream(InputStream in, int startLine, int endLine, Charset charset)
             throws FileOperationException {
 
         Stream<String> tempStream;
-        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(in, charset));
 
         if ((startLine > 0) && (endLine > 0) && (endLine > startLine)) {
             tempStream = reader.lines().skip((long) startLine - 1).limit((long) (endLine - startLine + 1));
@@ -810,89 +835,66 @@ public class ReadFile extends AbstractConnectorOperation {
             throw new FileOperationException("File connector:read Error while processing stream ");
         }
         return new ByteArrayInputStream(tempStream.collect(
-                Collectors.joining(Const.NEW_LINE)).getBytes());
+                Collectors.joining(Const.NEW_LINE)).getBytes(charset));
     }
 
 
     /**
      * Read file and generate a InputStream.
      *
-     * @param file     File to read
+     * @param in       Stream owned by the caller
      * @param config   Input config
      * @return InputStream to the file
      * @throws FileOperationException In case of I/O error
      */
-    private InputStream readFile(FileObject file, Config config)
-            throws FileOperationException {
-
-        InputStream processedStream;
-
-        try {
-            InputStream in = new AutoCloseInputStream(file.getContent().getInputStream());
-            switch (config.readMode) {
-                case STARTING_FROM_LINE:
-                    processedStream = processStream(in, config.startLineNum, 0);
-                    break;
-                case UP_TO_LINE:
-                    processedStream = processStream(in, 1, config.endLineNum);
-                    break;
-                case BETWEEN_LINES:
-                    processedStream = processStream(in, config.startLineNum, config.endLineNum);
-                    break;
-                case SPECIFIC_LINE:
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-                    Optional lineFound = reader.lines().skip((long) (config.lineNum - 1)).findFirst();
-                    String line = "";
-                    if (lineFound.isPresent()) {
-                        line = (String) lineFound.get();
-                    }
-                    processedStream = new ByteArrayInputStream(line.getBytes());
-                    break;
-                case COMPLETE_FILE:
-                    processedStream = in;
-                    break;
-                default:
-                    throw new IllegalStateException("Unexpected value: " + config.readMode.toString());
-            }
-            return processedStream;
-
-        } catch (IOException e) {
-            throw new FileOperationException("File connector:read - Error while reading file ", e);
+    private InputStream readFile(InputStream in, Config config, String type) throws FileOperationException {
+        switch (config.readMode) {
+            case STARTING_FROM_LINE:
+                return processStream(in, config.startLineNum, 0, lineCharset(config, type));
+            case UP_TO_LINE:
+                return processStream(in, 1, config.endLineNum, lineCharset(config, type));
+            case BETWEEN_LINES:
+                return processStream(in, config.startLineNum, config.endLineNum, lineCharset(config, type));
+            case SPECIFIC_LINE:
+                Charset charset = lineCharset(config, type);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in, charset));
+                String line = reader.lines().skip(config.lineNum - 1L).findFirst().orElse("");
+                return new ByteArrayInputStream(line.getBytes(charset));
+            case COMPLETE_FILE:
+                return in;
+            default:
+                throw new IllegalStateException("Unexpected value: " + config.readMode);
         }
     }
 
-
-    /**
-     * Set InputStream to the file to Synapse.
-     * We will not close it as it will be read by another operation.
-     *
-     * @param file                File to read
-     * @param msgCtx              MessageContext
-     * @param contentType         MIME type of the message to build
-     * @throws FileOperationException In case of synapse related or runtime issue
-     */
-    private void setStreamToSynapse(FileObject file, MessageContext msgCtx,
-                                    String contentType) throws FileOperationException {
-
-        try {
-            ManagedDataSource dataSource = ManagedDataSourceFactory.create(new FileObjectDataSource(file, contentType));
-            org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
-                    Axis2MessageContext) msgCtx).getAxis2MessageContext();
-            Builder builder = selectSynapseMessageBuilder(msgCtx, contentType);
-            if (builder instanceof DataSourceMessageBuilder) {
-                OMElement documentElement = ((DataSourceMessageBuilder) builder).
-                        processDocument(dataSource, contentType, axis2MsgCtx);
-                msgCtx.setEnvelope(TransportUtils.createSOAPEnvelope(documentElement));
-            } else {
-                log.error("FileConnector:read - Failed to process document. There is no message builder class " +
-                        "available of type DataSourceMessageBuilder that supports the contentType: " + contentType);
-                throw new FileOperationException("Required builder for streaming not found");
-            }
-        } catch (AxisFault e) {
-            throw new FileOperationException("Axis2 error while setting file content stream to synapse", e);
-        } catch (OMException e) {
-            throw new FileOperationException("Error while setting file content stream to synapse", e);
+    // The lines are read and handed on in the charset the builder takes: the charset of the content type first, then
+    // the encoding of the read, then the default of the JVM.
+    private static Charset lineCharset(Config config, String type) {
+        if (type != null && type.toLowerCase(Locale.ROOT).contains("charset=")) {
+            return Charset.forName(BuilderUtil.getCharSetEncoding(type));
         }
+        return config.givenEncoding == null ? Charset.defaultCharset() : Charset.forName(config.givenEncoding);
+    }
+
+    // The charset a later write of the body takes. The encoding of the read names it. With no encoding, the charset
+    // of the content type names it, and UTF-8 when the content type names none. A JSON type keeps UTF-8, because the
+    // JSON formatter writes the bytes of the file as they are only under UTF-8.
+    private static String markCharset(Config config, String type) {
+        String lower = type == null ? "" : type.toLowerCase(Locale.ROOT);
+        if (config.givenEncoding == null && lower.contains("charset=") && !lower.contains("json")) {
+            return BuilderUtil.getCharSetEncoding(type);
+        }
+        return config.encoding;
+    }
+
+    // A text builder takes its charset from the content type only. When the content type names none, the encoding
+    // of the read names it, as a charset in the content type does.
+    private static String withCharset(String type, Builder builder, String encoding) {
+        if (encoding == null || type == null || !(builder instanceof TextMessageBuilder)
+                || type.toLowerCase(Locale.ROOT).contains("charset=")) {
+            return type;
+        }
+        return type + "; charset=" + encoding;
     }
 
     /**
@@ -905,21 +907,79 @@ public class ReadFile extends AbstractConnectorOperation {
      * @throws FileOperationException In case of building the message
      */
     private OMElement buildSynapseMessage(InputStream inputStream, MessageContext msgCtx,
-                                     String contentType) throws FileOperationException {
+                                     String contentType, String encoding, boolean keep, NamedLog readLog)
+            throws FileOperationException {
 
         try {
             org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
                     Axis2MessageContext) msgCtx).getAxis2MessageContext();
-            Builder builder = selectSynapseMessageBuilder(msgCtx, contentType);
-            OMElement documentElement = builder.processDocument(inputStream, contentType, axis2MsgCtx);
-            //We need this to build the complete message before closing the stream
-            documentElement.toString();
+            Builder builder = selectSynapseMessageBuilder(msgCtx, contentType, readLog);
+            String type = withCharset(contentType, builder, encoding);
+            OMElement documentElement = builder.processDocument(inputStream, type, axis2MsgCtx);
+            // The whole content is read before the stream of the file is closed. The JSON builder keeps the file as
+            // a buffered stream, which is read to its end first, so the conversion to XML reads from memory only.
+            InputStream json = jsonStream(documentElement, axis2MsgCtx);
+            if (json != null) {
+                byte[] buffer = new byte[8192];
+                while (json.read(buffer) >= 0) {
+                    // Only the end of the file is looked for.
+                }
+                json.reset();
+            }
+            try {
+                documentElement.toString();
+            } catch (StackOverflowError deep) {
+                // A long JSON array can run the JSON to XML reader out of stack. A read into a variable then keeps the
+                // JSON form, and a reader that walks with its own stack checks the content. An element that was
+                // expanded in part is not used, a new one is built from the content in memory. A read into the body
+                // fails, because the runtime expands the old body when a later step replaces a JSON body, and the
+                // flow then ends with no reply.
+                if (json == null || !keep) {
+                    throw deep;
+                }
+                json.reset();
+                if (((OMSourcedElement) documentElement).isExpanded()) {
+                    documentElement = builder.processDocument(json, type, axis2MsgCtx);
+                    json = jsonStream(documentElement, axis2MsgCtx);
+                }
+                checkJson(json);
+            }
             return documentElement;
         } catch (AxisFault e) {
             throw new FileOperationException("Axis2 error while building message from Stream", e);
         } catch (OMException e) {
             throw new FileOperationException("Error while building message from Stream", e);
+        } catch (IOException e) {
+            throw new FileOperationException("Error while reading the JSON content", e);
         }
+    }
+
+    // The buffered stream of a JSON element that the JSON builder made, or null for any other element.
+    private static InputStream jsonStream(OMElement element, org.apache.axis2.context.MessageContext axis) {
+        if (!(element instanceof OMSourcedElement) || !JsonUtil.hasAJsonPayload(element)) {
+            return null;
+        }
+        return (InputStream) axis.getProperty(
+                org.apache.synapse.commons.json.Constants.ORG_APACHE_SYNAPSE_COMMONS_JSON_JSON_INPUT_STREAM);
+    }
+
+    // One pass over the JSON content to its end, then back to its start. The JSON reader of Synapse refuses a byte
+    // order mark, so this pass refuses it too.
+    private static void checkJson(InputStream json) throws IOException {
+        PushbackReader text = new PushbackReader(new InputStreamReader(json, StandardCharsets.UTF_8));
+        int first = text.read();
+        if (first == '\uFEFF') {
+            throw new IOException("Illegal character: byte order mark");
+        }
+        if (first >= 0) {
+            text.unread(first);
+        }
+        JsonReader reader = new JsonReader(text);
+        reader.setLenient(true);
+        while (reader.peek() != JsonToken.END_DOCUMENT) {
+            reader.skipValue();
+        }
+        json.reset();
     }
 
     /**
@@ -931,26 +991,42 @@ public class ReadFile extends AbstractConnectorOperation {
      * @return Builder selected to build the message
      * @throws AxisFault in case of selecting the builder
      */
-    private Builder selectSynapseMessageBuilder(MessageContext msgCtx, String contentType) throws AxisFault {
+    private Builder selectSynapseMessageBuilder(MessageContext msgCtx, String contentType, NamedLog readLog) throws AxisFault {
         org.apache.axis2.context.MessageContext axis2MsgCtx = ((org.apache.synapse.core.axis2.
                 Axis2MessageContext) msgCtx).getAxis2MessageContext();
 
+        // The relay builder reads the content as bytes. The message type then names it, as the builder selection names
+        // the type of a builder it finds, so a later write takes the formatter of bytes. A read with the body kept
+        // puts the message type back.
         Builder builder;
         if (StringUtils.isEmpty(contentType)) {
-            log.debug("No content type specified. Using RELAY builder.");
+            readLog.debug("No content type specified. Using RELAY builder.");
             builder = new BinaryRelayBuilder();
+            axis2MsgCtx.setProperty(Constants.Configuration.MESSAGE_TYPE, RELAY_TYPE);
         } else {
             int index = contentType.indexOf(';');
             String type = index > 0 ? contentType.substring(0, index) : contentType;
             builder = BuilderUtil.getBuilderFromSelector(type, axis2MsgCtx);
             if (builder == null) {
-                if (log.isDebugEnabled()) {
-                    log.debug("No message builder found for type '" + type + "'. Falling back "
+                if (readLog.isDebugEnabled()) {
+                    readLog.debug("No message builder found for type '" + type + "'. Falling back "
                             + "to RELAY builder.");
                 }
                 builder = new BinaryRelayBuilder();
+                axis2MsgCtx.setProperty(Constants.Configuration.MESSAGE_TYPE, RELAY_TYPE);
+            } else {
+                // With content negotiation on, axis2 names the first type of the Accept header of the request. The
+                // read names the type of the file.
+                axis2MsgCtx.setProperty(Constants.Configuration.MESSAGE_TYPE, type);
             }
         }
         return builder;
+    }
+
+    // A read that replaces the body carries the type of what it built as the message type, the property ContentType
+    // and the header Content-Type, so a later write, respond or call does not take the type of the request.
+    private static void carryBuiltType(MessageContext msgCtx) {
+        org.apache.axis2.context.MessageContext axis = ((Axis2MessageContext) msgCtx).getAxis2MessageContext();
+        PayloadUtils.handleSpecialProperties((String) axis.getProperty(Constants.Configuration.MESSAGE_TYPE), axis);
     }
 }
