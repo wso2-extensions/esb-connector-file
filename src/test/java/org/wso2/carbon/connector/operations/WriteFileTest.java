@@ -19,6 +19,8 @@ import com.google.gson.JsonElement;
 import org.apache.axiom.om.OMAbstractFactory;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.OMOutputFormat;
+import org.apache.axiom.om.OMSourcedElement;
+import org.apache.axiom.om.util.AXIOMUtil;
 import org.apache.axiom.soap.SOAPEnvelope;
 import org.apache.axis2.AxisFault;
 import org.apache.axis2.Constants;
@@ -26,6 +28,7 @@ import org.apache.axis2.context.ConfigurationContext;
 import org.apache.axis2.context.MessageContext;
 import org.apache.axis2.engine.AxisConfiguration;
 import org.apache.axis2.format.BinaryFormatter;
+import org.apache.axis2.format.PlainTextBuilder;
 import org.apache.axis2.format.PlainTextFormatter;
 import org.apache.axis2.transport.base.BaseConstants;
 import org.apache.axis2.transport.http.ApplicationXMLFormatter;
@@ -53,6 +56,7 @@ import org.wso2.org.apache.commons.vfs2.provider.local.DefaultLocalFileProvider;
 import javax.activation.DataHandler;
 import javax.activation.DataSource;
 import javax.xml.namespace.QName;
+import java.io.ByteArrayInputStream;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -227,7 +231,7 @@ public class WriteFileTest {
         Path dir = directory();
         try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
             Axis2MessageContext xml = typed(files, "text/plain",
-                    org.apache.axiom.om.util.AXIOMUtil.stringToOM("<order><id>7</id></order>"));
+                    AXIOMUtil.stringToOM("<order><id>7</id></order>"));
             write(xml, "order.txt", "");
             Assert.assertEquals(Files.size(dir.resolve("order.txt")), 0L);
             Assert.assertTrue(lines.toString().contains("The message type text/plain does not fit the message body,"
@@ -266,14 +270,14 @@ public class WriteFileTest {
         Path dir = directory();
         try (FilePoolFixture files = new FilePoolFixture("LOCAL", "workingDir", dir.toString())) {
             Axis2MessageContext probe = message(files);
-            OMElement text = new org.apache.axis2.format.PlainTextBuilder().processDocument(
-                    new java.io.ByteArrayInputStream("a line".getBytes(StandardCharsets.UTF_8)), "text/plain",
+            OMElement text = new PlainTextBuilder().processDocument(
+                    new ByteArrayInputStream("a line".getBytes(StandardCharsets.UTF_8)), "text/plain",
                     probe.getAxis2MessageContext());
             Axis2MessageContext message = typed(files, "application/binary", text);
             write(message, "unread.bin", "");
             Assert.assertEquals(Files.size(dir.resolve("unread.bin")), 0L);
             Assert.assertTrue(lines.toString().contains("the file unread.bin is empty."), lines.toString());
-            Assert.assertFalse(((org.apache.axiom.om.OMSourcedElement) text).isExpanded(),
+            Assert.assertFalse(((OMSourcedElement) text).isExpanded(),
                     "The text body is not read for the warning.");
         } finally {
             root.removeAppender(capture);
